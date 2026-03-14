@@ -419,7 +419,9 @@ export default function VideoEditor() {
 		let mounted = true;
 
 		async function loadCursorTelemetry() {
-			if (!videoPath) {
+			const sourcePath = videoSourcePath ?? (videoPath ? fromFileUrl(videoPath) : null);
+
+			if (!sourcePath) {
 				if (mounted) {
 					setCursorTelemetry([]);
 				}
@@ -427,7 +429,7 @@ export default function VideoEditor() {
 			}
 
 			try {
-				const result = await window.electronAPI.getCursorTelemetry(fromFileUrl(videoPath));
+				const result = await window.electronAPI.getCursorTelemetry(sourcePath);
 				if (mounted) {
 					setCursorTelemetry(result.success ? result.samples : []);
 				}
@@ -444,7 +446,7 @@ export default function VideoEditor() {
 		return () => {
 			mounted = false;
 		};
-	}, [videoPath]);
+	}, [videoPath, videoSourcePath]);
 
 	function togglePlayPause() {
 		const playback = videoPlaybackRef.current;

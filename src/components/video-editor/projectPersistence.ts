@@ -61,9 +61,9 @@ function clamp(value: number, min: number, max: number) {
 export function toFileUrl(filePath: string): string {
 	const normalized = filePath.replace(/\\/g, "/");
 	if (normalized.match(/^[a-zA-Z]:/)) {
-		return `file:///${normalized}`;
+		return `file:///${encodeURI(normalized)}`;
 	}
-	return `file://${normalized}`;
+	return `file://${encodeURI(normalized)}`;
 }
 
 export function fromFileUrl(fileUrl: string): string {
@@ -73,9 +73,20 @@ export function fromFileUrl(fileUrl: string): string {
 
 	try {
 		const url = new URL(fileUrl);
-		return decodeURIComponent(url.pathname);
+		const pathname = decodeURIComponent(url.pathname);
+
+		if (url.host && url.host !== "localhost") {
+			return `//${url.host}${pathname}`;
+		}
+
+		if (/^\/[a-zA-Z]:/.test(pathname)) {
+			return pathname.slice(1);
+		}
+
+		return pathname;
 	} catch {
-		return fileUrl.replace(/^file:\/\//, "");
+		const fallbackPath = decodeURIComponent(fileUrl.replace(/^file:\/\//, ""));
+		return fallbackPath.replace(/^\/([a-zA-Z]:)/, "$1");
 	}
 }
 
