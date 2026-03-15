@@ -2,7 +2,7 @@
 Name=Recordly
 Comment=Screen recorder and editor with auto-zoom and cursor effects
 Exec=/opt/recordly/Recordly.AppImage %U
-Icon=dev.recordly.app
+Icon=/usr/share/icons/hicolor/256x256/apps/dev.recordly.app.png
 Terminal=false
 Type=Application
 Categories=AudioVideo;Video;

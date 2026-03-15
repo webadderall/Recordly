@@ -150,7 +150,7 @@ Or build and install from this repo:
 git clone https://github.com/webadderall/Recordly.git && cd Recordly/packaging/arch && makepkg -si
 ```
 
-The AUR package is community-maintained. The same PKGBUILD lives in this repo under `packaging/arch/`.
+The AUR package is community-maintained. The same PKGBUILD lives in this repo under `packaging/arch/`. For AUR-specific issues or update requests, you can contact the maintainer at **aur@firtoz.com**.
 
 ---
 
