@@ -29,7 +29,7 @@ export function createHudOverlayWindow(): BrowserWindow {
   const { workArea } = primaryDisplay;
 
 
-  const windowWidth = 600;
+  const windowWidth = 650;
   const windowHeight = 155;
 
   const x = Math.floor(workArea.x + (workArea.width - windowWidth) / 2);
@@ -38,8 +38,8 @@ export function createHudOverlayWindow(): BrowserWindow {
   const win = new BrowserWindow({
     width: windowWidth,
     height: windowHeight,
-    minWidth: 600,
-    maxWidth: 600,
+    minWidth: 650,
+    maxWidth: 650,
     minHeight: 155,
     maxHeight: 155,
     x: x,
@@ -167,15 +167,23 @@ export function createSourceSelectorWindow(): BrowserWindow {
   return win
 }
 
-export function createWebcamWindow(): BrowserWindow {
+export function createWebcamWindow(shape?: string, size?: string): BrowserWindow {
   const { width, height } = getScreen().getPrimaryDisplay().workAreaSize
   
-  const WEBCAM_SIZE = 200
+  const sizeValue = size || 'medium'
+  const shapeValue = shape || 'circle'
+  
+  const sizeMap = { small: 150, medium: 200, large: 280 }
+  const WEBCAM_SIZE = sizeMap[sizeValue as keyof typeof sizeMap] || 200
+  
+  const WEBCAM_WIDTH = shapeValue === 'oval' ? WEBCAM_SIZE * 1.5 : WEBCAM_SIZE
+  const WEBCAM_HEIGHT = WEBCAM_SIZE
+  
   const win = new BrowserWindow({
-    width: WEBCAM_SIZE,
-    height: WEBCAM_SIZE,
-    x: Math.round(width - WEBCAM_SIZE - 50),
-    y: Math.round(height - WEBCAM_SIZE - 50),
+    width: Math.round(WEBCAM_WIDTH),
+    height: Math.round(WEBCAM_HEIGHT),
+    x: Math.round(width - WEBCAM_WIDTH - 50),
+    y: Math.round(height - WEBCAM_HEIGHT - 50),
     frame: false,
     resizable: false,
     alwaysOnTop: true,
@@ -203,11 +211,17 @@ export function createWebcamWindow(): BrowserWindow {
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
   win.setAlwaysOnTop(true, 'floating', 1)
 
+  const params = new URLSearchParams({ 
+    windowType: 'webcam',
+    shape: shapeValue,
+    size: sizeValue
+  })
+
   if (VITE_DEV_SERVER_URL) {
-    win.loadURL(VITE_DEV_SERVER_URL + '?windowType=webcam')
+    win.loadURL(VITE_DEV_SERVER_URL + '?' + params.toString())
   } else {
     win.loadFile(path.join(RENDERER_DIST, 'index.html'), { 
-      query: { windowType: 'webcam' } 
+      query: Object.fromEntries(params)
     })
   }
 

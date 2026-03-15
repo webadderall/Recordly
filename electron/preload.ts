@@ -7,11 +7,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
     hudOverlayClose: () => {
       ipcRenderer.send('hud-overlay-close');
     },
-    openWebcamWindow: () => {
-      ipcRenderer.send('open-webcam-window');
+    openWebcamWindow: (shape?: string, size?: string) => {
+      ipcRenderer.send('open-webcam-window', { shape, size });
     },
     closeWebcamWindow: () => {
       ipcRenderer.send('close-webcam-window');
+    },
+    updateWebcamSettings: (shape: string, size: string) => {
+      ipcRenderer.send('update-webcam-settings', { shape, size });
     },
   getAssetBasePath: async () => {
     // ask main process for the correct base path (production vs dev)

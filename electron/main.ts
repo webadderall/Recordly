@@ -372,14 +372,21 @@ app.whenReady().then(async () => {
     app.quit();
   });
 
-  ipcMain.on('open-webcam-window', () => {
+  ipcMain.on('open-webcam-window', (_event, settings?: { shape?: string; size?: string }) => {
     if (!getWebcamWindow()) {
-      createWebcamWindow();
+      createWebcamWindow(settings?.shape, settings?.size);
     }
   });
 
   ipcMain.on('close-webcam-window', () => {
     closeWebcamWindow();
+  });
+
+  ipcMain.on('update-webcam-settings', (_event, settings: { shape: string; size: string }) => {
+    closeWebcamWindow();
+    setTimeout(() => {
+      createWebcamWindow(settings.shape, settings.size);
+    }, 100);
   });
 
   syncDockIcon()

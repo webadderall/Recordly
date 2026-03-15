@@ -9,7 +9,7 @@ import { RxDragHandleDots2 } from "react-icons/rx";
 import { useAudioLevelMeter } from "../../hooks/useAudioLevelMeter";
 import { useMicrophoneDevices } from "../../hooks/useMicrophoneDevices";
 import { useCameraDevices } from "../../hooks/useCameraDevices";
-import { useScreenRecorder } from "../../hooks/useScreenRecorder";
+import { useScreenRecorder, type WebcamShape, type WebcamSize } from "../../hooks/useScreenRecorder";
 import { useScopedT } from "../../contexts/I18nContext";
 import { Button } from "../ui/button";
 import { AudioLevelMeter } from "../ui/audio-level-meter";
@@ -43,6 +43,10 @@ export function LaunchWindow() {
     setWebcamEnabled,
     webcamDeviceId,
     setWebcamDeviceId,
+    webcamShape,
+    setWebcamShape,
+    webcamSize,
+    setWebcamSize,
   } = useScreenRecorder();
   const [recordingStart, setRecordingStart] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState(0);
@@ -220,13 +224,31 @@ export function LaunchWindow() {
                 setSelectedCameraId(event.target.value);
                 setWebcamDeviceId(event.target.value);
               }}
-              className={`max-w-[230px] rounded-full border border-white/15 bg-[#131722] px-3 py-1 text-xs text-slate-100 outline-none ${styles.micSelect}`}
+              className={`max-w-[150px] rounded-full border border-white/15 bg-[#131722] px-3 py-1 text-xs text-slate-100 outline-none ${styles.micSelect}`}
             >
               {cameraDevices.map((device) => (
                 <option key={device.deviceId} value={device.deviceId}>
                   {device.label}
                 </option>
               ))}
+            </select>
+            <select
+              value={webcamShape}
+              onChange={(event) => setWebcamShape(event.target.value as WebcamShape)}
+              className={`rounded-full border border-white/15 bg-[#131722] px-3 py-1 text-xs text-slate-100 outline-none ${styles.micSelect}`}
+            >
+              <option value="circle">⚪</option>
+              <option value="square">⬜</option>
+              <option value="oval">⬭</option>
+            </select>
+            <select
+              value={webcamSize}
+              onChange={(event) => setWebcamSize(event.target.value as WebcamSize)}
+              className={`rounded-full border border-white/15 bg-[#131722] px-3 py-1 text-xs text-slate-100 outline-none ${styles.micSelect}`}
+            >
+              <option value="small">S</option>
+              <option value="medium">M</option>
+              <option value="large">L</option>
             </select>
           </div>
         )}

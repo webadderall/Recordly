@@ -26,6 +26,9 @@ const AUDIO_BITRATE_VOICE = 128_000;
 const AUDIO_BITRATE_SYSTEM = 192_000;
 const MIC_GAIN_BOOST = 1.4;
 
+export type WebcamShape = 'circle' | 'square' | 'oval';
+export type WebcamSize = 'small' | 'medium' | 'large';
+
 type UseScreenRecorderReturn = {
   recording: boolean;
   toggleRecording: () => void;
@@ -42,6 +45,10 @@ type UseScreenRecorderReturn = {
   webcamDeviceId: string | undefined;
   setWebcamDeviceId: (deviceId: string | undefined) => void;
   webcamStream: MediaStream | null;
+  webcamShape: WebcamShape;
+  setWebcamShape: (shape: WebcamShape) => void;
+  webcamSize: WebcamSize;
+  setWebcamSize: (size: WebcamSize) => void;
 };
 
 export function useScreenRecorder(): UseScreenRecorderReturn {
@@ -54,6 +61,8 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
   const [webcamEnabled, setWebcamEnabled] = useState(false);
   const [webcamDeviceId, setWebcamDeviceId] = useState<string | undefined>(undefined);
   const [webcamStream, setWebcamStream] = useState<MediaStream | null>(null);
+  const [webcamShape, setWebcamShape] = useState<WebcamShape>('circle');
+  const [webcamSize, setWebcamSize] = useState<WebcamSize>('medium');
   const mediaRecorder = useRef<MediaRecorder | null>(null);
   const stream = useRef<MediaStream | null>(null);
   const screenStream = useRef<MediaStream | null>(null);
@@ -252,7 +261,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
         if (mounted) {
           webcamStreamRef.current = stream;
           setWebcamStream(stream);
-          window.electronAPI?.openWebcamWindow?.();
+          window.electronAPI?.openWebcamWindow?.(webcamShape, webcamSize);
         } else {
           stream.getTracks().forEach((track) => track.stop());
         }
@@ -277,6 +286,12 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
       window.electronAPI?.closeWebcamWindow?.();
     };
   }, [webcamEnabled, webcamDeviceId]);
+
+  useEffect(() => {
+    if (webcamEnabled && webcamStreamRef.current) {
+      window.electronAPI?.updateWebcamSettings?.(webcamShape, webcamSize);
+    }
+  }, [webcamShape, webcamSize, webcamEnabled]);
 
   useEffect(() => {
     let cleanup: (() => void) | undefined;
@@ -585,10 +600,13 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
         webcamVideo.srcObject = webcamStreamRef.current;
         webcamVideo.play();
 
-        const WEBCAM_SIZE = Math.min(width, height) * 0.25;
+        const sizeMultiplier = webcamSize === 'small' ? 0.15 : webcamSize === 'large' ? 0.35 : 0.25;
+        const baseSize = Math.min(width, height) * sizeMultiplier;
+        const WEBCAM_WIDTH = webcamShape === 'oval' ? baseSize * 1.5 : baseSize;
+        const WEBCAM_HEIGHT = baseSize;
         const WEBCAM_MARGIN = 20;
-        const WEBCAM_X = width - WEBCAM_SIZE - WEBCAM_MARGIN;
-        const WEBCAM_Y = height - WEBCAM_SIZE - WEBCAM_MARGIN;
+        const WEBCAM_X = width - WEBCAM_WIDTH - WEBCAM_MARGIN;
+        const WEBCAM_Y = height - WEBCAM_HEIGHT - WEBCAM_MARGIN;
 
         const drawFrame = () => {
           if (!compositeCanvas.current || !compositeContext.current) {
@@ -599,13 +617,29 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 
           ctx.save();
           ctx.beginPath();
-          ctx.arc(
-            WEBCAM_X + WEBCAM_SIZE / 2,
-            WEBCAM_Y + WEBCAM_SIZE / 2,
-            WEBCAM_SIZE / 2,
-            0,
-            Math.PI * 2
-          );
+
+          if (webcamShape === 'circle') {
+            ctx.arc(
+              WEBCAM_X + WEBCAM_WIDTH / 2,
+              WEBCAM_Y + WEBCAM_HEIGHT / 2,
+              WEBCAM_WIDTH / 2,
+              0,
+              Math.PI * 2
+            );
+          } else if (webcamShape === 'square') {
+            ctx.rect(WEBCAM_X, WEBCAM_Y, WEBCAM_WIDTH, WEBCAM_HEIGHT);
+          } else if (webcamShape === 'oval') {
+            ctx.ellipse(
+              WEBCAM_X + WEBCAM_WIDTH / 2,
+              WEBCAM_Y + WEBCAM_HEIGHT / 2,
+              WEBCAM_WIDTH / 2,
+              WEBCAM_HEIGHT / 2,
+              0,
+              0,
+              Math.PI * 2
+            );
+          }
+
           ctx.closePath();
           ctx.clip();
 
@@ -613,8 +647,8 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
             webcamVideo,
             WEBCAM_X,
             WEBCAM_Y,
-            WEBCAM_SIZE,
-            WEBCAM_SIZE
+            WEBCAM_WIDTH,
+            WEBCAM_HEIGHT
           );
 
           ctx.restore();
@@ -622,13 +656,30 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
           ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
           ctx.lineWidth = 3;
           ctx.beginPath();
-          ctx.arc(
-            WEBCAM_X + WEBCAM_SIZE / 2,
-            WEBCAM_Y + WEBCAM_SIZE / 2,
-            WEBCAM_SIZE / 2,
-            0,
-            Math.PI * 2
-          );
+
+          if (webcamShape === 'circle') {
+            ctx.arc(
+              WEBCAM_X + WEBCAM_WIDTH / 2,
+              WEBCAM_Y + WEBCAM_HEIGHT / 2,
+              WEBCAM_WIDTH / 2,
+              0,
+              Math.PI * 2
+            );
+          } else if (webcamShape === 'square') {
+            const borderRadius = 12;
+            ctx.roundRect(WEBCAM_X, WEBCAM_Y, WEBCAM_WIDTH, WEBCAM_HEIGHT, borderRadius);
+          } else if (webcamShape === 'oval') {
+            ctx.ellipse(
+              WEBCAM_X + WEBCAM_WIDTH / 2,
+              WEBCAM_Y + WEBCAM_HEIGHT / 2,
+              WEBCAM_WIDTH / 2,
+              WEBCAM_HEIGHT / 2,
+              0,
+              0,
+              Math.PI * 2
+            );
+          }
+
           ctx.stroke();
 
           animationFrameId.current = requestAnimationFrame(drawFrame);
@@ -750,6 +801,10 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
     webcamDeviceId,
     setWebcamDeviceId,
     webcamStream,
+    webcamShape,
+    setWebcamShape,
+    webcamSize,
+    setWebcamSize,
   };
 }
 
