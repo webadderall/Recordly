@@ -37,6 +37,11 @@ type UseScreenRecorderReturn = {
   setMicrophoneDeviceId: (deviceId: string | undefined) => void;
   systemAudioEnabled: boolean;
   setSystemAudioEnabled: (enabled: boolean) => void;
+  webcamEnabled: boolean;
+  setWebcamEnabled: (enabled: boolean) => void;
+  webcamDeviceId: string | undefined;
+  setWebcamDeviceId: (deviceId: string | undefined) => void;
+  webcamStream: MediaStream | null;
 };
 
 export function useScreenRecorder(): UseScreenRecorderReturn {
@@ -46,11 +51,18 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
   const [microphoneEnabled, setMicrophoneEnabled] = useState(false);
   const [microphoneDeviceId, setMicrophoneDeviceId] = useState<string | undefined>(undefined);
   const [systemAudioEnabled, setSystemAudioEnabled] = useState(false);
+  const [webcamEnabled, setWebcamEnabled] = useState(false);
+  const [webcamDeviceId, setWebcamDeviceId] = useState<string | undefined>(undefined);
+  const [webcamStream, setWebcamStream] = useState<MediaStream | null>(null);
   const mediaRecorder = useRef<MediaRecorder | null>(null);
   const stream = useRef<MediaStream | null>(null);
   const screenStream = useRef<MediaStream | null>(null);
   const microphoneStream = useRef<MediaStream | null>(null);
+  const webcamStreamRef = useRef<MediaStream | null>(null);
   const mixingContext = useRef<AudioContext | null>(null);
+  const compositeCanvas = useRef<HTMLCanvasElement | null>(null);
+  const compositeContext = useRef<CanvasRenderingContext2D | null>(null);
+  const animationFrameId = useRef<number | null>(null);
   const chunks = useRef<Blob[]>([]);
   const startTime = useRef<number>(0);
   const nativeScreenRecording = useRef(false);
@@ -128,6 +140,11 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
   };
 
   const cleanupCapturedMedia = useCallback(() => {
+    if (animationFrameId.current) {
+      cancelAnimationFrame(animationFrameId.current);
+      animationFrameId.current = null;
+    }
+
     if (stream.current) {
       stream.current.getTracks().forEach((track) => track.stop());
       stream.current = null;
@@ -143,10 +160,19 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
       microphoneStream.current = null;
     }
 
+    if (webcamStreamRef.current) {
+      webcamStreamRef.current.getTracks().forEach((track) => track.stop());
+      webcamStreamRef.current = null;
+      setWebcamStream(null);
+    }
+
     if (mixingContext.current) {
       mixingContext.current.close().catch(() => {});
       mixingContext.current = null;
     }
+
+    compositeCanvas.current = null;
+    compositeContext.current = null;
   }, []);
 
   const stopRecording = useRef(() => {
@@ -193,6 +219,61 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
       setIsMacOS(platform === "darwin");
     })();
   }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const startWebcamStream = async () => {
+      if (!webcamEnabled) {
+        if (webcamStreamRef.current) {
+          webcamStreamRef.current.getTracks().forEach((track) => track.stop());
+          webcamStreamRef.current = null;
+          setWebcamStream(null);
+        }
+        return;
+      }
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: webcamDeviceId
+            ? {
+                deviceId: { exact: webcamDeviceId },
+                width: { ideal: 640 },
+                height: { ideal: 480 },
+              }
+            : {
+                width: { ideal: 640 },
+                height: { ideal: 480 },
+              },
+          audio: false,
+        });
+
+        if (mounted) {
+          webcamStreamRef.current = stream;
+          setWebcamStream(stream);
+        } else {
+          stream.getTracks().forEach((track) => track.stop());
+        }
+      } catch (error) {
+        console.error("Failed to get webcam access:", error);
+        if (mounted) {
+          setWebcamEnabled(false);
+          alert("Webcam access was denied. Please grant camera permissions.");
+        }
+      }
+    };
+
+    void startWebcamStream();
+
+    return () => {
+      mounted = false;
+      if (webcamStreamRef.current) {
+        webcamStreamRef.current.getTracks().forEach((track) => track.stop());
+        webcamStreamRef.current = null;
+        setWebcamStream(null);
+      }
+    };
+  }, [webcamEnabled, webcamDeviceId]);
 
   useEffect(() => {
     let cleanup: (() => void) | undefined;
@@ -478,18 +559,112 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
       width = Math.floor(width / CODEC_ALIGNMENT) * CODEC_ALIGNMENT;
       height = Math.floor(height / CODEC_ALIGNMENT) * CODEC_ALIGNMENT;
 
+      let finalStream = stream.current;
+
+      if (webcamEnabled && webcamStreamRef.current) {
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        
+        if (!ctx) {
+          throw new Error("Failed to get canvas context");
+        }
+
+        compositeCanvas.current = canvas;
+        compositeContext.current = ctx;
+
+        const screenVideo = document.createElement('video');
+        screenVideo.srcObject = new MediaStream([videoTrack]);
+        screenVideo.play();
+
+        const webcamVideo = document.createElement('video');
+        webcamVideo.srcObject = webcamStreamRef.current;
+        webcamVideo.play();
+
+        const WEBCAM_SIZE = Math.min(width, height) * 0.25;
+        const WEBCAM_MARGIN = 20;
+        const WEBCAM_X = width - WEBCAM_SIZE - WEBCAM_MARGIN;
+        const WEBCAM_Y = height - WEBCAM_SIZE - WEBCAM_MARGIN;
+
+        const drawFrame = () => {
+          if (!compositeCanvas.current || !compositeContext.current) {
+            return;
+          }
+
+          ctx.drawImage(screenVideo, 0, 0, width, height);
+
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(
+            WEBCAM_X + WEBCAM_SIZE / 2,
+            WEBCAM_Y + WEBCAM_SIZE / 2,
+            WEBCAM_SIZE / 2,
+            0,
+            Math.PI * 2
+          );
+          ctx.closePath();
+          ctx.clip();
+
+          ctx.drawImage(
+            webcamVideo,
+            WEBCAM_X,
+            WEBCAM_Y,
+            WEBCAM_SIZE,
+            WEBCAM_SIZE
+          );
+
+          ctx.restore();
+
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(
+            WEBCAM_X + WEBCAM_SIZE / 2,
+            WEBCAM_Y + WEBCAM_SIZE / 2,
+            WEBCAM_SIZE / 2,
+            0,
+            Math.PI * 2
+          );
+          ctx.stroke();
+
+          animationFrameId.current = requestAnimationFrame(drawFrame);
+        };
+
+        await new Promise<void>((resolve) => {
+          const checkReady = () => {
+            if (screenVideo.readyState >= 2 && webcamVideo.readyState >= 2) {
+              resolve();
+            } else {
+              setTimeout(checkReady, 50);
+            }
+          };
+          checkReady();
+        });
+
+        drawFrame();
+
+        const canvasStream = canvas.captureStream(TARGET_FRAME_RATE);
+        const compositeVideoTrack = canvasStream.getVideoTracks()[0];
+        
+        finalStream = new MediaStream([compositeVideoTrack]);
+        
+        const audioTracks = stream.current.getAudioTracks();
+        audioTracks.forEach(track => finalStream.addTrack(track));
+      }
+
       const videoBitsPerSecond = computeBitrate(width, height);
       const mimeType = selectMimeType();
 
       console.log(
         `Recording at ${width}x${height} @ ${frameRate ?? TARGET_FRAME_RATE}fps using ${mimeType} / ${Math.round(
           videoBitsPerSecond / BITS_PER_MEGABIT,
-        )} Mbps`,
+        )} Mbps${webcamEnabled && webcamStreamRef.current ? ' with webcam overlay' : ''}`,
       );
 
       chunks.current = [];
-      const hasAudio = stream.current.getAudioTracks().length > 0;
-      const recorder = new MediaRecorder(stream.current, {
+      const hasAudio = finalStream.getAudioTracks().length > 0;
+      const recorder = new MediaRecorder(finalStream, {
         mimeType,
         videoBitsPerSecond,
         ...(hasAudio
@@ -567,6 +742,11 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
     setMicrophoneDeviceId,
     systemAudioEnabled,
     setSystemAudioEnabled,
+    webcamEnabled,
+    setWebcamEnabled,
+    webcamDeviceId,
+    setWebcamDeviceId,
+    webcamStream,
   };
 }
 
