@@ -100,6 +100,12 @@
 		"vite-plugin-electron-renderer": "^0.14.5",
 		"vitest": "^4.0.16"
 	},
-	"main": "dist-electron/main.js"
+	"main": "dist-electron/main.js",
+	"build": {
+		"asarUnpack": [
+			"electron/native/wgc-capture/build/Release/**",
+			"electron/native/cursor-monitor/build/Release/**"
+		]
+	}
 }
 
