@@ -1226,6 +1226,10 @@ let hasLoggedInteractionHookFailure = false
 let lastLeftClick: { timeMs: number; cx: number; cy: number } | null = null
 let selectedWindowBounds: WindowBounds | null = null
 let windowBoundsCaptureInterval: NodeJS.Timeout | null = null
+// On Linux, screen.getCursorScreenPoint() is unreliable under Wayland (returns a
+// fixed position). We instead cache the cursor position from uiohook-napi's mousemove
+// events, which use the X11/XWayland layer and accurately reflect the real cursor.
+let lastUiohookCursorPoint: { x: number; y: number } | null = null
 
 function normalizeHookMouseButton(rawButton: unknown): 1 | 2 | 3 {
   if (typeof rawButton !== 'number' || !Number.isFinite(rawButton)) {
@@ -1343,15 +1347,21 @@ function startWindowBoundsCapture() {
 }
 
 function getNormalizedCursorPoint() {
-  const cursor = getScreen().getCursorScreenPoint()
+  // On Linux, screen.getCursorScreenPoint() returns a fixed position under Wayland.
+  // Prefer the uiohook-cached coordinates (updated via X11/XWayland mousemove events)
+  // when they are available.
+  const cursorPos = (process.platform === 'linux' && lastUiohookCursorPoint !== null)
+    ? lastUiohookCursorPoint
+    : getScreen().getCursorScreenPoint()
+
   const windowBounds = selectedSource?.id?.startsWith('window:') ? selectedWindowBounds : null
   if (windowBounds) {
     const width = Math.max(1, windowBounds.width)
     const height = Math.max(1, windowBounds.height)
 
     return {
-      cx: clamp((cursor.x - windowBounds.x) / width, 0, 1),
-      cy: clamp((cursor.y - windowBounds.y) / height, 0, 1),
+      cx: clamp((cursorPos.x - windowBounds.x) / width, 0, 1),
+      cy: clamp((cursorPos.y - windowBounds.y) / height, 0, 1),
     }
   }
 
@@ -1359,13 +1369,13 @@ function getNormalizedCursorPoint() {
   const sourceDisplay = Number.isFinite(sourceDisplayId)
     ? getScreen().getAllDisplays().find((display) => display.id === sourceDisplayId) ?? null
     : null
-  const display = sourceDisplay ?? getScreen().getDisplayNearestPoint(cursor)
+  const display = sourceDisplay ?? getScreen().getDisplayNearestPoint(cursorPos)
   const bounds = display.bounds
   const width = Math.max(1, bounds.width)
   const height = Math.max(1, bounds.height)
 
-  const cx = clamp((cursor.x - bounds.x) / width, 0, 1)
-  const cy = clamp((cursor.y - bounds.y) / height, 0, 1)
+  const cx = clamp((cursorPos.x - bounds.x) / width, 0, 1)
+  const cy = clamp((cursorPos.y - bounds.y) / height, 0, 1)
   return { cx, cy }
 }
 
@@ -1448,10 +1458,6 @@ async function startInteractionCapture() {
     return
   }
 
-  if (!['darwin', 'win32'].includes(process.platform)) {
-    return
-  }
-
   try {
     const hook = loadUiohookModule()
     console.log('[CursorTelemetry] hook loaded:', !!hook, 'has.on:', typeof hook?.on, 'has.start:', typeof hook?.start)
@@ -1463,6 +1469,19 @@ async function startInteractionCapture() {
       console.log('[CursorTelemetry] hook unusable — aborting interaction capture')
       return
     }
+
+    // On Linux, screen.getCursorScreenPoint() returns a fixed position under Wayland.
+    // Track cursor movement via uiohook mousemove events instead, which use the X11/
+    // XWayland layer and accurately reflect the real cursor position.
+    const onMouseMove = process.platform === 'linux'
+      ? (event: any) => {
+          const rawX = event?.x ?? event?.data?.x
+          const rawY = event?.y ?? event?.data?.y
+          if (typeof rawX === 'number' && typeof rawY === 'number') {
+            lastUiohookCursorPoint = { x: rawX, y: rawY }
+          }
+        }
+      : null
 
     const onMouseDown = (event: any) => {
       if (!isCursorCaptureActive) {
@@ -1512,17 +1531,28 @@ async function startInteractionCapture() {
       pushCursorSample(point.cx, point.cy, timeMs, 'mouseup')
     }
 
+    if (onMouseMove) {
+      hook.on('mousemove', onMouseMove)
+    }
     hook.on('mousedown', onMouseDown)
     hook.on('mouseup', onMouseUp)
 
     hook.start()
 
     interactionCaptureCleanup = () => {
+      lastUiohookCursorPoint = null
+
       try {
         if (typeof hook.off === 'function') {
+          if (onMouseMove) {
+            hook.off('mousemove', onMouseMove)
+          }
           hook.off('mousedown', onMouseDown)
           hook.off('mouseup', onMouseUp)
         } else if (typeof hook.removeListener === 'function') {
+          if (onMouseMove) {
+            hook.removeListener('mousemove', onMouseMove)
+          }
           hook.removeListener('mousedown', onMouseDown)
           hook.removeListener('mouseup', onMouseUp)
         }
