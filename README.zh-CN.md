@@ -2,8 +2,6 @@
 
 语言: [English](README.md) | 简体中文
 
-[Product Hunt 页面 - 欢迎支持！](https://www.producthunt.com/products/recordly-make-stunning-product-demos?launch=recordly-2)
-
 <p align="center">
   <img src="https://i.postimg.cc/tRnL8gHp/Frame-5.png" width="220" alt="Recordly logo">
 </p>
