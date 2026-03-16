@@ -3,7 +3,7 @@ import { AudioProcessor } from './audioEncoder';
 import { StreamingVideoDecoder } from './streamingDecoder';
 import { FrameRenderer } from './frameRenderer';
 import { VideoMuxer } from './muxer';
-import type { ZoomRegion, CropRegion, TrimRegion, AnnotationRegion, SpeedRegion, CursorTelemetryPoint } from '@/components/video-editor/types';
+import type { ZoomRegion, CropRegion, TrimRegion, AnnotationRegion, SpeedRegion, AudioRegion, CursorTelemetryPoint } from '@/components/video-editor/types';
 
 interface VideoExporterConfig extends ExportConfig {
   videoUrl: string;
@@ -27,6 +27,7 @@ interface VideoExporterConfig extends ExportConfig {
   cursorSmoothing?: number;
   cursorMotionBlur?: number;
   cursorClickBounce?: number;
+  audioRegions?: AudioRegion[];
   previewWidth?: number;
   previewHeight?: number;
   onProgress?: (progress: ExportProgress) => void;
@@ -94,7 +95,8 @@ export class VideoExporter {
       // Initialize video encoder
       await this.initializeEncoder();
 
-      const hasAudio = videoInfo.hasAudio;
+      const hasAudioRegions = (this.config.audioRegions ?? []).length > 0;
+      const hasAudio = videoInfo.hasAudio || hasAudioRegions;
 
       // Initialize muxer
       this.muxer = new VideoMuxer(this.config, hasAudio);
@@ -148,15 +150,17 @@ export class VideoExporter {
 
       if (hasAudio && !this.cancelled) {
         const demuxer = this.streamingDecoder.getDemuxer();
-        if (demuxer) {
+        if (demuxer || hasAudioRegions) {
           this.audioProcessor = new AudioProcessor();
           await this.awaitWithWindowsTimeout(
             this.audioProcessor.process(
-              demuxer,
+              demuxer!,
               this.muxer!,
               this.config.videoUrl,
               this.config.trimRegions,
               this.config.speedRegions,
+              undefined,
+              this.config.audioRegions,
             ),
             'audio processing',
           );

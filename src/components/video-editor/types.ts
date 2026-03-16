@@ -137,6 +137,14 @@ export const DEFAULT_CROP_REGION: CropRegion = {
   height: 1,
 };
 
+export interface AudioRegion {
+  id: string;
+  startMs: number;
+  endMs: number;
+  audioPath: string;
+  volume: number;
+}
+
 export type PlaybackSpeed = 0.25 | 0.5 | 0.75 | 1.25 | 1.5 | 1.75 | 2;
 
 export interface SpeedRegion {

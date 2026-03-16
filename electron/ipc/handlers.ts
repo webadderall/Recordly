@@ -2485,6 +2485,35 @@ export function registerIpcHandlers(
     }
   });
 
+  ipcMain.handle('open-audio-file-picker', async () => {
+    try {
+      const result = await dialog.showOpenDialog({
+        title: 'Select Audio File',
+        filters: [
+          { name: 'Audio Files', extensions: ['mp3', 'wav', 'aac', 'm4a', 'flac', 'ogg'] },
+          { name: 'All Files', extensions: ['*'] }
+        ],
+        properties: ['openFile']
+      });
+
+      if (result.canceled || result.filePaths.length === 0) {
+        return { success: false, canceled: true };
+      }
+
+      return {
+        success: true,
+        path: result.filePaths[0]
+      };
+    } catch (error) {
+      console.error('Failed to open audio file picker:', error);
+      return {
+        success: false,
+        message: 'Failed to open audio file picker',
+        error: String(error)
+      };
+    }
+  });
+
   ipcMain.handle('reveal-in-folder', async (_, filePath: string) => {
     try {
       // shell.showItemInFolder doesn't return a value, it throws on error

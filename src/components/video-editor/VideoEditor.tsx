@@ -4,85 +4,73 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
-import { useI18n } from "@/contexts/I18nContext";
+import { useI18n, useScopedT } from "@/contexts/I18nContext";
+import { useShortcuts } from "@/contexts/ShortcutsContext";
 import { SUPPORTED_LOCALES } from "@/i18n/config";
 import type { AppLocale } from "@/i18n/config";
-import { useShortcuts } from "@/contexts/ShortcutsContext";
-import { getAssetPath } from "@/lib/assetPath";
-import {
-	calculateOutputDimensions,
-	type ExportFormat,
-	type ExportProgress,
-	type ExportQuality,
-	type ExportSettings,
-	GIF_SIZE_PRESETS,
-	GifExporter,
-	type GifFrameRate,
-	type GifSizePreset,
-	VideoExporter,
-} from "@/lib/exporter";
-import { matchesShortcut } from "@/lib/shortcuts";
-import { DEFAULT_WALLPAPER_RELATIVE_PATH, WALLPAPER_PATHS } from "@/lib/wallpapers";
-import { type AspectRatio, getAspectRatioValue } from "@/utils/aspectRatioUtils";
-import { ExportDialog } from "./ExportDialog";
-import PlaybackControls from "./PlaybackControls";
-import {
-	createProjectData,
-	deriveNextId,
-	fromFileUrl,
-	normalizeProjectEditor,
-	toFileUrl,
-	validateProjectData,
-} from "./projectPersistence";
-import { SettingsPanel } from "./SettingsPanel";
-import TimelineEditor from "./timeline/TimelineEditor";
-import {
-	detectInteractionCandidates,
-	normalizeCursorTelemetry,
-} from "./timeline/zoomSuggestionUtils";
-import {
-	type AnnotationRegion,
-	type CropRegion,
-	type CursorTelemetryPoint,
-	clampFocusToDepth,
-	DEFAULT_ANNOTATION_POSITION,
-	DEFAULT_ANNOTATION_SIZE,
-	DEFAULT_ANNOTATION_STYLE,
-	DEFAULT_CROP_REGION,
-	DEFAULT_CURSOR_CLICK_BOUNCE,
-	DEFAULT_CURSOR_MOTION_BLUR,
-	DEFAULT_CURSOR_SIZE,
-	DEFAULT_CURSOR_SMOOTHING,
-	DEFAULT_FIGURE_DATA,
-	DEFAULT_PLAYBACK_SPEED,
-	DEFAULT_ZOOM_DEPTH,
-	DEFAULT_ZOOM_MOTION_BLUR,
-	type FigureData,
-	type PlaybackSpeed,
-	type SpeedRegion,
-	type TrimRegion,
-	type ZoomDepth,
-	type ZoomFocus,
-	type ZoomRegion,
-} from "./types";
+
 import VideoPlayback, { VideoPlaybackRef } from "./VideoPlayback";
+import PlaybackControls from "./PlaybackControls";
+import TimelineEditor from "./timeline/TimelineEditor";
+import { SettingsPanel } from "./SettingsPanel";
+import { ExportDialog } from "./ExportDialog";
+import { DEFAULT_WALLPAPER_RELATIVE_PATH, WALLPAPER_PATHS } from "@/lib/wallpapers";
 import {
-	buildLoopedCursorTelemetry,
-	getDisplayedTimelineWindowMs,
-} from "./videoPlayback/cursorLoopTelemetry";
+  createProjectData,
+  deriveNextId,
+  fromFileUrl,
+  normalizeProjectEditor,
+  toFileUrl,
+  validateProjectData,
+} from "./projectPersistence";
+
+import {
+  DEFAULT_CURSOR_CLICK_BOUNCE,
+  DEFAULT_CURSOR_MOTION_BLUR,
+  DEFAULT_CURSOR_SIZE,
+  DEFAULT_CURSOR_SMOOTHING,
+  DEFAULT_ZOOM_DEPTH,
+  DEFAULT_ZOOM_MOTION_BLUR,
+  clampFocusToDepth,
+  DEFAULT_CROP_REGION,
+  DEFAULT_ANNOTATION_POSITION,
+  DEFAULT_ANNOTATION_SIZE,
+  DEFAULT_ANNOTATION_STYLE,
+  DEFAULT_FIGURE_DATA,
+  DEFAULT_PLAYBACK_SPEED,
+  type ZoomDepth,
+  type ZoomFocus,
+  type ZoomRegion,
+  type CursorTelemetryPoint,
+  type TrimRegion,
+  type AnnotationRegion,
+  type CropRegion,
+  type FigureData,
+  type SpeedRegion,
+  type AudioRegion,
+  type PlaybackSpeed,
+} from "./types";
+import { VideoExporter, GifExporter, type ExportProgress, type ExportQuality, type ExportSettings, type ExportFormat, type GifFrameRate, type GifSizePreset, GIF_SIZE_PRESETS, calculateOutputDimensions } from "@/lib/exporter";
+import { type AspectRatio, getAspectRatioValue } from "@/utils/aspectRatioUtils";
+import { getAssetPath } from "@/lib/assetPath";
+import { matchesShortcut } from "@/lib/shortcuts";
+import { detectInteractionCandidates, normalizeCursorTelemetry } from "./timeline/zoomSuggestionUtils";
+import { buildLoopedCursorTelemetry, getDisplayedTimelineWindowMs } from "./videoPlayback/cursorLoopTelemetry";
 import { findDominantRegion } from "./videoPlayback/zoomRegionUtils";
 
 const LOOP_CURSOR_END_WINDOW_MS = 670;
 
 type EditorHistorySnapshot = {
-	zoomRegions: ZoomRegion[];
-	trimRegions: TrimRegion[];
-	speedRegions: SpeedRegion[];
-	annotationRegions: AnnotationRegion[];
-	selectedZoomId: string | null;
-	selectedTrimId: string | null;
-	selectedSpeedId: string | null;
-	selectedAnnotationId: string | null;
+  zoomRegions: ZoomRegion[];
+  trimRegions: TrimRegion[];
+  speedRegions: SpeedRegion[];
+  annotationRegions: AnnotationRegion[];
+  audioRegions: AudioRegion[];
+  selectedZoomId: string | null;
+  selectedTrimId: string | null;
+  selectedSpeedId: string | null;
+  selectedAnnotationId: string | null;
+  selectedAudioId: string | null;
 };
 
 type PendingExportSave = {
@@ -142,6 +130,8 @@ export default function VideoEditor() {
   const [selectedSpeedId, setSelectedSpeedId] = useState<string | null>(null);
   const [annotationRegions, setAnnotationRegions] = useState<AnnotationRegion[]>([]);
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
+  const [audioRegions, setAudioRegions] = useState<AudioRegion[]>([]);
+  const [selectedAudioId, setSelectedAudioId] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState<ExportProgress | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
@@ -160,6 +150,7 @@ export default function VideoEditor() {
   const nextZoomIdRef = useRef(1);
   const nextTrimIdRef = useRef(1);
   const nextSpeedIdRef = useRef(1);
+  const nextAudioIdRef = useRef(1);
 
   const { shortcuts, isMac } = useShortcuts();
   const nextAnnotationIdRef = useRef(1);
@@ -178,10 +169,12 @@ export default function VideoEditor() {
       trimRegions: JSON.parse(JSON.stringify(snapshot.trimRegions)),
       speedRegions: JSON.parse(JSON.stringify(snapshot.speedRegions)),
       annotationRegions: JSON.parse(JSON.stringify(snapshot.annotationRegions)),
+      audioRegions: JSON.parse(JSON.stringify(snapshot.audioRegions)),
       selectedZoomId: snapshot.selectedZoomId,
       selectedTrimId: snapshot.selectedTrimId,
       selectedSpeedId: snapshot.selectedSpeedId,
       selectedAnnotationId: snapshot.selectedAnnotationId,
+      selectedAudioId: snapshot.selectedAudioId,
     };
   }, []);
 
@@ -191,20 +184,24 @@ export default function VideoEditor() {
       trimRegions,
       speedRegions,
       annotationRegions,
+      audioRegions,
       selectedZoomId,
       selectedTrimId,
       selectedSpeedId,
       selectedAnnotationId,
+      selectedAudioId,
     };
   }, [
     zoomRegions,
     trimRegions,
     speedRegions,
     annotationRegions,
+    audioRegions,
     selectedZoomId,
     selectedTrimId,
     selectedSpeedId,
     selectedAnnotationId,
+    selectedAudioId,
   ]);
 
   const applyHistorySnapshot = useCallback((snapshot: EditorHistorySnapshot) => {
@@ -214,15 +211,18 @@ export default function VideoEditor() {
     setTrimRegions(cloned.trimRegions);
     setSpeedRegions(cloned.speedRegions);
     setAnnotationRegions(cloned.annotationRegions);
+    setAudioRegions(cloned.audioRegions);
     setSelectedZoomId(cloned.selectedZoomId);
     setSelectedTrimId(cloned.selectedTrimId);
     setSelectedSpeedId(cloned.selectedSpeedId);
     setSelectedAnnotationId(cloned.selectedAnnotationId);
+    setSelectedAudioId(cloned.selectedAudioId);
 
     nextZoomIdRef.current = deriveNextId("zoom", cloned.zoomRegions.map((region) => region.id));
     nextTrimIdRef.current = deriveNextId("trim", cloned.trimRegions.map((region) => region.id));
     nextSpeedIdRef.current = deriveNextId("speed", cloned.speedRegions.map((region) => region.id));
     nextAnnotationIdRef.current = deriveNextId("annotation", cloned.annotationRegions.map((region) => region.id));
+    nextAudioIdRef.current = deriveNextId("audio", cloned.audioRegions.map((region) => region.id));
     nextAnnotationZIndexRef.current =
       cloned.annotationRegions.reduce((max, region) => Math.max(max, region.zIndex), 0) + 1;
   }, [cloneSnapshot]);
@@ -292,6 +292,7 @@ export default function VideoEditor() {
     setTrimRegions(normalizedEditor.trimRegions);
     setSpeedRegions(normalizedEditor.speedRegions);
     setAnnotationRegions(normalizedEditor.annotationRegions);
+    setAudioRegions(normalizedEditor.audioRegions);
     setAspectRatio(normalizedEditor.aspectRatio);
     setExportQuality(normalizedEditor.exportQuality);
     setExportFormat(normalizedEditor.exportFormat);
@@ -303,10 +304,12 @@ export default function VideoEditor() {
     setSelectedTrimId(null);
     setSelectedSpeedId(null);
     setSelectedAnnotationId(null);
+    setSelectedAudioId(null);
 
     nextZoomIdRef.current = deriveNextId("zoom", normalizedEditor.zoomRegions.map((region) => region.id));
     nextTrimIdRef.current = deriveNextId("trim", normalizedEditor.trimRegions.map((region) => region.id));
     nextSpeedIdRef.current = deriveNextId("speed", normalizedEditor.speedRegions.map((region) => region.id));
+    nextAudioIdRef.current = deriveNextId("audio", normalizedEditor.audioRegions.map((region) => region.id));
     nextAnnotationIdRef.current = deriveNextId(
       "annotation",
       normalizedEditor.annotationRegions.map((region) => region.id),
@@ -343,6 +346,7 @@ export default function VideoEditor() {
         trimRegions,
         speedRegions,
         annotationRegions,
+        audioRegions,
         aspectRatio,
         exportQuality,
         exportFormat,
@@ -371,6 +375,7 @@ export default function VideoEditor() {
     zoomRegions,
     trimRegions,
     speedRegions,
+    audioRegions,
     annotationRegions,
     aspectRatio,
     exportQuality,
@@ -480,6 +485,7 @@ export default function VideoEditor() {
       trimRegions,
       speedRegions,
       annotationRegions,
+      audioRegions,
       aspectRatio,
       exportQuality,
       exportFormat,
@@ -814,7 +820,10 @@ export default function VideoEditor() {
 
   const handleSelectZoom = useCallback((id: string | null) => {
     setSelectedZoomId(id);
-    if (id) setSelectedTrimId(null);
+    if (id) {
+      setSelectedTrimId(null);
+      setSelectedAudioId(null);
+    }
   }, []);
 
   const handleSelectTrim = useCallback((id: string | null) => {
@@ -822,6 +831,7 @@ export default function VideoEditor() {
     if (id) {
       setSelectedZoomId(null);
       setSelectedAnnotationId(null);
+      setSelectedAudioId(null);
     }
   }, []);
 
@@ -830,6 +840,7 @@ export default function VideoEditor() {
     if (id) {
       setSelectedZoomId(null);
       setSelectedTrimId(null);
+      setSelectedAudioId(null);
     }
   }, []);
 
@@ -952,6 +963,7 @@ export default function VideoEditor() {
       setSelectedZoomId(null);
       setSelectedTrimId(null);
       setSelectedAnnotationId(null);
+      setSelectedAudioId(null);
     }
   }, []);
 
@@ -990,6 +1002,54 @@ export default function VideoEditor() {
       setSelectedSpeedId(null);
     }
   }, [selectedSpeedId]);
+
+  const handleSelectAudio = useCallback((id: string | null) => {
+    setSelectedAudioId(id);
+    if (id) {
+      setSelectedZoomId(null);
+      setSelectedTrimId(null);
+      setSelectedAnnotationId(null);
+      setSelectedSpeedId(null);
+    }
+  }, []);
+
+  const handleAudioAdded = useCallback((span: Span, audioPath: string) => {
+    const id = `audio-${nextAudioIdRef.current++}`;
+    const newRegion: AudioRegion = {
+      id,
+      startMs: Math.round(span.start),
+      endMs: Math.round(span.end),
+      audioPath,
+      volume: 1,
+    };
+    setAudioRegions((prev) => [...prev, newRegion]);
+    setSelectedAudioId(id);
+    setSelectedZoomId(null);
+    setSelectedTrimId(null);
+    setSelectedAnnotationId(null);
+    setSelectedSpeedId(null);
+  }, []);
+
+  const handleAudioSpanChange = useCallback((id: string, span: Span) => {
+    setAudioRegions((prev) =>
+      prev.map((region) =>
+        region.id === id
+          ? {
+              ...region,
+              startMs: Math.round(span.start),
+              endMs: Math.round(span.end),
+            }
+          : region,
+      ),
+    );
+  }, []);
+
+  const handleAudioDelete = useCallback((id: string) => {
+    setAudioRegions((prev) => prev.filter((region) => region.id !== id));
+    if (selectedAudioId === id) {
+      setSelectedAudioId(null);
+    }
+  }, [selectedAudioId]);
 
   const handleSpeedChange = useCallback((speed: PlaybackSpeed) => {
     if (!selectedSpeedId) return;
@@ -1209,6 +1269,78 @@ export default function VideoEditor() {
       setSelectedSpeedId(null);
     }
   }, [selectedSpeedId, speedRegions]);
+
+  useEffect(() => {
+    if (selectedAudioId && !audioRegions.some((region) => region.id === selectedAudioId)) {
+      setSelectedAudioId(null);
+    }
+  }, [selectedAudioId, audioRegions]);
+
+  // Audio playback sync: manage Audio elements that play in sync with video
+  const audioElementsRef = useRef<Map<string, HTMLAudioElement>>(new Map());
+
+  useEffect(() => {
+    const existing = audioElementsRef.current;
+    const currentIds = new Set(audioRegions.map(r => r.id));
+
+    // Remove old audio elements
+    for (const [id, audio] of existing) {
+      if (!currentIds.has(id)) {
+        audio.pause();
+        audio.src = '';
+        existing.delete(id);
+      }
+    }
+
+    // Create/update audio elements
+    for (const region of audioRegions) {
+      let audio = existing.get(region.id);
+      if (!audio) {
+        audio = new Audio();
+        audio.preload = 'auto';
+        existing.set(region.id, audio);
+      }
+      const expectedSrc = toFileUrl(region.audioPath);
+      if (audio.src !== expectedSrc) {
+        audio.src = expectedSrc;
+      }
+      audio.volume = Math.max(0, Math.min(1, region.volume));
+    }
+
+    return () => {
+      for (const audio of existing.values()) {
+        audio.pause();
+        audio.src = '';
+      }
+      existing.clear();
+    };
+  }, [audioRegions]);
+
+  // Sync audio playback with video currentTime and isPlaying state
+  useEffect(() => {
+    for (const region of audioRegions) {
+      const audio = audioElementsRef.current.get(region.id);
+      if (!audio) continue;
+
+      const currentTimeMs = currentTime * 1000;
+      const isInRegion = currentTimeMs >= region.startMs && currentTimeMs < region.endMs;
+
+      if (isPlaying && isInRegion) {
+        const audioOffset = (currentTimeMs - region.startMs) / 1000;
+        // Only seek if significantly out of sync (> 200ms)
+        if (Math.abs(audio.currentTime - audioOffset) > 0.2) {
+          audio.currentTime = audioOffset;
+        }
+        if (audio.paused) {
+          audio.play().catch(() => {});
+        }
+      } else {
+        if (!audio.paused) {
+          audio.pause();
+        }
+      }
+    }
+  }, [isPlaying, currentTime, audioRegions]);
 
   const showExportSuccessToast = useCallback((filePath: string) => {
     toast.success(`Exported successfully to ${filePath}`, {
@@ -1437,6 +1569,7 @@ export default function VideoEditor() {
           cursorSmoothing,
           cursorMotionBlur,
           cursorClickBounce,
+          audioRegions,
           previewWidth,
           previewHeight,
           onProgress: (progress: ExportProgress) => {
@@ -1746,6 +1879,12 @@ export default function VideoEditor() {
               onSpeedDelete={handleSpeedDelete}
               selectedSpeedId={selectedSpeedId}
               onSelectSpeed={handleSelectSpeed}
+              audioRegions={audioRegions}
+              onAudioAdded={handleAudioAdded}
+              onAudioSpanChange={handleAudioSpanChange}
+              onAudioDelete={handleAudioDelete}
+              selectedAudioId={selectedAudioId}
+              onSelectAudio={handleSelectAudio}
               annotationRegions={annotationRegions}
               onAnnotationAdded={handleAnnotationAdded}
               onAnnotationSpanChange={handleAnnotationSpanChange}

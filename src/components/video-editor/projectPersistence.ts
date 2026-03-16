@@ -18,6 +18,7 @@ import {
   type CropRegion,
   type SpeedRegion,
   type TrimRegion,
+  type AudioRegion,
   type ZoomRegion,
 } from "./types";
 
@@ -42,6 +43,7 @@ export interface ProjectEditorState {
   trimRegions: TrimRegion[];
   speedRegions: SpeedRegion[];
   annotationRegions: AnnotationRegion[];
+  audioRegions: AudioRegion[];
   aspectRatio: AspectRatio;
   exportQuality: ExportQuality;
   exportFormat: ExportFormat;
@@ -289,6 +291,25 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
         })
     : [];
 
+  const normalizedAudioRegions: AudioRegion[] = Array.isArray((editor as Partial<ProjectEditorState>).audioRegions)
+    ? ((editor as Partial<ProjectEditorState>).audioRegions as AudioRegion[])
+        .filter((region): region is AudioRegion => Boolean(region && typeof region.id === "string"))
+        .map((region) => {
+          const rawStart = isFiniteNumber(region.startMs) ? Math.round(region.startMs) : 0;
+          const rawEnd = isFiniteNumber(region.endMs) ? Math.round(region.endMs) : rawStart + 1000;
+          const startMs = Math.max(0, Math.min(rawStart, rawEnd));
+          const endMs = Math.max(startMs + 1, rawEnd);
+
+          return {
+            id: region.id,
+            startMs,
+            endMs,
+            audioPath: typeof region.audioPath === "string" ? region.audioPath : "",
+            volume: isFiniteNumber(region.volume) ? clamp(region.volume, 0, 1) : 1,
+          };
+        })
+    : [];
+
   const rawCropX = isFiniteNumber(editor.cropRegion?.x) ? editor.cropRegion.x : DEFAULT_CROP_REGION.x;
   const rawCropY = isFiniteNumber(editor.cropRegion?.y) ? editor.cropRegion.y : DEFAULT_CROP_REGION.y;
   const rawCropWidth = isFiniteNumber(editor.cropRegion?.width) ? editor.cropRegion.width : DEFAULT_CROP_REGION.width;
@@ -331,6 +352,7 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
     trimRegions: normalizedTrimRegions,
     speedRegions: normalizedSpeedRegions,
     annotationRegions: normalizedAnnotationRegions,
+    audioRegions: normalizedAudioRegions,
     aspectRatio:
       typeof editor.aspectRatio === "string" &&
       (validAspectRatios.has(editor.aspectRatio as AspectRatio) || isCustomAspectRatio(editor.aspectRatio))
