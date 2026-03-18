@@ -30,5 +30,5 @@ release/**
 .history/
 
 # Native capture build artifacts
-electron/native/wgc-capture/build/
+electron/native/windows-capture/build/
 electron/native/cursor-monitor/build/

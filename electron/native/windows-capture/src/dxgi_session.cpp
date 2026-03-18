@@ -1,3 +1,5 @@
+#define NOMINMAX
+
 #include "dxgi_session.h"
 
 #include <dwmapi.h>

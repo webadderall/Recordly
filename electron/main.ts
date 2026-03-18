@@ -10,6 +10,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 if (process.platform === 'darwin') {
   app.commandLine.appendSwitch('disable-features', 'MacCatapLoopbackAudioForScreenShare')
+} else if (process.platform === 'win32') {
+  app.commandLine.appendSwitch('disable-gpu-shader-disk-cache')
 }
 
 export const RECORDINGS_DIR = path.join(app.getPath('userData'), 'recordings')
