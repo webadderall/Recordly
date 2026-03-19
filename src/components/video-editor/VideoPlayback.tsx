@@ -597,6 +597,11 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
       cursorSwayRef.current = cursorSway;
     }, [cursorSway]);
 
+    // Sync currentTime prop to internal ref (in milliseconds)
+    useEffect(() => {
+      currentTimeRef.current = currentTime * 1000;
+    }, [currentTime]);
+
     useEffect(() => {
       if (!pixiReady || !videoReady) return;
 
@@ -1003,10 +1008,15 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
       };
 
       const ticker = () => {
+        const timeMs = currentTimeRef.current;
         const { region, strength, blendedScale, transition } =
-          findDominantRegion(zoomRegionsRef.current, currentTimeRef.current, {
+          findDominantRegion(zoomRegionsRef.current, timeMs, {
             connectZooms: connectZoomsRef.current,
           });
+
+        if (region && Math.abs(timeMs - region.startMs) > 1000) {
+           // console.log(`[ZoomDebug] timeMs: ${timeMs}, dominantRegion_startMs: ${region.startMs}, strength: ${strength}`);
+        }
 
         const defaultFocus = DEFAULT_FOCUS;
         let targetScaleFactor = 1;

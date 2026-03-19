@@ -1,12 +1,11 @@
 import type { ZoomFocus, ZoomRegion } from "../types";
 import { ZOOM_DEPTH_SCALES } from "../types";
-import { TRANSITION_WINDOW_MS, ZOOM_IN_TRANSITION_WINDOW_MS } from "./constants";
+import { TRANSITION_WINDOW_MS } from "./constants";
 import { clampFocusToScale } from "./focusUtils";
 import { clamp01, cubicBezier, easeOutScreenStudio } from "./mathUtils";
 
 const CHAINED_ZOOM_PAN_GAP_MS = 1500;
 const CONNECTED_ZOOM_PAN_DURATION_MS = 1000;
-const ZOOM_IN_OVERLAP_MS = 500;
 
 type DominantRegionOptions = {
   connectZooms?: boolean;
@@ -36,24 +35,25 @@ function easeConnectedPan(value: number) {
 }
 
 export function computeRegionStrength(region: ZoomRegion, timeMs: number) {
-  const zoomInEnd = region.startMs + ZOOM_IN_OVERLAP_MS;
-  const leadInStart = zoomInEnd - ZOOM_IN_TRANSITION_WINDOW_MS;
-  const leadOutEnd = region.endMs + TRANSITION_WINDOW_MS;
+  const leadInStart = region.startMs;
+  const leadInEnd = leadInStart + TRANSITION_WINDOW_MS;
+  const leadOutStart = region.endMs;
+  const leadOutEnd = leadOutStart + TRANSITION_WINDOW_MS;
 
   if (timeMs < leadInStart || timeMs > leadOutEnd) {
     return 0;
   }
 
-  if (timeMs < zoomInEnd) {
-    const progress = (timeMs - leadInStart) / ZOOM_IN_TRANSITION_WINDOW_MS;
+  if (timeMs < leadInEnd) {
+    const progress = Math.max(0, Math.min(1, (timeMs - leadInStart) / TRANSITION_WINDOW_MS));
     return easeOutScreenStudio(progress);
   }
 
-  if (timeMs <= region.endMs) {
+  if (timeMs <= leadOutStart) {
     return 1;
   }
 
-  const progress = clamp01((timeMs - region.endMs) / TRANSITION_WINDOW_MS);
+  const progress = clamp01((timeMs - leadOutStart) / TRANSITION_WINDOW_MS);
   return 1 - easeOutScreenStudio(progress);
 }
 
@@ -217,4 +217,3 @@ export function findDominantRegion(regions: ZoomRegion[], timeMs: number, option
     ? { ...activeRegion, transition: null }
     : { region: null, strength: 0, blendedScale: null, transition: null };
 }
-
