@@ -203,7 +203,7 @@ export function ShortcutsConfigDialog() {
             onClick={handleReset}
           >
             <RotateCcw className="w-3 h-3" />
-            {t('shortcutsConfig.resetToDefaults')}
+            <span className="truncate">{t('shortcutsConfig.resetToDefaults')}</span>
           </Button>
           <div className="flex gap-2">
             <Button variant="ghost" size="sm" onClick={handleClose}>
