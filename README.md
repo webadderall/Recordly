@@ -381,7 +381,7 @@ Recordly originally started as a fork of the excellent [OpenScreen](https://gith
 Created by  
 [@webadderall](https://x.com/webadderall) and contributors
 <a href="https://github.com/webadderall/Recordly/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=webadderall/Recordly" />
+  <img src="https://contrib.rocks/image?repo=webadderall/Recordly" alt="Recordly GitHub contributors" />
 </a>
 
 
