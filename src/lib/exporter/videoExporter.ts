@@ -76,7 +76,7 @@ export class VideoExporter {
 	private videoColorSpace: VideoColorSpaceInit | undefined;
 	private pendingMuxing: Promise<void> = Promise.resolve();
 	private chunkCount = 0;
-	private readonly WINDOWS_FINALIZATION_TIMEOUT_MS = 60_000;
+	private readonly WINDOWS_FINALIZATION_TIMEOUT_MS = 180_000;
 
 	constructor(config: VideoExporterConfig) {
 		this.config = config;

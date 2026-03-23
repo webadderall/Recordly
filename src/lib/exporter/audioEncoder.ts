@@ -5,6 +5,7 @@ import { resolveMediaElementSource } from './localMediaSource'
 
 const AUDIO_BITRATE = 128_000
 const DECODE_BACKPRESSURE_LIMIT = 20
+const ENCODE_BACKPRESSURE_LIMIT = 20
 const MIN_SPEED_REGION_DELTA_MS = 0.0001
 
 export class AudioProcessor {
@@ -73,50 +74,43 @@ export class AudioProcessor {
       return
     }
 
-    const decodedFrames: AudioData[] = []
+    const pendingFrames: AudioData[] = []
+    let decodeError: Error | null = null
+    let encodeError: Error | null = null
+    let muxError: Error | null = null
+    let pendingMuxing = Promise.resolve()
 
-    const decoder = new AudioDecoder({
-      output: (data: AudioData) => decodedFrames.push(data),
-      error: (error: DOMException) => console.error('[AudioProcessor] Decode error:', error),
-    })
-    decoder.configure(audioConfig)
+    const failIfNeeded = () => {
+      if (decodeError) throw decodeError
+      if (encodeError) throw encodeError
+      if (muxError) throw muxError
+    }
 
-    const audioStream = typeof readEndSec === 'number'
-      ? demuxer.read('audio', 0, readEndSec)
-      : demuxer.read('audio')
-    const reader = (audioStream as ReadableStream<EncodedAudioChunk>).getReader()
+    const pumpEncodedFrames = () => {
+      while (!this.cancelled && pendingFrames.length > 0) {
+        if (encodeError || muxError) {
+          break
+        }
+        if (encoder.encodeQueueSize >= ENCODE_BACKPRESSURE_LIMIT) {
+          break
+        }
 
-    while (!this.cancelled) {
-      const { done, value: chunk } = await reader.read()
-      if (done || !chunk) break
+        const frame = pendingFrames.shift()
+        if (!frame) {
+          break
+        }
 
-      const timestampMs = chunk.timestamp / 1000
-      if (this.isInTrimRegion(timestampMs, sortedTrims)) continue
-
-      decoder.decode(chunk)
-
-      while (decoder.decodeQueueSize > DECODE_BACKPRESSURE_LIMIT && !this.cancelled) {
-        await new Promise((resolve) => setTimeout(resolve, 1))
+        encoder.encode(frame)
+        frame.close()
       }
     }
 
-    if (decoder.state === 'configured') {
-      await decoder.flush()
-      decoder.close()
+    const cleanupPendingFrames = () => {
+      for (const frame of pendingFrames) {
+        frame.close()
+      }
+      pendingFrames.length = 0
     }
-
-    if (this.cancelled || decodedFrames.length === 0) {
-      for (const frame of decodedFrames) frame.close()
-      return
-    }
-
-    const encodedChunks: { chunk: EncodedAudioChunk; meta?: EncodedAudioChunkMetadata }[] = []
-    const encoder = new AudioEncoder({
-      output: (chunk: EncodedAudioChunk, meta?: EncodedAudioChunkMetadata) => {
-        encodedChunks.push({ chunk, meta })
-      },
-      error: (error: DOMException) => console.error('[AudioProcessor] Encode error:', error),
-    })
 
     const sampleRate = audioConfig.sampleRate || 48_000
     const channels = audioConfig.numberOfChannels || 2
@@ -130,37 +124,119 @@ export class AudioProcessor {
     const encodeSupport = await AudioEncoder.isConfigSupported(encodeConfig)
     if (!encodeSupport.supported) {
       console.warn('[AudioProcessor] Opus encoding not supported, skipping audio')
-      for (const frame of decodedFrames) frame.close()
       return
     }
 
+    const encoder = new AudioEncoder({
+      output: (chunk: EncodedAudioChunk, meta?: EncodedAudioChunkMetadata) => {
+        pendingMuxing = pendingMuxing
+          .then(async () => {
+            if (this.cancelled) {
+              return
+            }
+            await muxer.addAudioChunk(chunk, meta)
+          })
+          .catch((error) => {
+            muxError = error instanceof Error ? error : new Error(String(error))
+          })
+      },
+      error: (error: DOMException) => {
+        encodeError = new Error(`[AudioProcessor] Encode error: ${error.message}`)
+      },
+    })
+
     encoder.configure(encodeConfig)
 
-    for (const audioData of decodedFrames) {
-      if (this.cancelled) {
-        audioData.close()
-        continue
+    const decoder = new AudioDecoder({
+      output: (data: AudioData) => {
+        if (this.cancelled || encodeError || muxError) {
+          data.close()
+          return
+        }
+
+        const timestampMs = data.timestamp / 1000
+        const trimOffsetMs = this.computeTrimOffset(timestampMs, sortedTrims)
+        const adjustedTimestampUs = data.timestamp - trimOffsetMs * 1000
+        const adjusted = this.cloneWithTimestamp(data, Math.max(0, adjustedTimestampUs))
+        data.close()
+        pendingFrames.push(adjusted)
+      },
+      error: (error: DOMException) => {
+        decodeError = new Error(`[AudioProcessor] Decode error: ${error.message}`)
+      },
+    })
+    decoder.configure(audioConfig)
+
+    const audioStream = typeof readEndSec === 'number'
+      ? demuxer.read('audio', 0, readEndSec)
+      : demuxer.read('audio')
+    const reader = (audioStream as ReadableStream<EncodedAudioChunk>).getReader()
+
+    try {
+      while (!this.cancelled) {
+        failIfNeeded()
+
+        const { done, value: chunk } = await reader.read()
+        if (done || !chunk) break
+
+        const timestampMs = chunk.timestamp / 1000
+        if (this.isInTrimRegion(timestampMs, sortedTrims)) continue
+
+        decoder.decode(chunk)
+        pumpEncodedFrames()
+
+        while (
+          !this.cancelled &&
+          (decoder.decodeQueueSize > DECODE_BACKPRESSURE_LIMIT
+            || pendingFrames.length > DECODE_BACKPRESSURE_LIMIT
+            || encoder.encodeQueueSize >= ENCODE_BACKPRESSURE_LIMIT)
+        ) {
+          failIfNeeded()
+          pumpEncodedFrames()
+          await new Promise((resolve) => setTimeout(resolve, 1))
+        }
       }
 
-      const timestampMs = audioData.timestamp / 1000
-      const trimOffsetMs = this.computeTrimOffset(timestampMs, sortedTrims)
-      const adjustedTimestampUs = audioData.timestamp - trimOffsetMs * 1000
+      if (decoder.state === 'configured') {
+        await decoder.flush()
+      }
 
-      const adjusted = this.cloneWithTimestamp(audioData, Math.max(0, adjustedTimestampUs))
-      audioData.close()
+      while (!this.cancelled && (pendingFrames.length > 0 || encoder.encodeQueueSize > 0)) {
+        failIfNeeded()
+        pumpEncodedFrames()
+        if (pendingFrames.length > 0 || encoder.encodeQueueSize > 0) {
+          await new Promise((resolve) => setTimeout(resolve, 1))
+        }
+      }
 
-      encoder.encode(adjusted)
-      adjusted.close()
+      failIfNeeded()
+
+      if (encoder.state === 'configured') {
+        await encoder.flush()
+      }
+
+      await pendingMuxing
+      failIfNeeded()
+    } finally {
+      try {
+        await reader.cancel()
+      } catch {
+        // reader already closed
+      }
+
+      cleanupPendingFrames()
+
+      if (decoder.state === 'configured') {
+        decoder.close()
+      }
+
+      if (encoder.state === 'configured') {
+        encoder.close()
+      }
     }
 
-    if (encoder.state === 'configured') {
-      await encoder.flush()
-      encoder.close()
-    }
-
-    for (const { chunk, meta } of encodedChunks) {
-      if (this.cancelled) break
-      await muxer.addAudioChunk(chunk, meta)
+    if (this.cancelled) {
+      return
     }
   }
 

@@ -31,6 +31,7 @@ export class StreamingVideoDecoder {
   private decoder: VideoDecoder | null = null;
   private cancelled = false;
   private metadata: DecodedVideoInfo | null = null;
+  private pendingFrames: VideoFrame[] = [];
 
   private toLocalFilePath(resourceUrl: string): string | null {
     if (!resourceUrl.startsWith('file:')) {
@@ -167,7 +168,8 @@ export class StreamingVideoDecoder {
     const epsilonSec = 0.001;
 
     // Async frame queue — decoder pushes, consumer pulls
-    const pendingFrames: VideoFrame[] = [];
+    this.pendingFrames.length = 0
+    const pendingFrames = this.pendingFrames
     let frameResolve: ((frame: VideoFrame | null) => void) | null = null;
     let decodeError: Error | null = null;
     let decodeDone = false;
@@ -504,6 +506,15 @@ export class StreamingVideoDecoder {
       }
       this.demuxer = null;
     }
+
+    for (const frame of this.pendingFrames) {
+      try {
+        frame.close()
+      } catch {
+        /* ignore */
+      }
+    }
+    this.pendingFrames.length = 0
   }
 }
 
