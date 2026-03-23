@@ -177,6 +177,23 @@ describe("editorPreferences", () => {
 		});
 	});
 
+	it("preserves custom Whisper paths from stored preferences", () => {
+		vi.stubGlobal(
+			"localStorage",
+			createStorageMock({
+				[EDITOR_PREFERENCES_STORAGE_KEY]: JSON.stringify({
+					whisperExecutablePath: "/usr/local/bin/whisper-cli",
+					whisperModelPath: "/Users/test/models/ggml-base.bin",
+				}),
+			}),
+		);
+
+		expect(loadEditorPreferences()).toMatchObject({
+			whisperExecutablePath: "/usr/local/bin/whisper-cli",
+			whisperModelPath: "/Users/test/models/ggml-base.bin",
+		});
+	});
+
 	it("saves all editor controls with normalization", () => {
 		const localStorage = createStorageMock();
 		vi.stubGlobal("localStorage", localStorage);
@@ -254,6 +271,21 @@ describe("editorPreferences", () => {
 			customWallpapers: ["data:image/jpeg;base64,abc"],
 			whisperExecutablePath: DEFAULT_EDITOR_PREFERENCES.whisperExecutablePath,
 			whisperModelPath: DEFAULT_EDITOR_PREFERENCES.whisperModelPath,
+		});
+	});
+
+	it("saves custom Whisper paths", () => {
+		const localStorage = createStorageMock();
+		vi.stubGlobal("localStorage", localStorage);
+
+		saveEditorPreferences({
+			whisperExecutablePath: "/opt/homebrew/bin/whisper-cli",
+			whisperModelPath: "/Users/test/models/ggml-small.bin",
+		});
+
+		expect(loadEditorPreferences()).toMatchObject({
+			whisperExecutablePath: "/opt/homebrew/bin/whisper-cli",
+			whisperModelPath: "/Users/test/models/ggml-small.bin",
 		});
 	});
 });
