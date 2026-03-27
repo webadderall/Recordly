@@ -28,6 +28,13 @@ import esLaunch from '@/i18n/locales/es/launch.json'
 import esSettings from '@/i18n/locales/es/settings.json'
 import esShortcuts from '@/i18n/locales/es/shortcuts.json'
 import esTimeline from '@/i18n/locales/es/timeline.json'
+import viCommon from '@/i18n/locales/vi/common.json'
+import viDialogs from '@/i18n/locales/vi/dialogs.json'
+import viEditor from '@/i18n/locales/vi/editor.json'
+import viLaunch from '@/i18n/locales/vi/launch.json'
+import viSettings from '@/i18n/locales/vi/settings.json'
+import viShortcuts from '@/i18n/locales/vi/shortcuts.json'
+import viTimeline from '@/i18n/locales/vi/timeline.json'
 import zhCNCommon from '@/i18n/locales/zh-CN/common.json'
 import zhCNDialogs from '@/i18n/locales/zh-CN/dialogs.json'
 import zhCNEditor from '@/i18n/locales/zh-CN/editor.json'
@@ -58,6 +65,15 @@ const messages: Record<AppLocale, LocaleBundle> = {
     settings: esSettings,
     dialogs: esDialogs,
     shortcuts: esShortcuts,
+  },
+  vi: {
+    common: viCommon,
+    launch: viLaunch,
+    editor: viEditor,
+    timeline: viTimeline,
+    settings: viSettings,
+    dialogs: viDialogs,
+    shortcuts: viShortcuts,
   },
   'zh-CN': {
     common: zhCNCommon,

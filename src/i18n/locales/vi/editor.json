@@ -1,0 +1,118 @@
+{
+	"playback": {
+		"play": "Phát",
+		"pause": "Tạm dừng"
+	},
+	"annotations": {
+		"settings": "Cài đặt chú thích",
+		"active": "Đang hoạt động",
+		"text": "Văn bản",
+		"image": "Hình ảnh",
+		"arrow": "Mũi tên",
+		"textContent": "Nội dung văn bản",
+		"textPlaceholder": "Nhập nội dung...",
+		"fontStyle": "Kiểu chữ",
+		"selectStyle": "Chọn kiểu",
+		"size": "Kích thước",
+		"toggleBold": "Bật/tắt in đậm",
+		"toggleItalic": "Bật/tắt in nghiêng",
+		"toggleUnderline": "Bật/tắt gạch chân",
+		"alignLeft": "Căn trái",
+		"alignCenter": "Căn giữa",
+		"alignRight": "Căn phải",
+		"textColor": "Màu chữ",
+		"background": "Nền",
+		"none": "Không",
+		"clearBackground": "Xóa nền",
+		"uploadImage": "Tải hình ảnh lên",
+		"supportedFormats": "Định dạng hỗ trợ: JPG, PNG, GIF, WebP",
+		"arrowDirection": "Hướng mũi tên",
+		"strokeWidth": "Độ dày nét: {{width}}px",
+		"arrowColor": "Màu mũi tên",
+		"deleteAnnotation": "Xóa chú thích",
+		"shortcutsAndTips": "Phím tắt & Mẹo",
+		"tipSelectAnnotation": "Di chuyển đầu phát đến đoạn có chú thích chồng lấp và chọn một mục.",
+		"tipCycleForward": "Nhấn Tab để chuyển qua các mục chồng lấp.",
+		"tipCycleBackward": "Nhấn Shift+Tab để chuyển ngược lại.",
+		"imageUploadSuccess": "Đã tải hình ảnh lên thành công!",
+		"imageUploadError": "Vui lòng tải lên tệp hình ảnh JPG, PNG, GIF hoặc WebP."
+	},
+	"fontStyles": {
+		"classic": "Cổ điển",
+		"editor": "Biên tập",
+		"strong": "Đậm nét",
+		"typewriter": "Máy đánh chữ",
+		"deco": "Trang trí",
+		"simple": "Đơn giản",
+		"modern": "Hiện đại",
+		"clean": "Gọn gàng"
+	},
+	"format": {
+		"mp4Video": "Video MP4",
+		"mp4Description": "Tệp video chất lượng cao",
+		"gifAnimation": "Ảnh động GIF",
+		"gifDescription": "Ảnh động để chia sẻ"
+	},
+	"gifOptions": {
+		"frameRate": "Tốc độ khung hình",
+		"outputSize": "Kích thước đầu ra",
+		"outputDimensions": "Đầu ra: {{width}} × {{height}}px",
+		"loopAnimation": "Lặp lại ảnh động",
+		"loopDescription": "GIF sẽ phát liên tục"
+	},
+	"tutorial": {
+		"howTrimmingWorks": "Cách cắt video",
+		"title": "Cách cắt video",
+		"understanding": "Tìm hiểu cách loại bỏ các phần không mong muốn trong video.",
+		"descriptionP1": "Công cụ Cắt hoạt động bằng cách xác định các đoạn bạn muốn",
+		"descriptionRemove": "loại bỏ",
+		"descriptionP2": "khỏi video.",
+		"descriptionP3": "Bất kỳ phần nào trên dòng thời gian được phủ bởi đoạn cắt đỏ sẽ bị loại bỏ khi xuất.",
+		"visualExample": "Ví dụ minh họa",
+		"removed": "ĐÃ LOẠI BỎ",
+		"kept": "Giữ lại",
+		"finalVideo": "Video hoàn chỉnh",
+		"part": "Phần {{number}}",
+		"addTrimStep": "1. Thêm đoạn cắt",
+		"addTrimDesc": "Nhấn T hoặc bấm biểu tượng kéo để đánh dấu đoạn cần loại bỏ.",
+		"adjustStep": "2. Điều chỉnh",
+		"adjustDesc": "Kéo các cạnh của vùng đỏ để bao phủ chính xác phần bạn muốn cắt."
+	},
+	"feedback": {
+		"trigger": "Phản hồi",
+		"title": "Phản hồi & liên hệ",
+		"description": "Liên hệ trực tiếp hoặc gửi báo cáo nếu có lỗi hoặc thiếu tính năng.",
+		"emailLabel": "Email",
+		"xLabel": "X",
+		"reportIssue": "Báo lỗi / gửi phản hồi",
+		"openFailed": "Không thể mở liên kết."
+	},
+	"keyboardShortcuts": {
+		"trigger": "Phím tắt",
+		"title": "Phím tắt bàn phím",
+		"description": "Tham khảo nhanh các phím điều khiển dòng thời gian và trình chỉnh sửa.",
+		"customizeTooltip": "Tùy chỉnh phím tắt",
+		"customize": "Tùy chỉnh",
+		"panTimeline": "Di chuyển dòng thời gian",
+		"zoomTimeline": "Phóng to dòng thời gian",
+		"cycleAnnotations": "Chuyển đổi chú thích",
+		"tab": "Tab"
+	},
+	"actions": {
+		"saveAgain": "Lưu lại",
+		"showInFolder": "Hiện trong thư mục"
+	},
+	"project": {
+		"untitled": "Chưa đặt tên"
+	},
+	"exportStatus": {
+		"exporting": "Đang xuất",
+		"renderingFile": "Đang kết xuất tệp của bạn.",
+		"preparing": "Đang chuẩn bị xuất...",
+		"completePercent": "Hoàn thành {{percent}}%",
+		"issue": "Lỗi khi xuất",
+		"complete": "Xuất hoàn tất",
+		"savedSuccessfully": "Tệp đã được lưu thành công."
+	},
+	"openRecordingsFolder": "Mở thư mục bản ghi"
+}
