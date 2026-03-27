@@ -63,6 +63,7 @@ import {
 import { type EditorEffectSection, SettingsPanel } from "./SettingsPanel";
 import {
 	APP_HEADER_ACTION_BUTTON_CLASS,
+	DiscordButton,
 	FeedbackDialog,
 	KeyboardShortcutsDialog,
 } from "./TutorialHelp";
@@ -91,6 +92,10 @@ import {
 	DEFAULT_CURSOR_STYLE,
 	DEFAULT_FIGURE_DATA,
 	DEFAULT_PLAYBACK_SPEED,
+	DEFAULT_SCENE_FRAME_OPACITY,
+	DEFAULT_SCENE_FRAME_STYLE,
+	DEFAULT_SCENE_FRAME_TEXT,
+	DEFAULT_SCENE_FRAME_THICKNESS,
 	DEFAULT_WEBCAM_OVERLAY,
 	DEFAULT_ZOOM_DEPTH,
 	DEFAULT_ZOOM_IN_DURATION_MS,
@@ -100,6 +105,7 @@ import {
 	DEFAULT_ZOOM_OUT_EASING,
 	type FigureData,
 	type PlaybackSpeed,
+	type SceneFrameStyle,
 	type SpeedRegion,
 	type TrimRegion,
 	type WebcamOverlaySettings,
@@ -254,12 +260,12 @@ function calculateMp4ExportDimensions(
 function getSourceQualityBitrate(width: number, height: number): number {
 	const totalPixels = width * height;
 	if (totalPixels > 2560 * 1440) {
-		return 80_000_000;
+		return 90_000_000;
 	}
 	if (totalPixels > 1920 * 1080) {
-		return 50_000_000;
+		return 60_000_000;
 	}
-	return 30_000_000;
+	return 40_000_000;
 }
 
 function getErrorMessage(error: unknown): string {
@@ -358,6 +364,18 @@ export default function VideoEditor() {
 		initialEditorPreferences.cursorClickBounceDuration,
 	);
 	const [cursorSway, setCursorSway] = useState(initialEditorPreferences.cursorSway);
+	const [sceneFrameStyle, setSceneFrameStyle] = useState<SceneFrameStyle>(
+		initialEditorPreferences.sceneFrameStyle ?? DEFAULT_SCENE_FRAME_STYLE,
+	);
+	const [sceneFrameText, setSceneFrameText] = useState(
+		initialEditorPreferences.sceneFrameText ?? DEFAULT_SCENE_FRAME_TEXT,
+	);
+	const [sceneFrameOpacity, setSceneFrameOpacity] = useState(
+		initialEditorPreferences.sceneFrameOpacity ?? DEFAULT_SCENE_FRAME_OPACITY,
+	);
+	const [sceneFrameThickness, setSceneFrameThickness] = useState(
+		initialEditorPreferences.sceneFrameThickness ?? DEFAULT_SCENE_FRAME_THICKNESS,
+	);
 	const [borderRadius, setBorderRadius] = useState(initialEditorPreferences.borderRadius);
 	const [padding, setPadding] = useState(initialEditorPreferences.padding);
 	const [cropRegion, setCropRegion] = useState<CropRegion>(DEFAULT_CROP_REGION);
@@ -388,7 +406,7 @@ export default function VideoEditor() {
 	const [downloadedWhisperModelPath, setDownloadedWhisperModelPath] = useState<string | null>(null);
 	const [whisperModelDownloadStatus, setWhisperModelDownloadStatus] = useState<
 		"idle" | "downloading" | "downloaded" | "error"
-	>(initialEditorPreferences.whisperModelPath ? "downloaded" : "idle");
+	>("idle");
 	const [whisperModelDownloadProgress, setWhisperModelDownloadProgress] = useState(0);
 	const [isGeneratingCaptions, setIsGeneratingCaptions] = useState(false);
 	const [isExporting, setIsExporting] = useState(false);
@@ -528,6 +546,10 @@ export default function VideoEditor() {
 					zoomInEasing,
 					zoomOutEasing,
 					connectedZoomEasing,
+					sceneFrameStyle,
+					sceneFrameText,
+					sceneFrameOpacity,
+					sceneFrameThickness,
 					borderRadius,
 					padding,
 					cropRegion,
@@ -830,6 +852,10 @@ export default function VideoEditor() {
 				cursorClickBounce: number;
 				cursorClickBounceDuration: number;
 				cursorSway: number;
+				sceneFrameStyle: SceneFrameStyle;
+				sceneFrameText: string;
+				sceneFrameOpacity: number;
+				sceneFrameThickness: number;
 				borderRadius: number;
 				padding: number;
 				cropRegion: CropRegion;
@@ -892,6 +918,10 @@ export default function VideoEditor() {
 				cursorClickBounce,
 				cursorClickBounceDuration,
 				cursorSway,
+				sceneFrameStyle,
+				sceneFrameText,
+				sceneFrameOpacity,
+				sceneFrameThickness,
 				borderRadius,
 				padding,
 				webcam,
@@ -933,6 +963,10 @@ export default function VideoEditor() {
 			cursorClickBounce,
 			cursorClickBounceDuration,
 			cursorSway,
+			sceneFrameStyle,
+			sceneFrameText,
+			sceneFrameOpacity,
+			sceneFrameThickness,
 			borderRadius,
 			padding,
 			webcam,
@@ -1075,6 +1109,7 @@ export default function VideoEditor() {
 				await window.electronAPI.setCurrentRecordingSession?.({
 					videoPath: sourcePath,
 					webcamPath: normalizedEditor.webcam.sourcePath,
+					timeOffsetMs: normalizedEditor.webcam.timeOffsetMs,
 				});
 			} else {
 				await window.electronAPI.setCurrentVideoPath(sourcePath);
@@ -1102,6 +1137,10 @@ export default function VideoEditor() {
 			setCursorClickBounce(normalizedEditor.cursorClickBounce);
 			setCursorClickBounceDuration(normalizedEditor.cursorClickBounceDuration);
 			setCursorSway(normalizedEditor.cursorSway);
+			setSceneFrameStyle(normalizedEditor.sceneFrameStyle);
+			setSceneFrameText(normalizedEditor.sceneFrameText);
+			setSceneFrameOpacity(normalizedEditor.sceneFrameOpacity);
+			setSceneFrameThickness(normalizedEditor.sceneFrameThickness);
 			setBorderRadius(normalizedEditor.borderRadius);
 			setPadding(normalizedEditor.padding);
 			setCropRegion(DEFAULT_CROP_REGION);
@@ -1175,7 +1214,7 @@ export default function VideoEditor() {
 	}, [currentPersistedEditorState, currentSourcePath]);
 
 	const syncRecordingSessionWebcam = useCallback(
-		async (webcamPath: string | null) => {
+		async (webcamPath: string | null, timeOffsetMs = 0) => {
 			if (!currentSourcePath || !window.electronAPI.setCurrentRecordingSession) {
 				return;
 			}
@@ -1183,17 +1222,19 @@ export default function VideoEditor() {
 			await window.electronAPI.setCurrentRecordingSession({
 				videoPath: currentSourcePath,
 				webcamPath,
+				timeOffsetMs,
 			});
 		},
 		[currentSourcePath],
 	);
 
 	const syncActiveVideoSource = useCallback(
-		async (sourcePath: string, webcamPath?: string | null) => {
+		async (sourcePath: string, webcamPath?: string | null, timeOffsetMs = 0) => {
 			if (webcamPath) {
 				await window.electronAPI.setCurrentRecordingSession?.({
 					videoPath: sourcePath,
 					webcamPath,
+					timeOffsetMs,
 				});
 				return;
 			}
@@ -1213,9 +1254,10 @@ export default function VideoEditor() {
 			...prev,
 			enabled: true,
 			sourcePath: result.path ?? null,
+			timeOffsetMs: 0,
 		}));
 
-		await syncRecordingSessionWebcam(result.path);
+		await syncRecordingSessionWebcam(result.path, 0);
 		toast.success(t("settings.effects.webcamFootageAdded"));
 	}, [syncRecordingSessionWebcam, t]);
 
@@ -1224,9 +1266,10 @@ export default function VideoEditor() {
 			...prev,
 			enabled: false,
 			sourcePath: null,
+			timeOffsetMs: 0,
 		}));
 
-		await syncRecordingSessionWebcam(null);
+		await syncRecordingSessionWebcam(null, 0);
 		toast.success(t("settings.effects.webcamFootageRemoved"));
 	}, [syncRecordingSessionWebcam, t]);
 
@@ -1295,6 +1338,7 @@ export default function VideoEditor() {
 						...prev,
 						enabled: Boolean(sessionResult.session?.webcamPath),
 						sourcePath: sessionResult.session?.webcamPath ?? null,
+						timeOffsetMs: sessionResult.session?.timeOffsetMs ?? 0,
 					}));
 					return;
 				}
@@ -1310,6 +1354,7 @@ export default function VideoEditor() {
 						...prev,
 						enabled: false,
 						sourcePath: null,
+						timeOffsetMs: 0,
 					}));
 				} else {
 					setError("No video to load. Please record or select a video.");
@@ -1348,6 +1393,10 @@ export default function VideoEditor() {
 			cursorClickBounce,
 			cursorClickBounceDuration,
 			cursorSway,
+			sceneFrameStyle,
+			sceneFrameText,
+			sceneFrameOpacity,
+			sceneFrameThickness,
 			borderRadius,
 			padding,
 			webcam,
@@ -1383,6 +1432,10 @@ export default function VideoEditor() {
 		cursorClickBounce,
 		cursorClickBounceDuration,
 		cursorSway,
+			sceneFrameStyle,
+			sceneFrameText,
+			sceneFrameOpacity,
+			sceneFrameThickness,
 		borderRadius,
 		padding,
 		webcam,
@@ -1433,6 +1486,45 @@ export default function VideoEditor() {
 
 		return () => unsubscribe?.();
 	}, []);
+
+	useEffect(() => {
+		if (!whisperModelPath) {
+			return;
+		}
+
+		let cancelled = false;
+
+		void (async () => {
+			const result = await window.electronAPI.getWhisperModelPathStatus(whisperModelPath);
+			if (cancelled) {
+				return;
+			}
+
+			if (result.success && result.exists && result.path) {
+				if (result.path !== whisperModelPath) {
+					setWhisperModelPath(result.path);
+				}
+				return;
+			}
+
+			setWhisperModelPath((currentPath) =>
+				currentPath === whisperModelPath ? null : currentPath,
+			);
+
+			if (
+				downloadedWhisperModelPath &&
+				(downloadedWhisperModelPath === whisperModelPath || downloadedWhisperModelPath === result.path)
+			) {
+				setDownloadedWhisperModelPath(null);
+				setWhisperModelDownloadStatus("idle");
+				setWhisperModelDownloadProgress(0);
+			}
+		})();
+
+		return () => {
+			cancelled = true;
+		};
+	}, [downloadedWhisperModelPath, whisperModelPath]);
 
 	const handlePickWhisperExecutable = useCallback(async () => {
 		const result = await window.electronAPI.openWhisperExecutablePicker();
@@ -1522,9 +1614,25 @@ export default function VideoEditor() {
 			setVideoPath(toFileUrl(sourcePath));
 		}
 
-		await syncActiveVideoSource(sourcePath, webcam.sourcePath ?? null);
+		await syncActiveVideoSource(sourcePath, webcam.sourcePath ?? null, webcam.timeOffsetMs);
 
 		if (!whisperModelPath) {
+			toast.error("Select a Whisper model or download the small model first");
+			return;
+		}
+
+		const whisperModelStatus = await window.electronAPI.getWhisperModelPathStatus(whisperModelPath);
+		if (!whisperModelStatus.success || !whisperModelStatus.exists || !whisperModelStatus.path) {
+			setWhisperModelPath((currentPath) => (currentPath === whisperModelPath ? null : currentPath));
+			if (
+				downloadedWhisperModelPath &&
+				(downloadedWhisperModelPath === whisperModelPath ||
+					downloadedWhisperModelPath === whisperModelStatus.path)
+			) {
+				setDownloadedWhisperModelPath(null);
+				setWhisperModelDownloadStatus("idle");
+				setWhisperModelDownloadProgress(0);
+			}
 			toast.error("Select a Whisper model or download the small model first");
 			return;
 		}
@@ -1534,7 +1642,7 @@ export default function VideoEditor() {
 			const result = await window.electronAPI.generateAutoCaptions({
 				videoPath: sourcePath,
 				whisperExecutablePath: whisperExecutablePath ?? undefined,
-				whisperModelPath,
+				whisperModelPath: whisperModelStatus.path,
 				language: autoCaptionSettings.language,
 			});
 
@@ -1555,6 +1663,7 @@ export default function VideoEditor() {
 		}
 	}, [
 		autoCaptionSettings.language,
+		downloadedWhisperModelPath,
 		isGeneratingCaptions,
 		webcam.sourcePath,
 		syncActiveVideoSource,
@@ -2470,7 +2579,7 @@ export default function VideoEditor() {
 
 				if (settings.format === "gif" && settings.gifConfig) {
 					// GIF Export
-					const gifExporter = new GifExporter({
+					const gifExporterConfig = {
 						videoUrl: videoPath,
 						width: settings.gifConfig.width,
 						height: settings.gifConfig.height,
@@ -2493,6 +2602,10 @@ export default function VideoEditor() {
 						zoomInEasing,
 						zoomOutEasing,
 						connectedZoomEasing,
+						sceneFrameStyle,
+						sceneFrameText,
+						sceneFrameOpacity,
+						sceneFrameThickness,
 						borderRadius,
 						padding,
 						videoPadding: padding,
@@ -2517,7 +2630,8 @@ export default function VideoEditor() {
 						onProgress: (progress: ExportProgress) => {
 							setExportProgress(progress);
 						},
-					});
+					};
+					const gifExporter = new GifExporter(gifExporterConfig as any);
 
 					exporterRef.current = gifExporter as unknown as VideoExporter;
 					const result = await gifExporter.export();
@@ -2561,14 +2675,7 @@ export default function VideoEditor() {
 					let bitrate: number;
 
 					if (quality === "source") {
-						// Calculate visually lossless bitrate matching screen recording optimization
-						const totalPixels = exportWidth * exportHeight;
-						bitrate = 30_000_000;
-						if (totalPixels > 1920 * 1080 && totalPixels <= 2560 * 1440) {
-							bitrate = 50_000_000;
-						} else if (totalPixels > 2560 * 1440) {
-							bitrate = 80_000_000;
-						}
+						bitrate = getSourceQualityBitrate(exportWidth, exportHeight);
 					} else {
 						// Adjust bitrate for lower resolutions
 						const totalPixels = exportWidth * exportHeight;
@@ -2581,7 +2688,7 @@ export default function VideoEditor() {
 						}
 					}
 
-					const exporter = new VideoExporter({
+					const videoExporterConfig = {
 						videoUrl: videoPath,
 						width: exportWidth,
 						height: exportHeight,
@@ -2604,6 +2711,10 @@ export default function VideoEditor() {
 						zoomInEasing,
 						zoomOutEasing,
 						connectedZoomEasing,
+						sceneFrameStyle,
+						sceneFrameText,
+						sceneFrameOpacity,
+						sceneFrameThickness,
 						borderRadius,
 						padding,
 						cropRegion,
@@ -2628,7 +2739,8 @@ export default function VideoEditor() {
 						onProgress: (progress: ExportProgress) => {
 							setExportProgress(progress);
 						},
-					});
+					};
+					const exporter = new VideoExporter(videoExporterConfig as any);
 
 					exporterRef.current = exporter;
 					const result = await exporter.export();
@@ -2964,6 +3076,7 @@ export default function VideoEditor() {
 					>
 						<FolderOpen className="h-4 w-4" />
 					</Button>
+						<DiscordButton />
 					<KeyboardShortcutsDialog />
 					<FeedbackDialog />
 					<div className="ml-1 h-5 w-px bg-white/10" />
@@ -3258,6 +3371,10 @@ export default function VideoEditor() {
 												zoomInEasing={zoomInEasing}
 												zoomOutEasing={zoomOutEasing}
 												connectedZoomEasing={connectedZoomEasing}
+												sceneFrameStyle={sceneFrameStyle}
+												sceneFrameText={sceneFrameText}
+												sceneFrameOpacity={sceneFrameOpacity}
+												sceneFrameThickness={sceneFrameThickness}
 												borderRadius={borderRadius}
 												padding={padding}
 												cropRegion={cropRegion}
@@ -3421,6 +3538,14 @@ export default function VideoEditor() {
 						onCursorClickBounceDurationChange={setCursorClickBounceDuration}
 						cursorSway={cursorSway}
 						onCursorSwayChange={setCursorSway}
+						sceneFrameStyle={sceneFrameStyle}
+						onSceneFrameStyleChange={setSceneFrameStyle}
+						sceneFrameText={sceneFrameText}
+						onSceneFrameTextChange={setSceneFrameText}
+						sceneFrameOpacity={sceneFrameOpacity}
+						onSceneFrameOpacityChange={setSceneFrameOpacity}
+						sceneFrameThickness={sceneFrameThickness}
+						onSceneFrameThicknessChange={setSceneFrameThickness}
 						borderRadius={borderRadius}
 						onBorderRadiusChange={setBorderRadius}
 						webcam={webcam}
@@ -3439,6 +3564,7 @@ export default function VideoEditor() {
 						autoCaptionSettings={autoCaptionSettings}
 						whisperExecutablePath={whisperExecutablePath}
 						whisperModelPath={whisperModelPath}
+						hasDownloadedWhisperModel={Boolean(downloadedWhisperModelPath)}
 						whisperModelDownloadStatus={whisperModelDownloadStatus}
 						whisperModelDownloadProgress={whisperModelDownloadProgress}
 						isGeneratingCaptions={isGeneratingCaptions}
