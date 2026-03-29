@@ -33,6 +33,10 @@ type PersistedEditorControls = Pick<
 	| "gifFrameRate"
 	| "gifLoop"
 	| "gifSizePreset"
+	| "masterAudioMuted"
+	| "masterAudioSoloed"
+	| "masterAudioVolume"
+	| "audioTrackVolume"
 >;
 
 type PartialEditorControls = Partial<PersistedEditorControls>;
@@ -43,6 +47,7 @@ export interface EditorPreferences extends PersistedEditorControls {
 	customWallpapers: string[];
 	whisperExecutablePath: string | null;
 	whisperModelPath: string | null;
+	whisperSelectedModel: string;
 }
 
 export const EDITOR_PREFERENCES_STORAGE_KEY = "recordly.editor.preferences";
@@ -81,11 +86,16 @@ export const DEFAULT_EDITOR_PREFERENCES: EditorPreferences = {
 	gifFrameRate: DEFAULT_EDITOR_CONTROLS.gifFrameRate,
 	gifLoop: DEFAULT_EDITOR_CONTROLS.gifLoop,
 	gifSizePreset: DEFAULT_EDITOR_CONTROLS.gifSizePreset,
+	masterAudioMuted: DEFAULT_EDITOR_CONTROLS.masterAudioMuted,
+	masterAudioSoloed: DEFAULT_EDITOR_CONTROLS.masterAudioSoloed,
+	masterAudioVolume: DEFAULT_EDITOR_CONTROLS.masterAudioVolume,
+	audioTrackVolume: DEFAULT_EDITOR_CONTROLS.audioTrackVolume,
 	customAspectWidth: "16",
 	customAspectHeight: "9",
 	customWallpapers: [],
 	whisperExecutablePath: null,
 	whisperModelPath: null,
+	whisperSelectedModel: "small",
 };
 
 function normalizePositiveIntegerString(value: unknown, fallback: string): string {
@@ -159,6 +169,10 @@ function normalizeEditorControls(
 		gifFrameRate: raw.gifFrameRate ?? fallback.gifFrameRate,
 		gifLoop: raw.gifLoop ?? fallback.gifLoop,
 		gifSizePreset: raw.gifSizePreset ?? fallback.gifSizePreset,
+		masterAudioMuted: raw.masterAudioMuted ?? fallback.masterAudioMuted,
+		masterAudioSoloed: raw.masterAudioSoloed ?? fallback.masterAudioSoloed,
+		masterAudioVolume: raw.masterAudioVolume ?? fallback.masterAudioVolume,
+		audioTrackVolume: raw.audioTrackVolume ?? fallback.audioTrackVolume,
 	};
 
 	const normalized = normalizeProjectEditor(candidate);
@@ -195,6 +209,10 @@ function normalizeEditorControls(
 		gifFrameRate: normalized.gifFrameRate,
 		gifLoop: normalized.gifLoop,
 		gifSizePreset: normalized.gifSizePreset,
+		masterAudioMuted: normalized.masterAudioMuted,
+		masterAudioSoloed: normalized.masterAudioSoloed,
+		masterAudioVolume: normalized.masterAudioVolume,
+		audioTrackVolume: normalized.audioTrackVolume,
 	};
 }
 
@@ -220,6 +238,10 @@ export function normalizeEditorPreferences(
 			normalizeNullablePath(raw.whisperExecutablePath) ?? fallback.whisperExecutablePath,
 		whisperModelPath:
 			normalizeNullablePath(raw.whisperModelPath) ?? fallback.whisperModelPath,
+		whisperSelectedModel:
+			typeof raw.whisperSelectedModel === "string"
+				? raw.whisperSelectedModel
+				: fallback.whisperSelectedModel,
 	};
 }
 

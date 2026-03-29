@@ -94,6 +94,11 @@ export interface ProjectEditorState {
 	gifFrameRate: GifFrameRate;
 	gifLoop: boolean;
 	gifSizePreset: GifSizePreset;
+	masterAudioMuted: boolean;
+	masterAudioSoloed: boolean;
+	masterAudioVolume: number;
+	audioTrackVolume: number;
+	isMasterSelected: boolean;
 }
 
 export interface EditorProjectData {
@@ -484,6 +489,10 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 			rawAutoCaptionSettings.animationStyle,
 			DEFAULT_AUTO_CAPTION_SETTINGS.animationStyle,
 		),
+		selectedModel:
+			typeof rawAutoCaptionSettings.selectedModel === "string"
+				? rawAutoCaptionSettings.selectedModel
+				: DEFAULT_AUTO_CAPTION_SETTINGS.selectedModel,
 		boxRadius: isFiniteNumber(rawAutoCaptionSettings.boxRadius)
 			? clamp(rawAutoCaptionSettings.boxRadius, 0, 40)
 			: DEFAULT_AUTO_CAPTION_SETTINGS.boxRadius,
@@ -675,6 +684,11 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 			editor.gifSizePreset === "original"
 				? editor.gifSizePreset
 				: "medium",
+		masterAudioMuted: typeof editor.masterAudioMuted === "boolean" ? editor.masterAudioMuted : false,
+		masterAudioSoloed: typeof editor.masterAudioSoloed === "boolean" ? editor.masterAudioSoloed : false,
+		masterAudioVolume: isFiniteNumber(editor.masterAudioVolume) ? clamp(editor.masterAudioVolume, 0, 1) : 1,
+		audioTrackVolume: isFiniteNumber(editor.audioTrackVolume) ? clamp(editor.audioTrackVolume, 0, 1) : 1,
+		isMasterSelected: typeof editor.isMasterSelected === "boolean" ? editor.isMasterSelected : false,
 	};
 }
 

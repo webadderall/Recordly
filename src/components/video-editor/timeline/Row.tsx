@@ -7,9 +7,10 @@ interface RowProps extends RowDefinition {
   hint?: string;
   isEmpty?: boolean;
   labelColor?: string;
+  controls?: React.ReactNode;
 }
 
-export default function Row({ id, children, label, hint, isEmpty, labelColor = '#666' }: RowProps) {
+export default function Row({ id, children, label, hint, isEmpty, labelColor = '#666', controls }: RowProps) {
   const { setNodeRef, rowWrapperStyle, rowStyle } = useRow({ id });
 
   return (
@@ -17,14 +18,17 @@ export default function Row({ id, children, label, hint, isEmpty, labelColor = '
       className="border-b border-[#18181b] bg-[#18181b] relative flex-1 min-h-[26px]"
       style={{ ...rowWrapperStyle, marginBottom: 2 }}
     >
-      {label && (
-        <div
-          className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[9px] font-semibold uppercase tracking-widest z-20 pointer-events-none select-none"
-          style={{ color: labelColor, writingMode: 'horizontal-tb' }}
-        >
-          {label}
-        </div>
-      )}
+      <div className="absolute left-1.5 top-0 bottom-0 flex items-center gap-1.5 z-20 pointer-events-none select-none">
+        {label && (
+          <div
+            className="text-[9px] font-semibold uppercase tracking-widest"
+            style={{ color: labelColor, writingMode: 'horizontal-tb' }}
+          >
+            {label}
+          </div>
+        )}
+        {controls && <div className="pointer-events-auto">{controls}</div>}
+      </div>
       {isEmpty && hint && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-10">
           <span className="text-[11px] text-white/15 font-medium">{hint}</span>
@@ -36,4 +40,5 @@ export default function Row({ id, children, label, hint, isEmpty, labelColor = '
     </div>
   );
 }
+
 

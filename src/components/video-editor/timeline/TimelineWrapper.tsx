@@ -20,7 +20,7 @@ interface TimelineWrapperProps {
   minItemDurationMs: number;
   minVisibleRangeMs: number;
   gridSizeMs?: number;
-  onItemSpanChange: (id: string, span: Span) => void;
+  onItemSpanChange: (id: string, span: Span, rowId: string) => void;
   allRegionSpans?: { id: string; start: number; end: number }[];
 }
 
@@ -151,7 +151,10 @@ export default function TimelineWrapper({
         }
       }
 
-      onItemSpanChange(activeItemId, clampedSpan);
+      const rowId = event.active.data.current.rowId;
+      if (rowId) {
+        onItemSpanChange(activeItemId, clampedSpan, rowId);
+      }
     },
     [clampSpanToBounds, clampToNeighbours, hasOverlap, minItemDurationMs, onItemSpanChange, totalMs]
   );
@@ -173,7 +176,7 @@ export default function TimelineWrapper({
         }
       }
 
-      onItemSpanChange(activeItemId, clampedSpan);
+      onItemSpanChange(activeItemId, clampedSpan, activeRowId);
     },
     [clampSpanToBounds, clampToNeighbours, hasOverlap, onItemSpanChange]
   );
