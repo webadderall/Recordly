@@ -1,5 +1,5 @@
 import type React from 'react';
-import type { TrimRegion, SpeedRegion } from '../types';
+import type { TrimRegion, SpeedRegion, TimeSelection } from '../types';
 
 interface VideoEventHandlersParams {
   video: HTMLVideoElement;
@@ -12,6 +12,7 @@ interface VideoEventHandlersParams {
   onTimeUpdate: (time: number) => void;
   trimRegionsRef: React.MutableRefObject<TrimRegion[]>;
   speedRegionsRef: React.MutableRefObject<SpeedRegion[]>;
+  timeSelectionRef: React.MutableRefObject<TimeSelection | null>;
 }
 
 export function createVideoEventHandlers(params: VideoEventHandlersParams) {
@@ -26,6 +27,7 @@ export function createVideoEventHandlers(params: VideoEventHandlersParams) {
     onTimeUpdate,
     trimRegionsRef,
     speedRegionsRef,
+    timeSelectionRef,
   } = params;
 
   const emitTime = (timeValue: number) => {
@@ -69,6 +71,35 @@ export function createVideoEventHandlers(params: VideoEventHandlersParams) {
       // Apply playback speed from active speed region
       const activeSpeedRegion = findActiveSpeedRegion(currentTimeMs);
       video.playbackRate = activeSpeedRegion ? activeSpeedRegion.speed : 1;
+      
+      const timeSelection = timeSelectionRef.current;
+      if (
+        timeSelection &&
+        (currentTimeMs >= timeSelection.endMs || currentTimeMs < timeSelection.startMs) &&
+        !isSeekingRef.current &&
+        !video.paused &&
+        !video.ended
+      ) {
+        const loopDuration = timeSelection.endMs - timeSelection.startMs;
+        if (loopDuration > 100) {
+          // Use a local variable to avoid reading back from currentTime before seek settles
+          const loopStartSec = timeSelection.startMs / 1000;
+          isSeekingRef.current = true;
+          video.currentTime = loopStartSec;
+          emitTime(loopStartSec);
+
+          // Continue the update loop
+          timeUpdateAnimationRef.current = requestAnimationFrame(updateTime);
+          return;
+        } else {
+          // Selection too short to loop — stop playback at the selection boundary
+          video.pause();
+          const clampedSec = timeSelection.startMs / 1000;
+          video.currentTime = clampedSec;
+          emitTime(clampedSec);
+          return;
+        }
+      }
       emitTime(video.currentTime);
     }
 

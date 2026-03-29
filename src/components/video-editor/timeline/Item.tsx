@@ -15,6 +15,7 @@ interface ItemProps {
   zoomDepth?: number;
   speedValue?: number;
   variant?: 'zoom' | 'trim' | 'annotation' | 'speed' | 'audio';
+  timelineMode?: 'move' | 'select';
 }
 
 // Map zoom depth to multiplier labels
@@ -46,11 +47,13 @@ export default function Item({
 	zoomDepth = 1,
 	speedValue,
 	variant = "zoom",
+	timelineMode = "move",
 	children,
 }: ItemProps) {
 	const { setNodeRef, attributes, listeners, itemStyle, itemContentStyle } = useItem({
 		id,
 		span,
+		disabled: timelineMode !== 'move',
 		data: { rowId },
 	});
 
@@ -91,33 +94,40 @@ export default function Item({
     <div
       ref={setNodeRef}
       style={safeItemStyle}
-      {...listeners}
-      {...attributes}
+      {...(timelineMode === 'move' ? listeners : {})}
+      {...(timelineMode === 'move' ? attributes : {})}
       onPointerDownCapture={() => onSelect?.()}
+      onMouseDown={(e) => {
+        if (timelineMode === 'select') {
+          e.stopPropagation();
+        }
+      }}
       className="group h-full"
     >
       <div className="h-full" style={{ ...itemContentStyle, minWidth: 24, height: "100%" }}>
         <div
           className={cn(
             glassClass,
-            "w-full h-full overflow-hidden flex items-center justify-center gap-1.5 cursor-grab active:cursor-grabbing relative",
+            "w-full h-full overflow-hidden flex items-center justify-center gap-1.5 active:cursor-grabbing relative",
+            timelineMode === 'move' ? "cursor-grab" : "cursor-default",
             isSelected && glassStyles.selected
           )}
           style={{ height: "100%", minHeight: 22, color: '#fff', minWidth: 24 }}
-          onClick={(event) => {
+        onClick={(event) => {
+            // Prevent the timeline background's onClick (seeking) from firing
+            // when we click on a track item. onSelect is already fired on pointer-down capture.
             event.stopPropagation();
-            onSelect?.();
           }}
         >
           <div
             className={cn(glassStyles.zoomEndCap, glassStyles.left)}
-            style={{ cursor: 'col-resize', pointerEvents: 'auto', width: 8, opacity: 0.9, background: endCapColor }}
-            title="Resize left"
+            style={{ cursor: timelineMode === 'move' ? 'col-resize' : 'default', pointerEvents: timelineMode === 'move' ? 'auto' : 'none', width: 8, opacity: 0.9, background: endCapColor }}
+            title={timelineMode === 'move' ? "Resize left" : undefined}
           />
           <div
             className={cn(glassStyles.zoomEndCap, glassStyles.right)}
-            style={{ cursor: 'col-resize', pointerEvents: 'auto', width: 8, opacity: 0.9, background: endCapColor }}
-            title="Resize right"
+            style={{ cursor: timelineMode === 'move' ? 'col-resize' : 'default', pointerEvents: timelineMode === 'move' ? 'auto' : 'none', width: 8, opacity: 0.9, background: endCapColor }}
+            title={timelineMode === 'move' ? "Resize right" : undefined}
           />
           {/* Content */}
           <div className="relative z-10 flex flex-col items-center justify-center text-white/90 opacity-80 group-hover:opacity-100 transition-opacity select-none overflow-hidden">

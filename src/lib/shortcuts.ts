@@ -6,6 +6,8 @@ export const SHORTCUT_ACTIONS = [
   'addKeyframe',
   'deleteSelected',
   'playPause',
+  'moveMode',
+  'selectMode',
 ] as const;
 
 export type ShortcutAction = (typeof SHORTCUT_ACTIONS)[number];
@@ -73,6 +75,8 @@ export const DEFAULT_SHORTCUTS: ShortcutsConfig = {
   addKeyframe:    { key: 'f' },
   deleteSelected: { key: 'd', ctrl: true },
   playPause:      { key: ' ' },
+  moveMode:       { key: 'v' },
+  selectMode:     { key: 'e' },
 };
 
 export const SHORTCUT_LABELS: Record<ShortcutAction, string> = {
@@ -83,6 +87,8 @@ export const SHORTCUT_LABELS: Record<ShortcutAction, string> = {
   addKeyframe:    'Add Keyframe',
   deleteSelected: 'Delete Selected',
   playPause:      'Play / Pause',
+  moveMode:       'Move Mode',
+  selectMode:     'Select Mode',
 };
 
 export function matchesShortcut(

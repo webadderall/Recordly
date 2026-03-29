@@ -105,6 +105,7 @@ import {
 	type ZoomFocus,
 	type ZoomRegion,
 	type ZoomTransitionEasing,
+	type TimeSelection,
 } from "./types";
 import VideoPlayback, { VideoPlaybackRef } from "./VideoPlayback";
 import {
@@ -418,6 +419,8 @@ export default function VideoEditor() {
 	const [previewVersion, setPreviewVersion] = useState(0);
 	const [isPreviewReady, setIsPreviewReady] = useState(false);
 	const [autoSuggestZoomsTrigger, setAutoSuggestZoomsTrigger] = useState(0);
+	const [timelineMode, setTimelineMode] = useState<'move' | 'select'>('move');
+	const [timeSelection, setTimeSelection] = useState<TimeSelection | null>(null);
 	const headerLeftControlsPaddingClass = appPlatform === "darwin" ? "pl-[76px]" : "";
 
 	const videoPlaybackRef = useRef<VideoPlaybackRef>(null);
@@ -1879,6 +1882,14 @@ export default function VideoEditor() {
 		if (!video.paused && !video.ended) {
 			playback.pause();
 		} else {
+			// Selection awareness: if playing with a selection active, jump to start if out of bounds
+			if (timeSelection) {
+				const currentTimeMs = Math.round(currentTime * 1000);
+				const bufferMs = 50; // Small buffer for end boundary
+				if (currentTimeMs < timeSelection.startMs || currentTimeMs >= timeSelection.endMs - bufferMs) {
+					handleSeek(timeSelection.startMs / 1000);
+				}
+			}
 			playback.play().catch((err) => console.error("Video play failed:", err));
 		}
 	}
@@ -2315,14 +2326,13 @@ export default function VideoEditor() {
 					return;
 				}
 				e.preventDefault();
-
-				const playback = videoPlaybackRef.current;
-				if (playback?.video) {
-					if (playback.video.paused) {
-						playback.play().catch(console.error);
-					} else {
-						playback.pause();
-					}
+				togglePlayPause();
+			}
+			if (!isEditableTarget) {
+				if (key === "v" || matchesShortcut(e, shortcuts.moveMode, isMac)) {
+					setTimelineMode("move");
+				} else if (key === "e" || matchesShortcut(e, shortcuts.selectMode, isMac)) {
+					setTimelineMode("select");
 				}
 			}
 		};
@@ -3300,6 +3310,7 @@ export default function VideoEditor() {
 												cursorClickBounce={cursorClickBounce}
 												cursorClickBounceDuration={cursorClickBounceDuration}
 												cursorSway={cursorSway}
+												timeSelection={timeSelection}
 												volume={previewVolume}
 											/>
 										</div>
@@ -3341,6 +3352,10 @@ export default function VideoEditor() {
 									videoDuration={duration}
 									currentTime={currentTime}
 									onSeek={handleSeek}
+									timelineMode={timelineMode}
+									onTimelineModeChange={setTimelineMode}
+									timeSelection={timeSelection}
+									onTimeSelectionChange={setTimeSelection}
 									cursorTelemetry={normalizedCursorTelemetry}
 									autoSuggestZoomsTrigger={autoSuggestZoomsTrigger}
 									zoomRegions={effectiveZoomRegions}

@@ -38,6 +38,7 @@ import {
   type CursorStyle,
   type WebcamOverlaySettings,
   type ZoomTransitionEasing,
+  type TimeSelection,
 } from "./types";
 import {
   DEFAULT_FOCUS,
@@ -202,6 +203,7 @@ interface VideoPlaybackProps {
   cursorClickBounce?: number;
   cursorClickBounceDuration?: number;
   cursorSway?: number;
+  timeSelection?: TimeSelection | null;
   volume?: number;
 }
 
@@ -269,6 +271,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
       cursorClickBounce = DEFAULT_CURSOR_CLICK_BOUNCE,
       cursorClickBounceDuration = DEFAULT_CURSOR_CLICK_BOUNCE_DURATION,
       cursorSway = DEFAULT_CURSOR_SWAY,
+      timeSelection = null,
       volume = 1,
     },
     ref,
@@ -323,6 +326,8 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
       width: number;
       height: number;
     } | null>(null);
+    const timeSelectionRef = useRef<TimeSelection | null>(null);
+    timeSelectionRef.current = timeSelection;
     const layoutVideoContentRef = useRef<(() => void) | null>(null);
     const trimRegionsRef = useRef<TrimRegion[]>([]);
     const speedRegionsRef = useRef<SpeedRegion[]>([]);
@@ -1183,6 +1188,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
           onTimeUpdate,
           trimRegionsRef,
           speedRegionsRef,
+          timeSelectionRef,
         });
 
       video.addEventListener("play", handlePlay);

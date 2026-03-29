@@ -336,3 +336,8 @@ function clamp(value: number, min: number, max: number) {
 	if (Number.isNaN(value)) return (min + max) / 2;
 	return Math.min(max, Math.max(min, value));
 }
+
+export interface TimeSelection {
+	startMs: number;
+	endMs: number;
+}
