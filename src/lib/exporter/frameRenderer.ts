@@ -7,7 +7,6 @@ import {
   Texture,
   TextureSource,
 } from "pixi.js";
-import { MotionBlurFilter } from "pixi-filters/motion-blur";
 import type {
   AutoCaptionSettings,
   CaptionCue,
@@ -38,9 +37,10 @@ import {
 import { renderAnnotations } from "./annotationRenderer";
 import { renderCaptions } from "./captionRenderer";
 import {
-  PixiCursorOverlay,
   DEFAULT_CURSOR_CONFIG,
   preloadCursorAssets,
+  drawCursorOnCanvas,
+  SmoothedCursorState,
 } from "@/components/video-editor/videoPlayback/cursorRenderer";
 import { clampMediaTimeToDuration } from "@/lib/mediaTiming";
 import { getWebcamOverlayPosition, getWebcamOverlaySizePx } from "@/components/video-editor/webcamOverlay";
@@ -132,13 +132,13 @@ export class FrameRenderer {
   private app: Application | null = null;
   private cameraContainer: Container | null = null;
   private videoContainer: Container | null = null;
-  private cursorContainer: Container | null = null;
+
   private videoSprite: Sprite | null = null;
   private videoTextureSource: TextureSource<any> | null = null;
   private backgroundSprite: Sprite | null = null;
   private maskGraphics: Graphics | null = null;
   private blurFilter: BlurFilter | null = null;
-  private motionBlurFilter: MotionBlurFilter | null = null;
+  private motionBlurFilter: any | null = null;
   private shadowCanvas: HTMLCanvasElement | null = null;
   private shadowCtx: CanvasRenderingContext2D | null = null;
   private compositeCanvas: HTMLCanvasElement | null = null;
@@ -152,7 +152,7 @@ export class FrameRenderer {
   private layoutCache: any = null;
   private currentVideoTime = 0;
   private lastMotionVector = { x: 0, y: 0 };
-  private cursorOverlay: PixiCursorOverlay | null = null;
+  private smoothedCursorState: SmoothedCursorState | null = null;
   private webcamForwardFrameSource: ForwardFrameSource | null = null;
   private webcamDecodedFrame: VideoFrame | null = null;
   private webcamVideoElement: HTMLVideoElement | null = null;
@@ -171,13 +171,11 @@ export class FrameRenderer {
   }
 
   async initialize(): Promise<void> {
-    let cursorOverlayEnabled = true;
     try {
       await preloadCursorAssets();
     } catch (error) {
-      cursorOverlayEnabled = false;
       console.warn(
-        "[FrameRenderer] Native cursor assets are unavailable; continuing export without cursor overlay.",
+        "[FrameRenderer] Native cursor assets are unavailable; continuing export without high-quality cursors.",
         error,
       );
     }
@@ -213,39 +211,25 @@ export class FrameRenderer {
       autoDensity: true,
     });
 
-    // Setup containers
     this.cameraContainer = new Container();
     this.videoContainer = new Container();
-    this.cursorContainer = new Container();
     this.app.stage.addChild(this.cameraContainer);
     this.cameraContainer.addChild(this.videoContainer);
-    this.cameraContainer.addChild(this.cursorContainer);
 
-    if (cursorOverlayEnabled) {
-      this.cursorOverlay = new PixiCursorOverlay({
-        dotRadius:
-          DEFAULT_CURSOR_CONFIG.dotRadius * (this.config.cursorSize ?? 1.4),
-        style: this.config.cursorStyle ?? "tahoe",
-        smoothingFactor:
-          this.config.cursorSmoothing ?? DEFAULT_CURSOR_CONFIG.smoothingFactor,
-        motionBlur: this.config.cursorMotionBlur ?? 0,
-        clickBounce:
-          this.config.cursorClickBounce ?? DEFAULT_CURSOR_CONFIG.clickBounce,
-        clickBounceDuration:
-          this.config.cursorClickBounceDuration ?? DEFAULT_CURSOR_CONFIG.clickBounceDuration,
-        sway: this.config.cursorSway ?? DEFAULT_CURSOR_CONFIG.sway,
-      });
-    }
+    this.smoothedCursorState = new SmoothedCursorState({
+      ...DEFAULT_CURSOR_CONFIG,
+      smoothingFactor: this.config.cursorSmoothing ?? DEFAULT_CURSOR_CONFIG.smoothingFactor,
+    });
 
     // Setup background (render separately, not in PixiJS)
     await this.setupBackground();
     await this.setupWebcamSource();
 
-    // Setup blur filter for video container
     this.blurFilter = new BlurFilter();
     this.blurFilter.quality = 5;
     this.blurFilter.resolution = this.app.renderer.resolution;
     this.blurFilter.blur = 0;
+    // @ts-ignore
     this.motionBlurFilter = new MotionBlurFilter([0, 0], 5, 0);
     this.videoContainer.filters = [this.blurFilter, this.motionBlurFilter];
 
@@ -283,9 +267,6 @@ export class FrameRenderer {
     this.maskGraphics = new Graphics();
     this.videoContainer.addChild(this.maskGraphics);
     this.videoContainer.mask = this.maskGraphics;
-    if (this.cursorOverlay) {
-      this.cursorContainer.addChild(this.cursorOverlay.container);
-    }
   }
 
   private async setupBackground(): Promise<void> {
@@ -818,9 +799,6 @@ export class FrameRenderer {
       this.videoSprite = new Sprite(texture);
       this.videoTextureSource = texture.source as TextureSource<any>;
       this.videoContainer.addChild(this.videoSprite);
-      if (this.cursorOverlay && this.cursorContainer) {
-        this.cursorContainer.addChild(this.cursorOverlay.container);
-      }
       if (this.maskGraphics) {
         this.videoContainer.addChild(this.maskGraphics);
       }
@@ -835,13 +813,23 @@ export class FrameRenderer {
 
     const timeMs = this.currentVideoTime * 1000;
 
-    if (this.cursorOverlay) {
-      this.cursorOverlay.update(
+    if (this.smoothedCursorState && this.compositeCtx) {
+      drawCursorOnCanvas(
+        this.compositeCtx,
         this.config.cursorTelemetry ?? [],
         timeMs,
         this.layoutCache.maskRect,
-        this.config.showCursor ?? true,
-        false,
+        this.smoothedCursorState,
+        {
+          ...DEFAULT_CURSOR_CONFIG,
+          style: this.config.cursorStyle ?? "tahoe",
+          dotRadius: DEFAULT_CURSOR_CONFIG.dotRadius * (this.config.cursorSize ?? 1.4),
+          smoothingFactor: this.config.cursorSmoothing ?? DEFAULT_CURSOR_CONFIG.smoothingFactor,
+          motionBlur: this.config.cursorMotionBlur ?? 0,
+          clickBounce: this.config.cursorClickBounce ?? DEFAULT_CURSOR_CONFIG.clickBounce,
+          clickBounceDuration: this.config.cursorClickBounceDuration ?? DEFAULT_CURSOR_CONFIG.clickBounceDuration,
+          sway: this.config.cursorSway ?? DEFAULT_CURSOR_CONFIG.sway,
+        }
       );
     }
 
@@ -1379,10 +1367,7 @@ export class FrameRenderer {
     this.maskGraphics = null;
     this.blurFilter = null;
     this.motionBlurFilter = null;
-    if (this.cursorOverlay) {
-      this.cursorOverlay.destroy();
-      this.cursorOverlay = null;
-    }
+    this.smoothedCursorState = null;
     this.shadowCanvas = null;
     this.shadowCtx = null;
     this.compositeCanvas = null;

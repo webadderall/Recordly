@@ -42,10 +42,10 @@ vi.mock('./annotationRenderer', () => ({
 }));
 
 vi.mock('@/components/video-editor/videoPlayback/cursorRenderer', () => ({
-  PixiCursorOverlay: class {
-    container = {};
+  drawCursorOnCanvas: vi.fn(),
+  SmoothedCursorState: class {
     update = vi.fn();
-    destroy = vi.fn();
+    reset = vi.fn();
   },
   DEFAULT_CURSOR_CONFIG: {
     dotRadius: 28,

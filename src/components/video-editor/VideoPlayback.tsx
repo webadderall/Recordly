@@ -47,7 +47,6 @@ import {
 } from "./videoPlayback/constants";
 import {
   DEFAULT_CURSOR_CONFIG,
-  PixiCursorOverlay,
   preloadCursorAssets,
   drawCursorOnCanvas,
   SmoothedCursorState,
@@ -281,7 +280,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
     const appRef = useRef<Application | null>(null);
     const videoSpriteRef = useRef<Sprite | null>(null);
     const videoContainerRef = useRef<Container | null>(null);
-    const cursorContainerRef = useRef<Container | null>(null);
+
     const cameraContainerRef = useRef<Container | null>(null);
     const timeUpdateAnimationRef = useRef<number | null>(null);
     const [pixiReady, setPixiReady] = useState(false);
@@ -345,7 +344,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
     const zoomOutEasingRef = useRef(zoomOutEasing);
     const connectedZoomEasingRef = useRef(connectedZoomEasing);
     const videoReadyRafRef = useRef<number | null>(null);
-    const cursorOverlayRef = useRef<PixiCursorOverlay | null>(null);
+
     const cursorTelemetryRef = useRef<CursorTelemetryPoint[]>([]);
     const showCursorRef = useRef(showCursor);
     const cursorSizeRef = useRef(cursorSize);
@@ -886,7 +885,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
       }
 
       animationStateRef.current = createPlaybackAnimationState();
-      cursorOverlayRef.current?.reset();
+
       motionBlurStateRef.current = createMotionBlurState();
 
       if (blurFilterRef.current) {
@@ -1078,27 +1077,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
         videoContainerRef.current = videoContainer;
         cameraContainer.addChild(videoContainer);
 
-        const cursorContainer = new Container();
-        cursorContainerRef.current = cursorContainer;
-        cameraContainer.addChild(cursorContainer);
-
-        // Cursor overlay - rendered above the masked video so it can sit in front
-        // of the content without getting clipped.
-        if (cursorOverlayEnabled) {
-          const cursorOverlay = new PixiCursorOverlay({
-            dotRadius: DEFAULT_CURSOR_CONFIG.dotRadius * cursorSizeRef.current,
-            style: cursorStyleRef.current,
-            smoothingFactor: cursorSmoothingRef.current,
-            motionBlur: cursorMotionBlurRef.current,
-            clickBounce: cursorClickBounceRef.current,
-            clickBounceDuration: cursorClickBounceDurationRef.current,
-            sway: cursorSwayRef.current,
-          });
-          cursorOverlayRef.current = cursorOverlay;
-          cursorContainer.addChild(cursorOverlay.container);
-        } else {
-          cursorOverlayRef.current = null;
-        }
+        setPixiReady(true);
 
         setPixiReady(true);
       })().catch((error) => {
@@ -1113,10 +1092,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
       return () => {
         mounted = false;
         setPixiReady(false);
-        if (cursorOverlayRef.current) {
-          cursorOverlayRef.current.destroy();
-          cursorOverlayRef.current = null;
-        }
+
         if (app && app.renderer) {
           app.destroy(true, {
             children: true,
@@ -1127,7 +1103,6 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
         appRef.current = null;
         cameraContainerRef.current = null;
         videoContainerRef.current = null;
-        cursorContainerRef.current = null;
         videoSpriteRef.current = null;
       };
     }, [onError]);
@@ -1156,10 +1131,10 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
       const video = videoRef.current;
       const app = appRef.current;
       const videoContainer = videoContainerRef.current;
-      const cursorContainer = cursorContainerRef.current;
+
       const cameraContainer = cameraContainerRef.current;
 
-      if (!video || !app || !videoContainer || !cursorContainer || !cameraContainer) return;
+      if (!video || !app || !videoContainer || !cameraContainer) return;
       if (video.videoWidth === 0 || video.videoHeight === 0) return;
 
       const source = VideoSource.from(video);
