@@ -39,3 +39,6 @@ electron/native/cursor-monitor/build/
 # Local debug helpers
 tmp-*.ps1
 .tmp-*.ps1
+
+# Claude Code local settings
+.claude/

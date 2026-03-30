@@ -2605,17 +2605,16 @@ function snapshotCursorTelemetryForPersistence() {
 }
 
 async function finalizeStoredVideo(videoPath: string) {
-  let validation: { fileSizeBytes: number; durationSeconds: number | null } | null = null
-  try {
-    validation = await validateRecordedVideo(videoPath)
-  } catch (error) {
-    console.warn('Video validation failed (proceeding anyway):', error)
-  }
-
+  // Persist cursor telemetry before validation so it's saved even if validation fails.
   snapshotCursorTelemetryForPersistence()
+  await persistPendingCursorTelemetry(videoPath).catch((err) => {
+    console.warn('[finalizeStoredVideo] Failed to persist cursor telemetry:', err)
+  })
+
+  const validation = await validateRecordedVideo(videoPath)
+
   currentVideoPath = videoPath
   currentProjectPath = null
-  await persistPendingCursorTelemetry(videoPath)
   if (isAutoRecordingPath(videoPath)) {
     await pruneAutoRecordings([videoPath])
   }
@@ -2637,16 +2636,16 @@ async function finalizeStoredVideo(videoPath: string) {
       supported: lastNativeCaptureDiagnostics.supported,
       helperExists: lastNativeCaptureDiagnostics.helperExists,
       processOutput: lastNativeCaptureDiagnostics.processOutput,
-      fileSizeBytes: validation?.fileSizeBytes ?? null,
+      fileSizeBytes: validation.fileSizeBytes,
     })
   }
 
   return {
     success: true,
     path: videoPath,
-    message: validation?.durationSeconds !== null && validation !== null
+    message: validation.durationSeconds !== null
       ? `Video stored successfully (${validation.fileSizeBytes} bytes, ${validation.durationSeconds.toFixed(2)}s)`
-      : `Video stored successfully`
+      : `Video stored successfully (${validation.fileSizeBytes} bytes)`
   }
 }
 
@@ -2815,9 +2814,6 @@ export function registerIpcHandlers(
       ? await desktopCapturer.getSources({
           ...opts,
           types: electronTypes,
-        }).catch((error) => {
-          console.warn('desktopCapturer.getSources failed (screen recording permission may be missing):', error)
-          return []
         })
       : []
     const ownWindowNames = new Set(
@@ -2950,6 +2946,7 @@ export function registerIpcHandlers(
             sourceType: 'window' as const,
           }
         })
+        .filter((source) => Boolean(source.thumbnail))
 
       return [...screenSources, ...mergedWindowSources]
     } catch (error) {
@@ -2957,6 +2954,7 @@ export function registerIpcHandlers(
 
       const windowSources = electronSources
         .filter((source) => source.id.startsWith('window:'))
+        .filter((source) => hasUsableSourceThumbnail(source.thumbnail))
         .filter((source) => {
           const normalizedName = normalizeDesktopSourceName(source.name)
           if (!normalizedName) {
@@ -3006,16 +3004,41 @@ export function registerIpcHandlers(
       const isWindow = source.id?.startsWith('window:')
       const windowId = isWindow ? parseWindowId(source.id) : null
 
-      // ── 1. Bring window to front ──
+      // ── 1. Bring window to front & get its bounds via AppleScript ──
+      let asBounds: { x: number; y: number; width: number; height: number } | null = null
+
       if (isWindow && process.platform === 'darwin') {
         const appName = source.appName || source.name?.split(' — ')[0]?.trim()
         if (appName) {
+          // Single AppleScript: activate AND return window bounds
           try {
-            await execFileAsync('osascript', ['-e',
-              `tell application "${appName}" to activate`
-            ], { timeout: 2000 })
-            await new Promise((resolve) => setTimeout(resolve, 350))
-          } catch { /* ignore */ }
+            const { stdout } = await execFileAsync('osascript', ['-e',
+              `tell application "${appName}"\n` +
+              `  activate\n` +
+              `end tell\n` +
+              `delay 0.3\n` +
+              `tell application "System Events"\n` +
+              `  tell process "${appName}"\n` +
+              `    set frontWindow to front window\n` +
+              `    set {x1, y1} to position of frontWindow\n` +
+              `    set {w1, h1} to size of frontWindow\n` +
+              `    return (x1 as text) & "," & (y1 as text) & "," & (w1 as text) & "," & (h1 as text)\n` +
+              `  end tell\n` +
+              `end tell`
+            ], { timeout: 4000 })
+            const parts = stdout.trim().split(',').map(Number)
+            if (parts.length === 4 && parts.every(n => Number.isFinite(n))) {
+              asBounds = { x: parts[0], y: parts[1], width: parts[2], height: parts[3] }
+            }
+          } catch {
+            // Fallback: just activate without bounds
+            try {
+              await execFileAsync('osascript', ['-e',
+                `tell application "${appName}" to activate`
+              ], { timeout: 2000 })
+              await new Promise((resolve) => setTimeout(resolve, 350))
+            } catch { /* ignore */ }
+          }
         }
       } else if (windowId && process.platform === 'linux') {
         try {
@@ -3029,15 +3052,17 @@ export function registerIpcHandlers(
       }
 
       // ── 2. Resolve bounds ──
-      let bounds: { x: number; y: number; width: number; height: number } | null = null
+      let bounds = asBounds
 
-      if (source.id?.startsWith('screen:')) {
-        bounds = getDisplayBoundsForSource(source)
-      } else if (isWindow) {
-        if (process.platform === 'darwin') {
-          bounds = await resolveMacWindowBounds(source)
-        } else if (process.platform === 'linux') {
-          bounds = await resolveLinuxWindowBounds(source)
+      if (!bounds) {
+        if (source.id?.startsWith('screen:')) {
+          bounds = getDisplayBoundsForSource(source)
+        } else if (isWindow) {
+          if (process.platform === 'darwin') {
+            bounds = await resolveMacWindowBounds(source)
+          } else if (process.platform === 'linux') {
+            bounds = await resolveLinuxWindowBounds(source)
+          }
         }
       }
 
@@ -3353,15 +3378,14 @@ body{background:transparent;overflow:hidden;width:100vw;height:100vh}
       }
 
       const helperPath = await ensureNativeCaptureHelperBinary()
-      const timestamp = Date.now()
-      const outputPath = path.join(recordingsDir, `recording-${timestamp}.mp4`)
+      const outputPath = path.join(recordingsDir, `recording-${Date.now()}.mp4`)
       const capturesSystemAudio = Boolean(options?.capturesSystemAudio)
       const capturesMicrophone = Boolean(options?.capturesMicrophone)
       const systemAudioOutputPath = capturesSystemAudio
-        ? path.join(recordingsDir, `recording-${timestamp}.system.m4a`)
+        ? path.join(recordingsDir, `recording-${Date.now()}.system.m4a`)
         : null
       const microphoneOutputPath = capturesMicrophone
-        ? path.join(recordingsDir, `recording-${timestamp}.mic.m4a`)
+        ? path.join(recordingsDir, `recording-${Date.now()}.mic.m4a`)
         : null
       const config: Record<string, unknown> = {
         fps: 60,

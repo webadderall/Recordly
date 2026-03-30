@@ -357,7 +357,11 @@ final class ScreenCaptureRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
 			}
 		}
 
-		assetWriter?.endSession(atSourceTime: lastSampleBuffer?.presentationTimeStamp ?? .zero)
+		let sessionEndTime: CMTime = {
+			guard frameCount > 0, let lastBuffer = lastSampleBuffer else { return .zero }
+			return lastVideoPresentationTime + frameDuration(for: lastBuffer)
+		}()
+		assetWriter?.endSession(atSourceTime: sessionEndTime)
 		videoInput?.markAsFinished()
 		await assetWriter?.finishWriting()
 
