@@ -281,7 +281,6 @@ int main(int argc, char* argv[]) {
 
     // Start stdin listener
     std::thread stdinThread(stdinListenerThread);
-    stdinThread.detach();
 
     // Initialize WASAPI captures (but don't start yet)
     WasapiCapture loopback;
@@ -348,6 +347,10 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    if (stdinThread.joinable()) {
+        stdinThread.join();
+    }
+
     std::cout << "Recording stopped. Output path: " << config.outputPath << std::endl;
     if (audioActive) {
         std::cout << "Audio path: " << config.audioOutputPath << std::endl;
@@ -357,9 +360,5 @@ int main(int argc, char* argv[]) {
     }
     std::cout.flush();
 
-    // Allow pipe buffers to drain before forceful exit
-    Sleep(100);
-
-    // Fast exit to avoid WinRT/COM teardown crashes during apartment cleanup
-    ExitProcess(0);
+    return 0;
 }

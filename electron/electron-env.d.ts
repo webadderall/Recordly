@@ -367,6 +367,30 @@ interface Window {
 		cancelCountdown: () => Promise<{ success: boolean }>;
 		getActiveCountdown: () => Promise<{ success: boolean; seconds: number | null }>;
 		onCountdownTick: (callback: (seconds: number) => void) => () => void;
+		// FFmpeg hardware-accelerated encoding (streaming)
+		ffmpegStartEncode: (options: {
+			width: number;
+			height: number;
+			frameRate: number;
+			bitrate: number;
+			useNVENC: boolean;
+			useAMF: boolean;
+			useQuickSync: boolean;
+		}) => Promise<{ success: boolean; sessionId?: string; error?: string }>;
+		ffmpegWriteFrame: (sessionId: string, frameData: Uint8Array) => Promise<{ success: boolean; error?: string }>;
+		ffmpegFinishEncode: (sessionId: string) => Promise<{
+			success: boolean;
+			outputPath?: string;
+			error?: string;
+			encoding?: {
+				encoder: string;
+				codecFamily: 'hevc' | 'h264' | 'unknown';
+				acceleration: 'nvenc' | 'amf' | 'qsv' | 'cpu' | 'unknown';
+				hardwareAccelerated: boolean;
+			};
+		}>;
+		ffmpegCancelEncode: (sessionId: string) => Promise<{ success: boolean; error?: string }>;
+		readEncodedFile: (outputPath: string) => Promise<ArrayBuffer>;
 	};
 }
 

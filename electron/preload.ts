@@ -389,4 +389,26 @@ contextBridge.exposeInMainWorld("electronAPI", {
 		ipcRenderer.on("countdown-tick", listener);
 		return () => ipcRenderer.removeListener("countdown-tick", listener);
 	},
+
+	// FFmpeg hardware-accelerated encoding (streaming — one frame at a time)
+	ffmpegStartEncode: (options: {
+		width: number;
+		height: number;
+		frameRate: number;
+		bitrate: number;
+		useNVENC: boolean;
+		useAMF: boolean;
+		useQuickSync: boolean;
+	}) => ipcRenderer.invoke("ffmpeg-start-encode", options),
+
+	ffmpegWriteFrame: (sessionId: string, frameData: Uint8Array) =>
+		ipcRenderer.invoke("ffmpeg-write-frame", sessionId, frameData),
+
+	ffmpegFinishEncode: (sessionId: string) =>
+		ipcRenderer.invoke("ffmpeg-finish-encode", sessionId),
+
+	ffmpegCancelEncode: (sessionId: string) =>
+		ipcRenderer.invoke("ffmpeg-cancel-encode", sessionId),
+
+	readEncodedFile: (outputPath: string) => ipcRenderer.invoke("read-encoded-file", outputPath),
 });

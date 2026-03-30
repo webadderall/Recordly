@@ -1,4 +1,5 @@
 export { VideoExporter } from './videoExporter';
+export { FFmpegExporter } from './ffmpegExporter';
 export { VideoFileDecoder } from './videoDecoder';
 export { StreamingVideoDecoder } from './streamingDecoder';
 export { FrameRenderer } from './frameRenderer';
@@ -12,7 +13,8 @@ export {
 export type { 
   ExportConfig, 
   ExportProgress, 
-  ExportResult, 
+  ExportResult,
+  ExportEncodingInfo,
   VideoFrameData, 
   ExportQuality,
   ExportFormat,

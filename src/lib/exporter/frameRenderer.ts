@@ -1276,6 +1276,19 @@ export class FrameRenderer {
     return this.compositeCanvas;
   }
 
+  /**
+   * Read the raw RGBA pixel data from the composite canvas.
+   * Used by FFmpegExporter to stream frames to FFmpeg via IPC.
+   */
+  readCompositeRgbaFrame(): Uint8Array {
+    if (!this.compositeCanvas || !this.compositeCtx) {
+      throw new Error("Renderer not initialized");
+    }
+    const { width, height } = this.compositeCanvas;
+    const imageData = this.compositeCtx.getImageData(0, 0, width, height);
+    return new Uint8Array(imageData.data.buffer, imageData.data.byteOffset, imageData.data.byteLength);
+  }
+
   destroy(): void {
     if (this.videoSprite) {
       const videoTexture = this.videoSprite.texture;
