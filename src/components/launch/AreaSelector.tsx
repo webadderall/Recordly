@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { useScopedT } from "../../contexts/I18nContext";
 
 interface Selection {
@@ -141,8 +142,12 @@ export function AreaSelector() {
 
   const confirmSelection = async () => {
     if (selection && selection.width >= 100 && selection.height >= 100) {
-      await window.electronAPI.setSelectedArea(selection);
-      window.close();
+      const result = await window.electronAPI.setSelectedArea(selection);
+      if (result.success) {
+        window.close();
+      } else {
+        toast.error(result.message || "Failed to set recording area. Please try again.");
+      }
     }
   };
 

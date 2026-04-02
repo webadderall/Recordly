@@ -135,13 +135,15 @@ final class ScreenCaptureRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
 			outputHeight = max(2, Int(displayBounds.height) * scaleFactor)
 
 			if let cx = config.cropX, let cy = config.cropY, let cw = config.cropWidth, let ch = config.cropHeight, cw > 0, ch > 0 {
-				let cropRect = CGRect(x: cx, y: cy, width: cw, height: ch)
+				let localX = CGFloat(cx) - displayBounds.origin.x
+				let localY = CGFloat(cy) - displayBounds.origin.y
+				let cropRect = CGRect(x: localX, y: localY, width: CGFloat(cw), height: CGFloat(ch))
 				streamConfig.sourceRect = cropRect
 				
 				// Adjust output dimensions to match the crop area (scaled)
 				// Ensure dimensions are even for H.264 encoding compatibility
-				var w = max(2, Int(cw) * scaleFactor)
-				var h = max(2, Int(ch) * scaleFactor)
+				var w = max(2, Int(CGFloat(cw) * CGFloat(scaleFactor)))
+				var h = max(2, Int(CGFloat(ch) * CGFloat(scaleFactor)))
 				if w % 2 != 0 { w -= 1 }
 				if h % 2 != 0 { h -= 1 }
 				

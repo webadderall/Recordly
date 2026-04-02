@@ -432,7 +432,8 @@ int main(int argc, char* argv[]) {
         int64_t finalElapsedHns = std::chrono::duration_cast<std::chrono::duration<int64_t, std::ratio<1, 10000000>>>(stopTime - g_captureStartTime).count();
         finalElapsedHns -= g_accumulatedPausedHns.load();
         
-        if (finalElapsedHns > g_lastFrameTimestampHns.load() - g_firstFrameTimestampHns.load()) {
+        int64_t adjustedLastElapsedHns = (g_lastFrameTimestampHns.load() - g_firstFrameTimestampHns.load()) - g_accumulatedPausedHns.load();
+        if (!g_pauseRequested.load() && finalElapsedHns > adjustedLastElapsedHns) {
             encoder.writeFrame(nullptr, finalElapsedHns);
         }
     }
