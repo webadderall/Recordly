@@ -246,8 +246,8 @@ bool MFEncoder::markEndOfStream() {
     std::lock_guard<std::mutex> lock(mutex_);
     if (!initialized_ || !sinkWriter_) return false;
     
-    // Notify the sink writer that the stream has ended
-    sinkWriter_->SendStreamTick(streamIndex_, 0); 
+    // Notify the sink writer that the stream has ended with the last written PTS
+    sinkWriter_->SendStreamTick(streamIndex_, lastWrittenPtsHns_ > 0 ? lastWrittenPtsHns_ : 0); 
     sinkWriter_->PlaceMarker(streamIndex_, nullptr);
     return true;
 }

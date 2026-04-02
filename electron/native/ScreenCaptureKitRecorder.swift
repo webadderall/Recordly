@@ -136,8 +136,11 @@ final class ScreenCaptureRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
 
 			if let cx = config.cropX, let cy = config.cropY, let cw = config.cropWidth, let ch = config.cropHeight, cw > 0, ch > 0 {
 				let localX = CGFloat(cx) - displayBounds.origin.x
-				let localY = CGFloat(cy) - displayBounds.origin.y
-				let cropRect = CGRect(x: localX, y: localY, width: CGFloat(cw), height: CGFloat(ch))
+				let cropHeight = CGFloat(ch)
+				// ScreenCaptureKit uses bottom-left origin for sourceRect, but coordinates from Electron are top-left.
+				// localY must be flipped relative to the display height.
+				let localY = displayBounds.height - (CGFloat(cy) - displayBounds.origin.y) - cropHeight
+				let cropRect = CGRect(x: localX, y: localY, width: CGFloat(cw), height: cropHeight)
 				streamConfig.sourceRect = cropRect
 				
 				// Adjust output dimensions to match the crop area (scaled)

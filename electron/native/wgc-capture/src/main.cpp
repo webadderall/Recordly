@@ -256,17 +256,36 @@ int main(int argc, char* argv[]) {
     int captureWidth = config.width > 0 ? config.width : monitorWidth;
     int captureHeight = config.height > 0 ? config.height : monitorHeight;
 
-    // Scale crop to even dimensions for H.264 if needed
+    // Validate and scale crop to even dimensions for H.264
+    bool isValidCrop = false;
     if (config.cropW > 0 && config.cropH > 0) {
-        captureWidth = (config.cropW / 2) * 2;
-        captureHeight = (config.cropH / 2) * 2;
-    } else {
+        // Ensure even dimensions
+        int evenCropW = (config.cropW / 2) * 2;
+        int evenCropH = (config.cropH / 2) * 2;
+        int startX = config.cropX >= 0 ? config.cropX : 0;
+        int startY = config.cropY >= 0 ? config.cropY : 0;
+
+        if (evenCropW > 0 && evenCropH > 0 &&
+            startX >= 0 && startY >= 0 &&
+            startX + evenCropW <= monitorWidth &&
+            startY + evenCropH <= monitorHeight) {
+            
+            captureWidth = evenCropW;
+            captureHeight = evenCropH;
+            isValidCrop = true;
+        } else {
+            std::cerr << "WARNING: Invalid crop rectangle (" << startX << "," << startY << " " << evenCropW << "x" << evenCropH 
+                      << ") for monitor " << monitorWidth << "x" << monitorHeight << ". Falling back to full monitor." << std::endl;
+        }
+    }
+
+    if (!isValidCrop) {
         captureWidth = (monitorWidth / 2) * 2;
         captureHeight = (monitorHeight / 2) * 2;
     }
 
     // Set up crop texture IF we are cropping OR if the monitor itself has odd dimensions
-    const bool needsCropping = (config.cropW > 0 && config.cropH > 0) || 
+    const bool needsCropping = isValidCrop || 
                                (monitorWidth != captureWidth || monitorHeight != captureHeight);
 
     // Initialize encoder
@@ -326,17 +345,16 @@ int main(int argc, char* argv[]) {
             adjustedTimestampHns = 0;
         }
 
-        ID3D11Texture2D* inputTexture = texture;
         if (cropTexture) {
             D3D11_BOX box = {};
-            int left = config.cropX >= 0 ? config.cropX : 0;
-            int top = config.cropY >= 0 ? config.cropY : 0;
-            
-            // Boundary clamping
-            if (left + captureWidth > monitorWidth) left = monitorWidth - captureWidth;
-            if (top + captureHeight > monitorHeight) top = monitorHeight - captureHeight;
-            if (left < 0) left = 0;
-            if (top < 0) top = 0;
+            int left = 0;
+            int top = 0;
+
+            if (isValidCrop) {
+                left = config.cropX >= 0 ? config.cropX : 0;
+                top = config.cropY >= 0 ? config.cropY : 0;
+            }
+            // else: full monitor fallback uses 0,0 (already set)
 
             box.left = left;
             box.top = top;

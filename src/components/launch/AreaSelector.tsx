@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useScopedT } from "../../contexts/I18nContext";
 
@@ -26,17 +26,21 @@ export function AreaSelector() {
     if (!ctx) return;
 
     const updateCanvas = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = window.innerWidth * dpr;
+      canvas.height = window.innerHeight * dpr;
+      canvas.style.width = `${window.innerWidth}px`;
+      canvas.style.height = `${window.innerHeight}px`;
+      ctx.scale(dpr, dpr);
       draw();
     };
 
     const draw = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
 
       // Draw dimmed background
       ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
 
       // Selected monitor identification
       ctx.fillStyle = "rgba(255, 255, 255, 1.0)";
@@ -140,16 +144,25 @@ export function AreaSelector() {
     moveOffset.current = null;
   };
 
-  const confirmSelection = async () => {
-    if (selection && selection.width >= 100 && selection.height >= 100) {
-      const result = await window.electronAPI.setSelectedArea(selection);
+  const confirmSelection = useCallback(async () => {
+    if (selection && (selection.width >= 10 || selection.height >= 10)) {
+      // Scale selection to screen pixels for high-DPI displays
+      const dpr = window.devicePixelRatio || 1;
+      const scaledSelection = {
+        x: selection.x * dpr,
+        y: selection.y * dpr,
+        width: selection.width * dpr,
+        height: selection.height * dpr
+      };
+      
+      const result = await window.electronAPI.setSelectedArea(scaledSelection);
       if (result.success) {
         window.close();
       } else {
-        toast.error(result.message || "Failed to set recording area. Please try again.");
+        toast.error(result.error || result.message || "Failed to set recording area. Please try again.");
       }
     }
-  };
+  }, [selection]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

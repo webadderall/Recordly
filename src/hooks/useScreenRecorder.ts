@@ -321,6 +321,13 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
     const croppedStream = canvas.captureStream(TARGET_FRAME_RATE);
     
     // Add original stop listener to cleanup
+    videoTrack.onended = () => {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+      video.srcObject = null;
+    };
+
     videoTrack.stop = () => {
       if (animationFrameId) {
         cancelAnimationFrame(animationFrameId);

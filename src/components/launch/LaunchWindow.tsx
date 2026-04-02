@@ -177,7 +177,7 @@ export function LaunchWindow() {
 	const [elapsed, setElapsed] = useState(0);
 	const [pausedAt, setPausedAt] = useState<number | null>(null);
 	const [pausedTotal, setPausedTotal] = useState(0);
-	const [selectedSource, setSelectedSource] = useState<any>({ name: "Screen" });
+	const [selectedSource, setSelectedSource] = useState<DesktopSource>({ id: "default", name: "Screen", thumbnail: null, display_id: "" } as DesktopSource);
 	const [hasSelectedSource, setHasSelectedSource] = useState(false);
 	const [, setRecordingsDirectory] = useState<string | null>(null);
 	const [activeDropdown, setActiveDropdown] = useState<
@@ -353,7 +353,7 @@ export function LaunchWindow() {
 				return;
 			}
 
-			setSelectedSource({ name: "Screen" });
+			setSelectedSource({ id: "default", name: "Screen", thumbnail: null, display_id: "" } as DesktopSource);
 			setHasSelectedSource(false);
 		};
 
