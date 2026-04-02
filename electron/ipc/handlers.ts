@@ -3714,8 +3714,8 @@ body{background:transparent;overflow:hidden;width:100vw;height:100vh}
           // Boundary safety for H.264 (ensure even dims)
           config.cropX = Math.round(globalXPixels - displayXPixels);
           config.cropY = Math.round(globalYPixels - displayYPixels);
-          config.cropW = Math.floor(finalW / 2) * 2;
-          config.cropH = Math.floor(finalH / 2) * 2;
+          config.cropWidth = Math.floor(finalW / 2) * 2;
+          config.cropHeight = Math.floor(finalH / 2) * 2;
         }
 
         recordNativeCaptureDiagnostics({

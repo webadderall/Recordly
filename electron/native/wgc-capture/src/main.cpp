@@ -153,8 +153,13 @@ static bool parseSimpleJson(const std::string& json, CaptureConfig& config) {
 
     config.cropX = findInt("cropX");
     config.cropY = findInt("cropY");
+    
+    // Accept both short and long names for crop width/height for robustness.
     config.cropW = findInt("cropW");
+    if (config.cropW < 0) config.cropW = findInt("cropWidth");
+    
     config.cropH = findInt("cropH");
+    if (config.cropH < 0) config.cropH = findInt("cropHeight");
 
     return true;
 }
@@ -345,6 +350,7 @@ int main(int argc, char* argv[]) {
             adjustedTimestampHns = 0;
         }
 
+        ID3D11Texture2D* inputTexture = texture;
         if (cropTexture) {
             D3D11_BOX box = {};
             int left = 0;

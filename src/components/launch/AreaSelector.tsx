@@ -145,17 +145,10 @@ export function AreaSelector() {
   };
 
   const confirmSelection = useCallback(async () => {
-    if (selection && (selection.width >= 10 || selection.height >= 10)) {
-      // Scale selection to screen pixels for high-DPI displays
-      const dpr = window.devicePixelRatio || 1;
-      const scaledSelection = {
-        x: selection.x * dpr,
-        y: selection.y * dpr,
-        width: selection.width * dpr,
-        height: selection.height * dpr
-      };
-      
-      const result = await window.electronAPI.setSelectedArea(scaledSelection);
+    if (selection && selection.width >= 10 && selection.height >= 10) {
+      // Pass selection in DIP coordinates (CSS pixels). Scaling to physical pixels
+      // is handled by the capture engine/backend to ensure accuracy across displays.
+      const result = await window.electronAPI.setSelectedArea(selection);
       if (result.success) {
         window.close();
       } else {
