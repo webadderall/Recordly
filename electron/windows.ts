@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import { createRequire } from "node:module";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { app, BrowserWindow, ipcMain } from "electron";
@@ -40,6 +41,33 @@ let hudOverlayExpanded = false;
 let hudOverlayCompactWidth = HUD_MIN_WINDOW_WIDTH;
 let hudOverlayCompactHeight = HUD_COMPACT_HEIGHT;
 let hudOverlayExpandedHeight = HUD_MIN_EXPANDED_HEIGHT;
+
+function getWindowsBuildNumber(): number | null {
+	if (process.platform !== "win32") {
+		return null;
+	}
+
+	const build = Number.parseInt(os.release().split(".")[2] ?? "", 10);
+	return Number.isFinite(build) ? build : null;
+}
+
+export function shouldForceInteractiveHudOverlay(): boolean {
+	const build = getWindowsBuildNumber();
+	return build !== null && build < 22000;
+}
+
+function setHudOverlayMousePassthrough(win: BrowserWindow, ignore: boolean) {
+	if (shouldForceInteractiveHudOverlay()) {
+		win.setIgnoreMouseEvents(false);
+		return;
+	}
+
+	if (ignore) {
+		win.setIgnoreMouseEvents(true, { forward: true });
+	} else {
+		win.setIgnoreMouseEvents(false);
+	}
+}
 
 function isHudOverlayCaptureProtectionSupported(): boolean {
 	return process.platform !== "linux";
@@ -83,7 +111,9 @@ function persistHudOverlayCaptureProtectionSetting(enabled: boolean): void {
 
 function getScreen() {
 	if (!app.isReady()) {
-		throw new Error("getScreen() called before app is ready. Ensure all screen access happens after app.whenReady().");
+		throw new Error(
+			"getScreen() called before app is ready. Ensure all screen access happens after app.whenReady().",
+		);
 	}
 	return nodeRequire("electron").screen as typeof import("electron").screen;
 }
@@ -174,11 +204,7 @@ function positionUpdateToastWindow() {
 
 ipcMain.on("hud-overlay-set-ignore-mouse", (_event, ignore: boolean) => {
 	if (hudOverlayWindow && !hudOverlayWindow.isDestroyed()) {
-		if (ignore) {
-			hudOverlayWindow.setIgnoreMouseEvents(true, { forward: true });
-		} else {
-			hudOverlayWindow.setIgnoreMouseEvents(false);
-		}
+		setHudOverlayMousePassthrough(hudOverlayWindow, ignore);
 	}
 });
 
@@ -320,7 +346,7 @@ export function createHudOverlayWindow(): BrowserWindow {
 		win.setContentProtection(hudOverlayHiddenFromCapture);
 	}
 
-	win.setIgnoreMouseEvents(true, { forward: true });
+	setHudOverlayMousePassthrough(win, true);
 
 	// On Windows 10, focus changes (e.g. showing a native notification) can break
 	// setIgnoreMouseEvents forwarding on a transparent always-on-top window, making
@@ -330,10 +356,10 @@ export function createHudOverlayWindow(): BrowserWindow {
 	if (process.platform === "win32") {
 		win.on("focus", () => {
 			if (!win.isDestroyed()) {
-				win.setIgnoreMouseEvents(false);
+				setHudOverlayMousePassthrough(win, false);
 				setTimeout(() => {
 					if (!win.isDestroyed()) {
-						win.setIgnoreMouseEvents(true, { forward: true });
+						setHudOverlayMousePassthrough(win, true);
 					}
 				}, 50);
 			}
@@ -347,10 +373,10 @@ export function createHudOverlayWindow(): BrowserWindow {
 				win.show();
 				win.moveTop();
 				if (process.platform === "win32") {
-					win.setIgnoreMouseEvents(false);
+					setHudOverlayMousePassthrough(win, false);
 					setTimeout(() => {
 						if (!win.isDestroyed()) {
-							win.setIgnoreMouseEvents(true, { forward: true });
+							setHudOverlayMousePassthrough(win, true);
 						}
 					}, 50);
 				}
