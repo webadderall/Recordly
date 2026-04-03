@@ -28,9 +28,9 @@
 		"label": "Velocidade"
 	},
 	"annotation": {
-		"label": "Anotacao",
+		"label": "Anotação",
 		"image": "Imagem",
-		"addAnnotation": "Adicionar Anotacao (A)"
+		"addAnnotation": "Adicionar Anotação (A)"
 	},
 	"addSpeed": "Adicionar Velocidade (S)",
 	"resizeLeft": "Redimensionar esquerda",

@@ -38,7 +38,7 @@
 		"imageUploadError": "Por favor, envie um arquivo de imagem JPG, PNG, GIF ou WebP."
 	},
 	"fontStyles": {
-		"classic": "Classico",
+		"classic": "Clássico",
 		"editor": "Editor",
 		"strong": "Forte",
 		"typewriter": "Máquina de Escrever",
@@ -48,17 +48,17 @@
 		"clean": "Limpo"
 	},
 	"format": {
-		"mp4Video": "Video MP4",
-		"mp4Description": "Arquivo de video de alta qualidade",
-		"gifAnimation": "Animacao GIF",
+		"mp4Video": "Vídeo MP4",
+		"mp4Description": "Arquivo de vídeo de alta qualidade",
+		"gifAnimation": "Animação GIF",
 		"gifDescription": "Imagem animada para compartilhar"
 	},
 	"gifOptions": {
 		"frameRate": "Taxa de Quadros",
 		"outputSize": "Tamanho de Saída",
 		"outputDimensions": "Saída: {{width}} x {{height}}px",
-		"loopAnimation": "Animacao em Loop",
-		"loopDescription": "O GIF sera reproduzido continuamente"
+		"loopAnimation": "Animação em Loop",
+		"loopDescription": "O GIF será reproduzido continuamente"
 	},
 	"tutorial": {
 		"howTrimmingWorks": "Como o corte funciona",
@@ -103,7 +103,7 @@
 		"showInFolder": "Mostrar na Pasta"
 	},
 	"project": {
-		"untitled": "Sem titulo"
+		"untitled": "Sem título"
 	},
 	"exportStatus": {
 		"exporting": "Exportando",
