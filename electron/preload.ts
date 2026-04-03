@@ -189,11 +189,21 @@ contextBridge.exposeInMainWorld("electronAPI", {
 		return ipcRenderer.invoke("delete-whisper-small-model");
 	},
 	onWhisperSmallModelDownloadProgress: (
-		callback: (state: { status: "idle" | "downloading" | "downloaded" | "error"; progress: number; path?: string | null; error?: string }) => void,
+		callback: (state: {
+			status: "idle" | "downloading" | "downloaded" | "error";
+			progress: number;
+			path?: string | null;
+			error?: string;
+		}) => void,
 	) => {
 		const listener = (
 			_event: Electron.IpcRendererEvent,
-			payload: { status: "idle" | "downloading" | "downloaded" | "error"; progress: number; path?: string | null; error?: string },
+			payload: {
+				status: "idle" | "downloading" | "downloaded" | "error";
+				progress: number;
+				path?: string | null;
+				error?: string;
+			},
 		) => callback(payload);
 		ipcRenderer.on("whisper-small-model-download-progress", listener);
 		return () => ipcRenderer.removeListener("whisper-small-model-download-progress", listener);
@@ -209,7 +219,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	setCurrentVideoPath: (path: string) => {
 		return ipcRenderer.invoke("set-current-video-path", path);
 	},
-	setCurrentRecordingSession: (session: { videoPath: string; webcamPath?: string | null; timeOffsetMs?: number }) => {
+	setCurrentRecordingSession: (session: {
+		videoPath: string;
+		webcamPath?: string | null;
+		timeOffsetMs?: number;
+	}) => {
 		return ipcRenderer.invoke("set-current-recording-session", session);
 	},
 	getCurrentRecordingSession: () => {
@@ -284,29 +298,29 @@ contextBridge.exposeInMainWorld("electronAPI", {
 		return ipcRenderer.invoke("check-for-app-updates");
 	},
 	onUpdateToastStateChanged: (
-		callback: (payload: {
-			version: string;
-			detail: string;
-			phase: "available" | "downloading" | "ready" | "error";
-			delayMs: number;
-			isPreview?: boolean;
-			progressPercent?: number;
-			primaryAction?: "download-update" | "install-update" | "retry-check";
-		} | null) => void,
+		callback: (
+			payload: {
+				version: string;
+				detail: string;
+				phase: "available" | "downloading" | "ready" | "error";
+				delayMs: number;
+				isPreview?: boolean;
+				progressPercent?: number;
+				primaryAction?: "download-update" | "install-update" | "retry-check";
+			} | null,
+		) => void,
 	) => {
 		const listener = (
 			_event: Electron.IpcRendererEvent,
-			payload:
-				| {
-						version: string;
-						detail: string;
-						phase: "available" | "downloading" | "ready" | "error";
-						delayMs: number;
-						isPreview?: boolean;
-						progressPercent?: number;
-						primaryAction?: "download-update" | "install-update" | "retry-check";
-				  }
-				| null,
+			payload: {
+				version: string;
+				detail: string;
+				phase: "available" | "downloading" | "ready" | "error";
+				delayMs: number;
+				isPreview?: boolean;
+				progressPercent?: number;
+				primaryAction?: "download-update" | "install-update" | "retry-check";
+			} | null,
 		) => callback(payload);
 		ipcRenderer.on("update-toast-state", listener);
 		return () => ipcRenderer.removeListener("update-toast-state", listener);
@@ -379,11 +393,16 @@ contextBridge.exposeInMainWorld("electronAPI", {
 		return () => ipcRenderer.removeListener("request-save-before-close", listener);
 	},
 	isNativeWindowsCaptureAvailable: () => ipcRenderer.invoke("is-native-windows-capture-available"),
-	muxNativeWindowsRecording: (pauseSegments?: Array<{ startMs: number; endMs: number }>) => ipcRenderer.invoke("mux-native-windows-recording", pauseSegments),
+	muxNativeWindowsRecording: (pauseSegments?: Array<{ startMs: number; endMs: number }>) =>
+		ipcRenderer.invoke("mux-native-windows-recording", pauseSegments),
 	hideOsCursor: () => ipcRenderer.invoke("hide-cursor"),
 	getAppVersion: () => ipcRenderer.invoke("app:getVersion"),
 	getRecordingPreferences: () => ipcRenderer.invoke("get-recording-preferences"),
-	setRecordingPreferences: (prefs: { microphoneEnabled?: boolean; microphoneDeviceId?: string; systemAudioEnabled?: boolean }) => ipcRenderer.invoke("set-recording-preferences", prefs),
+	setRecordingPreferences: (prefs: {
+		microphoneEnabled?: boolean;
+		microphoneDeviceId?: string;
+		systemAudioEnabled?: boolean;
+	}) => ipcRenderer.invoke("set-recording-preferences", prefs),
 	getCountdownDelay: () => ipcRenderer.invoke("get-countdown-delay"),
 	setCountdownDelay: (delay: number) => ipcRenderer.invoke("set-countdown-delay", delay),
 	startCountdown: (seconds: number) => ipcRenderer.invoke("start-countdown", seconds),

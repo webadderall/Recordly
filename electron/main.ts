@@ -8,8 +8,8 @@ import {
 	dialog,
 	ipcMain,
 	Menu,
-	nativeImage,
 	Notification,
+	nativeImage,
 	session,
 	systemPreferences,
 	Tray,
@@ -21,26 +21,26 @@ import {
 	killWindowsCaptureProcess,
 	registerIpcHandlers,
 } from "./ipc/handlers";
+import type { UpdateToastPayload } from "./updater";
 import {
 	checkForAppUpdates,
+	deferUpdateReminder,
 	dismissUpdateToast,
 	downloadAvailableUpdate,
-	deferUpdateReminder,
 	getCurrentUpdateToastPayload,
 	getUpdaterLogPath,
 	getUpdateStatusSummary,
 	installDownloadedUpdateNow,
 	previewUpdateToast,
-	skipAvailableUpdateVersion,
 	setupAutoUpdates,
+	skipAvailableUpdateVersion,
 } from "./updater";
-import type { UpdateToastPayload } from "./updater";
 import {
 	createEditorWindow,
 	createHudOverlayWindow,
 	createSourceSelectorWindow,
-	getUpdateToastWindow,
 	getHudOverlayWindow,
+	getUpdateToastWindow,
 	hideUpdateToastWindow,
 	showUpdateToastWindow,
 } from "./windows";
@@ -408,7 +408,9 @@ function sendUpdateToastToWindows(channel: "update-toast-state", payload: unknow
 			return false;
 		}
 
-		const notificationKey = [updatePayload.phase, updatePayload.version, updatePayload.detail].join(":");
+		const notificationKey = [updatePayload.phase, updatePayload.version, updatePayload.detail].join(
+			":",
+		);
 		if (activeUpdateNotificationKey === notificationKey) {
 			return true;
 		}
@@ -682,10 +684,14 @@ app.whenReady().then(async () => {
 		const cameraStatus = systemPreferences.getMediaAccessStatus("camera");
 		const micStatus = systemPreferences.getMediaAccessStatus("microphone");
 		if (cameraStatus !== "granted") {
-			console.warn(`[permissions] Camera access is "${cameraStatus}" — webcam may not work. Check Windows Settings > Privacy > Camera.`);
+			console.warn(
+				`[permissions] Camera access is "${cameraStatus}" — webcam may not work. Check Windows Settings > Privacy > Camera.`,
+			);
 		}
 		if (micStatus !== "granted") {
-			console.warn(`[permissions] Microphone access is "${micStatus}" — mic recording may not work. Check Windows Settings > Privacy > Microphone.`);
+			console.warn(
+				`[permissions] Microphone access is "${micStatus}" — mic recording may not work. Check Windows Settings > Privacy > Microphone.`,
+			);
 		}
 	}
 

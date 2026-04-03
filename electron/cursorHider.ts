@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process'
+import { spawnSync } from "node:child_process";
 
 const PY_HIDE_WIN = `
 import ctypes, sys
@@ -25,7 +25,7 @@ for _ in range(32):
     user32.ShowCursor(False)
 
 sys.exit(0)
-`.trim()
+`.trim();
 
 const PY_SHOW_WIN = `
 import ctypes, sys
@@ -52,90 +52,92 @@ for _ in range(32):
     user32.ShowCursor(True)
 
 sys.exit(0)
-`.trim()
+`.trim();
 
 function getPowerShellCommand(show: boolean) {
-  const desiredFlag = show ? 1 : 0
-  const showLiteral = show ? '$true' : '$false'
+	const desiredFlag = show ? 1 : 0;
+	const showLiteral = show ? "$true" : "$false";
 
-  return [
-    '$signature = @"',
-    'using System;',
-    'using System.Runtime.InteropServices;',
-    'public struct POINT { public int X; public int Y; }',
-    'public struct CURSORINFO { public int cbSize; public int flags; public IntPtr hCursor; public POINT ptScreenPos; }',
-    'public static class CursorNative {',
-    '  [DllImport("user32.dll")] public static extern int ShowCursor(bool show);',
-    '  [DllImport("user32.dll")] public static extern bool GetCursorInfo(ref CURSORINFO info);',
-    '}',
-    '"@;',
-    'Add-Type -TypeDefinition $signature -Language CSharp -ErrorAction SilentlyContinue | Out-Null;',
-    '$info = New-Object CURSORINFO;',
-    '$info.cbSize = [Runtime.InteropServices.Marshal]::SizeOf([type]CURSORINFO);',
-    'for ($i = 0; $i -lt 32; $i++) {',
-    '  if ([CursorNative]::GetCursorInfo([ref]$info) -and (($info.flags -band 1) -eq ' + desiredFlag + ')) { exit 0 }',
-    '  [CursorNative]::ShowCursor(' + showLiteral + ') | Out-Null;',
-    '}',
-    'exit 0',
-  ].join(' ')
+	return [
+		'$signature = @"',
+		"using System;",
+		"using System.Runtime.InteropServices;",
+		"public struct POINT { public int X; public int Y; }",
+		"public struct CURSORINFO { public int cbSize; public int flags; public IntPtr hCursor; public POINT ptScreenPos; }",
+		"public static class CursorNative {",
+		'  [DllImport("user32.dll")] public static extern int ShowCursor(bool show);',
+		'  [DllImport("user32.dll")] public static extern bool GetCursorInfo(ref CURSORINFO info);',
+		"}",
+		'"@;',
+		"Add-Type -TypeDefinition $signature -Language CSharp -ErrorAction SilentlyContinue | Out-Null;",
+		"$info = New-Object CURSORINFO;",
+		"$info.cbSize = [Runtime.InteropServices.Marshal]::SizeOf([type]CURSORINFO);",
+		"for ($i = 0; $i -lt 32; $i++) {",
+		"  if ([CursorNative]::GetCursorInfo([ref]$info) -and (($info.flags -band 1) -eq " +
+			desiredFlag +
+			")) { exit 0 }",
+		"  [CursorNative]::ShowCursor(" + showLiteral + ") | Out-Null;",
+		"}",
+		"exit 0",
+	].join(" ");
 }
 
 function runPythonSnippet(code: string) {
-  for (const executable of ['python', 'python3', 'py']) {
-    const result = spawnSync(executable, ['-c', code], { timeout: 5000 })
-    if (!result.error && result.status === 0) {
-      return true
-    }
-  }
+	for (const executable of ["python", "python3", "py"]) {
+		const result = spawnSync(executable, ["-c", code], { timeout: 5000 });
+		if (!result.error && result.status === 0) {
+			return true;
+		}
+	}
 
-  return false
+	return false;
 }
 
 function runPowerShellSnippet(command: string) {
-  const result = spawnSync(
-    'powershell.exe',
-    ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-Command', command],
-    { timeout: 8000 },
-  )
+	const result = spawnSync(
+		"powershell.exe",
+		["-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-Command", command],
+		{ timeout: 8000 },
+	);
 
-  return !result.error && result.status === 0
+	return !result.error && result.status === 0;
 }
 
-let cursorHidden = false
+let cursorHidden = false;
 
 export function hideCursor() {
-  if (process.platform !== 'win32' || cursorHidden) {
-    return false
-  }
+	if (process.platform !== "win32" || cursorHidden) {
+		return false;
+	}
 
-  try {
-    const didHide = runPythonSnippet(PY_HIDE_WIN)
-      || runPowerShellSnippet(getPowerShellCommand(false))
+	try {
+		const didHide =
+			runPythonSnippet(PY_HIDE_WIN) || runPowerShellSnippet(getPowerShellCommand(false));
 
-    if (didHide) {
-      cursorHidden = true
-    }
+		if (didHide) {
+			cursorHidden = true;
+		}
 
-    return didHide
-  } catch (error) {
-    console.error('[cursorHider] Failed to hide Windows cursor:', error)
-    return false
-  }
+		return didHide;
+	} catch (error) {
+		console.error("[cursorHider] Failed to hide Windows cursor:", error);
+		return false;
+	}
 }
 
 export function showCursor() {
-  if (process.platform !== 'win32' || !cursorHidden) {
-    return false
-  }
+	if (process.platform !== "win32" || !cursorHidden) {
+		return false;
+	}
 
-  try {
-    const didShow = runPythonSnippet(PY_SHOW_WIN)
-      || runPowerShellSnippet(getPowerShellCommand(true))
-    return didShow
-  } catch (error) {
-    console.error('[cursorHider] Failed to show Windows cursor:', error)
-    return false
-  } finally {
-    cursorHidden = false
-  }
+	try {
+		const didShow =
+			runPythonSnippet(PY_SHOW_WIN) || runPowerShellSnippet(getPowerShellCommand(true));
+		return didShow;
+	} catch (error) {
+		console.error("[cursorHider] Failed to show Windows cursor:", error);
+		return false;
+	} finally {
+		cursorHidden = false;
+	}
 }

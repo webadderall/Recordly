@@ -1,2 +1,1 @@
-declare module 'uiohook-napi';
-
+declare module "uiohook-napi";

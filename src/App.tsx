@@ -49,12 +49,12 @@ export default function App() {
 
 	switch (windowType) {
 		case "hud-overlay":
-				return (
-					<>
-						<LaunchWindow />
-						<Toaster theme="dark" className="pointer-events-auto" />
-					</>
-				);
+			return (
+				<>
+					<LaunchWindow />
+					<Toaster theme="dark" className="pointer-events-auto" />
+				</>
+			);
 		case "source-selector":
 			return <SourceSelector />;
 		case "countdown":

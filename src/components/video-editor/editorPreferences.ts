@@ -134,12 +134,10 @@ function normalizeEditorControls(
 		zoomInOverlapMs: raw.zoomInOverlapMs ?? fallback.zoomInOverlapMs,
 		zoomOutDurationMs: raw.zoomOutDurationMs ?? fallback.zoomOutDurationMs,
 		connectedZoomGapMs: raw.connectedZoomGapMs ?? fallback.connectedZoomGapMs,
-		connectedZoomDurationMs:
-			raw.connectedZoomDurationMs ?? fallback.connectedZoomDurationMs,
+		connectedZoomDurationMs: raw.connectedZoomDurationMs ?? fallback.connectedZoomDurationMs,
 		zoomInEasing: raw.zoomInEasing ?? fallback.zoomInEasing,
 		zoomOutEasing: raw.zoomOutEasing ?? fallback.zoomOutEasing,
-		connectedZoomEasing:
-			raw.connectedZoomEasing ?? fallback.connectedZoomEasing,
+		connectedZoomEasing: raw.connectedZoomEasing ?? fallback.connectedZoomEasing,
 		showCursor: raw.showCursor ?? fallback.showCursor,
 		loopCursor: raw.loopCursor ?? fallback.loopCursor,
 		cursorStyle: raw.cursorStyle ?? fallback.cursorStyle,
@@ -147,8 +145,7 @@ function normalizeEditorControls(
 		cursorSmoothing: raw.cursorSmoothing ?? fallback.cursorSmoothing,
 		cursorMotionBlur: raw.cursorMotionBlur ?? fallback.cursorMotionBlur,
 		cursorClickBounce: raw.cursorClickBounce ?? fallback.cursorClickBounce,
-		cursorClickBounceDuration:
-			raw.cursorClickBounceDuration ?? fallback.cursorClickBounceDuration,
+		cursorClickBounceDuration: raw.cursorClickBounceDuration ?? fallback.cursorClickBounceDuration,
 		cursorSway: raw.cursorSway ?? fallback.cursorSway,
 		borderRadius: raw.borderRadius ?? fallback.borderRadius,
 		padding: raw.padding ?? fallback.padding,
@@ -218,8 +215,7 @@ export function normalizeEditorPreferences(
 		customWallpapers: normalizeCustomWallpapers(raw.customWallpapers, fallback.customWallpapers),
 		whisperExecutablePath:
 			normalizeNullablePath(raw.whisperExecutablePath) ?? fallback.whisperExecutablePath,
-		whisperModelPath:
-			normalizeNullablePath(raw.whisperModelPath) ?? fallback.whisperModelPath,
+		whisperModelPath: normalizeNullablePath(raw.whisperModelPath) ?? fallback.whisperModelPath,
 	};
 }
 

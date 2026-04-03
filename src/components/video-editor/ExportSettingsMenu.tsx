@@ -3,12 +3,7 @@ import { LayoutGroup, motion } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useScopedT } from "@/contexts/I18nContext";
-import type {
-	ExportFormat,
-	ExportQuality,
-	GifFrameRate,
-	GifSizePreset,
-} from "@/lib/exporter";
+import type { ExportFormat, ExportQuality, GifFrameRate, GifSizePreset } from "@/lib/exporter";
 import { GIF_FRAME_RATES, GIF_SIZE_PRESETS } from "@/lib/exporter";
 import { cn } from "@/lib/utils";
 
@@ -48,7 +43,12 @@ export function ExportSettingsMenu({
 	const tSettings = useScopedT("settings");
 
 	return (
-		<div className={cn("w-full rounded-2xl border border-white/10 bg-[#17171a] p-3 text-slate-200", className)}>
+		<div
+			className={cn(
+				"w-full rounded-2xl border border-white/10 bg-[#17171a] p-3 text-slate-200",
+				className,
+			)}
+		>
 			<div className="mb-2 flex items-center justify-between">
 				<span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
 					{tSettings("export.title", "Export")}
@@ -57,10 +57,12 @@ export function ExportSettingsMenu({
 
 			<div className="mb-3 flex items-center gap-2">
 				<LayoutGroup id="header-export-format-toggle">
-					{([
-						{ value: "mp4", label: tSettings("export.mp4"), icon: Film },
-						{ value: "gif", label: tSettings("export.gif"), icon: Image },
-					] as const).map((option) => {
+					{(
+						[
+							{ value: "mp4", label: tSettings("export.mp4"), icon: Film },
+							{ value: "gif", label: tSettings("export.gif"), icon: Image },
+						] as const
+					).map((option) => {
 						const Icon = option.icon;
 						const isActive = exportFormat === option.value;
 						return (
@@ -95,12 +97,14 @@ export function ExportSettingsMenu({
 			{exportFormat === "mp4" ? (
 				<LayoutGroup id="header-export-quality-toggle">
 					<div className="mb-3 grid min-h-12 w-full grid-cols-4 rounded-xl border border-white/5 bg-white/5 p-0.5">
-						{([
-							{ value: "medium", label: tSettings("export.quality.low") },
-							{ value: "good", label: tSettings("export.quality.medium") },
-							{ value: "high", label: tSettings("export.quality.high") },
-							{ value: "source", label: tSettings("export.quality.original") },
-						] as const).map((option) => {
+						{(
+							[
+								{ value: "medium", label: tSettings("export.quality.low") },
+								{ value: "good", label: tSettings("export.quality.medium") },
+								{ value: "high", label: tSettings("export.quality.high") },
+								{ value: "source", label: tSettings("export.quality.original") },
+							] as const
+						).map((option) => {
 							const isActive = exportQuality === option.value;
 							return (
 								<button
@@ -117,12 +121,22 @@ export function ExportSettingsMenu({
 										/>
 									) : null}
 									<span className="relative z-10 flex h-full flex-col items-center justify-center leading-tight">
-										<span className={cn(isActive ? "text-black" : "text-slate-400 hover:text-slate-200")}>
+										<span
+											className={cn(
+												isActive ? "text-black" : "text-slate-400 hover:text-slate-200",
+											)}
+										>
 											{option.label}
 										</span>
 										{mp4OutputDimensions ? (
-											<span className={cn("mt-0.5 text-[9px]", isActive ? "text-black/75" : "text-slate-500") }>
-												{mp4OutputDimensions[option.value].width} x {mp4OutputDimensions[option.value].height}
+											<span
+												className={cn(
+													"mt-0.5 text-[9px]",
+													isActive ? "text-black/75" : "text-slate-500",
+												)}
+											>
+												{mp4OutputDimensions[option.value].width} x{" "}
+												{mp4OutputDimensions[option.value].height}
 											</span>
 										) : null}
 									</span>
@@ -146,9 +160,18 @@ export function ExportSettingsMenu({
 											className="relative rounded-lg text-[11px] font-medium transition-colors"
 										>
 											{isActive ? (
-												<motion.span layoutId="header-gif-frame-rate-pill" className="absolute inset-0 rounded-lg bg-white" transition={{ type: "spring", stiffness: 420, damping: 34 }} />
+												<motion.span
+													layoutId="header-gif-frame-rate-pill"
+													className="absolute inset-0 rounded-lg bg-white"
+													transition={{ type: "spring", stiffness: 420, damping: 34 }}
+												/>
 											) : null}
-											<span className={cn("relative z-10", isActive ? "text-black" : "text-slate-400 hover:text-slate-200")}>
+											<span
+												className={cn(
+													"relative z-10",
+													isActive ? "text-black" : "text-slate-400 hover:text-slate-200",
+												)}
+											>
 												{rate.value}
 											</span>
 										</button>
@@ -168,9 +191,18 @@ export function ExportSettingsMenu({
 											className="relative rounded-lg text-[11px] font-medium transition-colors"
 										>
 											{isActive ? (
-												<motion.span layoutId="header-gif-size-pill" className="absolute inset-0 rounded-lg bg-white" transition={{ type: "spring", stiffness: 420, damping: 34 }} />
+												<motion.span
+													layoutId="header-gif-size-pill"
+													className="absolute inset-0 rounded-lg bg-white"
+													transition={{ type: "spring", stiffness: 420, damping: 34 }}
+												/>
 											) : null}
-											<span className={cn("relative z-10", isActive ? "text-black" : "text-slate-400 hover:text-slate-200")}>
+											<span
+												className={cn(
+													"relative z-10",
+													isActive ? "text-black" : "text-slate-400 hover:text-slate-200",
+												)}
+											>
 												{key === "original"
 													? tSettings("export.sizePresetOriginalShort", "Orig")
 													: key === "medium"
@@ -189,13 +221,22 @@ export function ExportSettingsMenu({
 						</span>
 						<div className="flex items-center gap-2">
 							<span className="text-[10px] text-slate-400">{tSettings("export.loop")}</span>
-							<Switch checked={gifLoop} onCheckedChange={onGifLoopChange} className="scale-75 data-[state=checked]:bg-[#2563EB]" />
+							<Switch
+								checked={gifLoop}
+								onCheckedChange={onGifLoopChange}
+								className="scale-75 data-[state=checked]:bg-[#2563EB]"
+							/>
 						</div>
 					</div>
 				</div>
 			)}
 
-			<Button type="button" size="lg" onClick={onExport} className="h-11 w-full gap-2 rounded-lg bg-[#2563EB] text-sm font-semibold text-white transition-colors duration-200 hover:bg-[#2563EB]/90">
+			<Button
+				type="button"
+				size="lg"
+				onClick={onExport}
+				className="h-11 w-full gap-2 rounded-lg bg-[#2563EB] text-sm font-semibold text-white transition-colors duration-200 hover:bg-[#2563EB]/90"
+			>
 				<Download className="h-4 w-4" />
 				{tSettings("export.exportVideo", undefined, {
 					format: exportFormat === "gif" ? "GIF" : "Video",

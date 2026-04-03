@@ -1,107 +1,111 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState } from "react";
 
 export interface VideoDevice {
-  deviceId: string
-  label: string
-  groupId: string
+	deviceId: string;
+	label: string;
+	groupId: string;
 }
 
-let hasRequestedVideoLabels = false
+let hasRequestedVideoLabels = false;
 
 export function useVideoDevices(enabled: boolean = true) {
-  const [devices, setDevices] = useState<VideoDevice[]>([])
-  const [selectedDeviceId, setSelectedDeviceId] = useState<string>('default')
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+	const [devices, setDevices] = useState<VideoDevice[]>([]);
+	const [selectedDeviceId, setSelectedDeviceId] = useState<string>("default");
+	const [isLoading, setIsLoading] = useState(false);
+	const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!enabled) {
-      return
-    }
+	useEffect(() => {
+		if (!enabled) {
+			return;
+		}
 
-    let mounted = true
+		let mounted = true;
 
-    const loadDevices = async () => {
-      let permissionStream: MediaStream | null = null
+		const loadDevices = async () => {
+			let permissionStream: MediaStream | null = null;
 
-      try {
-        setIsLoading(true)
-        setError(null)
+			try {
+				setIsLoading(true);
+				setError(null);
 
-        let allDevices = await navigator.mediaDevices.enumerateDevices()
-        let videoInputs = allDevices
-          .filter((device) => device.kind === 'videoinput')
-          .map((device, index) => ({
-            deviceId: device.deviceId,
-            label: device.label || `Camera ${index + 1}`,
-            groupId: device.groupId,
-          }))
+				let allDevices = await navigator.mediaDevices.enumerateDevices();
+				let videoInputs = allDevices
+					.filter((device) => device.kind === "videoinput")
+					.map((device, index) => ({
+						deviceId: device.deviceId,
+						label: device.label || `Camera ${index + 1}`,
+						groupId: device.groupId,
+					}));
 
-        const needsLabelPermission =
-          videoInputs.length > 0 && videoInputs.every((device) => !device.label.trim())
+				const needsLabelPermission =
+					videoInputs.length > 0 && videoInputs.every((device) => !device.label.trim());
 
-        if (needsLabelPermission && !hasRequestedVideoLabels) {
-          hasRequestedVideoLabels = true
-          permissionStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false })
-          allDevices = await navigator.mediaDevices.enumerateDevices()
-          videoInputs = allDevices
-            .filter((device) => device.kind === 'videoinput')
-            .map((device, index) => ({
-              deviceId: device.deviceId,
-              label: device.label || `Camera ${index + 1}`,
-              groupId: device.groupId,
-            }))
-        }
+				if (needsLabelPermission && !hasRequestedVideoLabels) {
+					hasRequestedVideoLabels = true;
+					permissionStream = await navigator.mediaDevices.getUserMedia({
+						video: true,
+						audio: false,
+					});
+					allDevices = await navigator.mediaDevices.enumerateDevices();
+					videoInputs = allDevices
+						.filter((device) => device.kind === "videoinput")
+						.map((device, index) => ({
+							deviceId: device.deviceId,
+							label: device.label || `Camera ${index + 1}`,
+							groupId: device.groupId,
+						}));
+				}
 
-        if (mounted) {
-          setDevices(videoInputs)
-          setSelectedDeviceId((currentDeviceId) => {
-            if (currentDeviceId === 'default' && videoInputs.length > 0) {
-              return videoInputs[0].deviceId
-            }
+				if (mounted) {
+					setDevices(videoInputs);
+					setSelectedDeviceId((currentDeviceId) => {
+						if (currentDeviceId === "default" && videoInputs.length > 0) {
+							return videoInputs[0].deviceId;
+						}
 
-            if (
-              currentDeviceId !== 'default' &&
-              videoInputs.some((device) => device.deviceId === currentDeviceId)
-            ) {
-              return currentDeviceId
-            }
+						if (
+							currentDeviceId !== "default" &&
+							videoInputs.some((device) => device.deviceId === currentDeviceId)
+						) {
+							return currentDeviceId;
+						}
 
-            return videoInputs[0]?.deviceId ?? 'default'
-          })
-          setIsLoading(false)
-        }
-      } catch (error) {
-        if (mounted) {
-          const message = error instanceof Error ? error.message : 'Failed to enumerate video devices'
-          setError(message)
-          setIsLoading(false)
-          console.error('Error loading video devices:', error)
-        }
-      } finally {
-        permissionStream?.getTracks().forEach((track) => track.stop())
-      }
-    }
+						return videoInputs[0]?.deviceId ?? "default";
+					});
+					setIsLoading(false);
+				}
+			} catch (error) {
+				if (mounted) {
+					const message =
+						error instanceof Error ? error.message : "Failed to enumerate video devices";
+					setError(message);
+					setIsLoading(false);
+					console.error("Error loading video devices:", error);
+				}
+			} finally {
+				permissionStream?.getTracks().forEach((track) => track.stop());
+			}
+		};
 
-    void loadDevices()
+		void loadDevices();
 
-    const handleDeviceChange = () => {
-      void loadDevices()
-    }
+		const handleDeviceChange = () => {
+			void loadDevices();
+		};
 
-    navigator.mediaDevices.addEventListener('devicechange', handleDeviceChange)
+		navigator.mediaDevices.addEventListener("devicechange", handleDeviceChange);
 
-    return () => {
-      mounted = false
-      navigator.mediaDevices.removeEventListener('devicechange', handleDeviceChange)
-    }
-  }, [enabled])
+		return () => {
+			mounted = false;
+			navigator.mediaDevices.removeEventListener("devicechange", handleDeviceChange);
+		};
+	}, [enabled]);
 
-  return {
-    devices,
-    selectedDeviceId,
-    setSelectedDeviceId,
-    isLoading,
-    error,
-  }
+	return {
+		devices,
+		selectedDeviceId,
+		setSelectedDeviceId,
+		isLoading,
+		error,
+	};
 }

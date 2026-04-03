@@ -1,8 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
+import type { MessageBoxOptions, MessageBoxReturnValue } from "electron";
 import { app, BrowserWindow, dialog } from "electron";
 import { autoUpdater } from "electron-updater";
-import type { MessageBoxOptions, MessageBoxReturnValue } from "electron";
 import { USER_DATA_PATH } from "./appPaths";
 
 const UPDATE_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
@@ -181,7 +181,8 @@ function createAvailableUpdateToastPayload(version: string): UpdateToastPayload 
 	return {
 		version,
 		phase: "available",
-		detail: "A new version is available. Download it now, or wait and we will remind you again in 3 hours.",
+		detail:
+			"A new version is available. Download it now, or wait and we will remind you again in 3 hours.",
 		delayMs: UPDATE_REMINDER_DELAY_MS,
 		primaryAction: "download-update",
 	};
@@ -208,7 +209,8 @@ function createDownloadedUpdateToastPayload(version: string): UpdateToastPayload
 	return {
 		version,
 		phase: "ready",
-		detail: "Install now to restart into the new version, or wait and we will remind you again in 3 hours.",
+		detail:
+			"Install now to restart into the new version, or wait and we will remind you again in 3 hours.",
 		delayMs: UPDATE_REMINDER_DELAY_MS,
 		primaryAction: "install-update",
 	};
@@ -289,13 +291,10 @@ function simulateDevPreviewDownload(sendToRenderer?: UpdateToastSender) {
 	clearDevPreviewProgressTimer();
 
 	let progressPercent = 0;
-	emitUpdateToastState(
-		sendToRenderer,
-		{
-			...createDownloadingUpdateToastPayload(DEV_UPDATE_PREVIEW_VERSION, progressPercent),
-			isPreview: true,
-		},
-	);
+	emitUpdateToastState(sendToRenderer, {
+		...createDownloadingUpdateToastPayload(DEV_UPDATE_PREVIEW_VERSION, progressPercent),
+		isPreview: true,
+	});
 
 	devPreviewProgressTimer = setInterval(() => {
 		progressPercent = Math.min(100, progressPercent + DEV_UPDATE_PREVIEW_PROGRESS_INCREMENT);
@@ -307,7 +306,8 @@ function simulateDevPreviewDownload(sendToRenderer?: UpdateToastSender) {
 			emitUpdateToastState(sendToRenderer, {
 				...createDownloadedUpdateToastPayload(DEV_UPDATE_PREVIEW_VERSION),
 				isPreview: true,
-				detail: "Development preview: the update is ready to install. No real update will be installed.",
+				detail:
+					"Development preview: the update is ready to install. No real update will be installed.",
 			});
 			return;
 		}
@@ -316,18 +316,14 @@ function simulateDevPreviewDownload(sendToRenderer?: UpdateToastSender) {
 			return;
 		}
 
-		emitUpdateToastState(
-			sendToRenderer,
-			{
-				...createDownloadingUpdateToastPayload(DEV_UPDATE_PREVIEW_VERSION, progressPercent),
-				isPreview: true,
-			},
-		);
+		emitUpdateToastState(sendToRenderer, {
+			...createDownloadingUpdateToastPayload(DEV_UPDATE_PREVIEW_VERSION, progressPercent),
+			isPreview: true,
+		});
 	}, DEV_UPDATE_PREVIEW_PROGRESS_STEP_MS);
 
 	return { success: true };
 }
-
 
 export function dismissUpdateToast(
 	getMainWindow: () => BrowserWindow | null,
@@ -345,11 +341,7 @@ export function dismissUpdateToast(
 	}
 
 	if (currentToastPayload?.phase === "ready") {
-		return deferUpdateReminder(
-			getMainWindow,
-			sendToRenderer,
-			DISMISSED_READY_REMINDER_DELAY_MS,
-		);
+		return deferUpdateReminder(getMainWindow, sendToRenderer, DISMISSED_READY_REMINDER_DELAY_MS);
 	}
 
 	if (currentToastPayload?.phase === "available" || currentToastPayload?.phase === "error") {
@@ -414,10 +406,7 @@ export async function downloadAvailableUpdate(sendToRenderer?: UpdateToastSender
 			detail: String(error),
 		});
 		writeUpdaterLog(`Update download failed for ${availableVersion}.`, error);
-		emitUpdateToastState(
-			sendToRenderer,
-			createUpdateErrorToastPayload(availableVersion, error),
-		);
+		emitUpdateToastState(sendToRenderer, createUpdateErrorToastPayload(availableVersion, error));
 		return { success: false, message: String(error) };
 	}
 }
@@ -524,7 +513,7 @@ async function showAvailableUpdateDialog(
 async function showDownloadedUpdateDialog(
 	getMainWindow: () => BrowserWindow | null,
 	version: string,
-    options?: { isPreview?: boolean },
+	options?: { isPreview?: boolean },
 ) {
 	const isPreview = Boolean(options?.isPreview);
 	const result = await showMessageBox(getMainWindow, {
@@ -658,7 +647,11 @@ export function setupAutoUpdates(
 	writeUpdaterLog(`Updater initialized. logPath=${UPDATER_LOG_PATH}`);
 
 	autoUpdater.on("checking-for-update", () => {
-		setUpdateStatusSummary({ status: "checking", availableVersion: null, detail: "Checking for updates..." });
+		setUpdateStatusSummary({
+			status: "checking",
+			availableVersion: null,
+			detail: "Checking for updates...",
+		});
 		writeUpdaterLog("electron-updater emitted checking-for-update.");
 	});
 
@@ -722,9 +715,7 @@ export function setupAutoUpdates(
 			availableVersion,
 			detail: `Downloading Recordly ${availableVersion}`,
 		});
-		writeUpdaterLog(
-			`Download progress for ${availableVersion}: ${progress.percent.toFixed(1)}%`,
-		);
+		writeUpdaterLog(`Download progress for ${availableVersion}: ${progress.percent.toFixed(1)}%`);
 		if (downloadToastDismissed) {
 			return;
 		}
@@ -752,10 +743,7 @@ export function setupAutoUpdates(
 		if (downloadInProgress && availableVersion) {
 			downloadInProgress = false;
 			downloadToastDismissed = false;
-			emitUpdateToastState(
-				sendToRenderer,
-				createUpdateErrorToastPayload(availableVersion, error),
-			);
+			emitUpdateToastState(sendToRenderer, createUpdateErrorToastPayload(availableVersion, error));
 		}
 		if (shouldReport) {
 			void showUpdateErrorDialog(getMainWindow, error);

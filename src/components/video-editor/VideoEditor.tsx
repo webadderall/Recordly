@@ -69,18 +69,18 @@ import {
 	KeyboardShortcutsDialog,
 } from "./TutorialHelp";
 import TimelineEditor from "./timeline/TimelineEditor";
-import {
-	normalizeCursorTelemetry,
-} from "./timeline/zoomSuggestionUtils";
+import { normalizeCursorTelemetry } from "./timeline/zoomSuggestionUtils";
 import {
 	type AnnotationRegion,
 	type AudioRegion,
 	type AutoCaptionSettings,
 	type CaptionCue,
+	type ClipRegion,
 	type CropRegion,
 	type CursorStyle,
 	type CursorTelemetryPoint,
 	clampFocusToDepth,
+	clipsToTrims,
 	DEFAULT_ANNOTATION_POSITION,
 	DEFAULT_ANNOTATION_SIZE,
 	DEFAULT_ANNOTATION_STYLE,
@@ -103,8 +103,6 @@ import {
 	type PlaybackSpeed,
 	type SpeedRegion,
 	type TrimRegion,
-	type ClipRegion,
-	clipsToTrims,
 	type WebcamOverlaySettings,
 	type ZoomDepth,
 	type ZoomFocus,
@@ -1183,8 +1181,8 @@ export default function VideoEditor() {
 			setWebcam(normalizedEditor.webcam);
 			setZoomRegions(normalizedEditor.zoomRegions);
 			setTrimRegions(normalizedEditor.trimRegions);
-			setClipRegions((normalizedEditor as any).clipRegions ?? []);
-			clipInitializedRef.current = ((normalizedEditor as any).clipRegions ?? []).length > 0;
+			setClipRegions(normalizedEditor.clipRegions ?? []);
+			clipInitializedRef.current = (normalizedEditor.clipRegions ?? []).length > 0;
 			setSpeedRegions(normalizedEditor.speedRegions);
 			setAnnotationRegions(normalizedEditor.annotationRegions);
 			setAudioRegions(normalizedEditor.audioRegions);
@@ -1214,7 +1212,7 @@ export default function VideoEditor() {
 			);
 			nextClipIdRef.current = deriveNextId(
 				"clip",
-				((normalizedEditor as any).clipRegions ?? []).map((region: ClipRegion) => region.id),
+				(normalizedEditor.clipRegions ?? []).map((region) => region.id),
 			);
 			nextSpeedIdRef.current = deriveNextId(
 				"speed",
@@ -1345,9 +1343,9 @@ export default function VideoEditor() {
 		() =>
 			Boolean(
 				currentProjectPath &&
-				currentProjectSnapshot &&
-				lastSavedSnapshot &&
-				!areDeepEqual(currentProjectSnapshot, lastSavedSnapshot),
+					currentProjectSnapshot &&
+					lastSavedSnapshot &&
+					!areDeepEqual(currentProjectSnapshot, lastSavedSnapshot),
 			),
 		[currentProjectPath, currentProjectSnapshot, lastSavedSnapshot],
 	);
@@ -1835,10 +1833,7 @@ export default function VideoEditor() {
 				console.warn("Unable to load cursor telemetry:", telemetryError);
 				if (mounted) {
 					setCursorTelemetry([]);
-					if (
-						pendingFreshRecordingAutoZoomPathRef.current === videoPath &&
-						retryAttempts < 12
-					) {
+					if (pendingFreshRecordingAutoZoomPathRef.current === videoPath && retryAttempts < 12) {
 						retryAttempts += 1;
 						pendingTelemetryRetryTimeoutRef.current = window.setTimeout(() => {
 							pendingTelemetryRetryTimeoutRef.current = null;
@@ -1949,7 +1944,15 @@ export default function VideoEditor() {
 		autoSuggestedVideoPathRef.current = videoPath;
 		pendingFreshRecordingAutoZoomPathRef.current = null;
 		setAutoSuggestZoomsTrigger((value) => value + 1);
-	}, [videoPath, loading, isPreviewReady, duration, effectiveCursorTelemetry.length, loopCursor, zoomRegions.length]);
+	}, [
+		videoPath,
+		loading,
+		isPreviewReady,
+		duration,
+		effectiveCursorTelemetry.length,
+		loopCursor,
+		zoomRegions.length,
+	]);
 
 	function togglePlayPause() {
 		const playback = videoPlaybackRef.current;
@@ -2047,10 +2050,10 @@ export default function VideoEditor() {
 			prev.map((region) =>
 				region.id === id
 					? {
-						...region,
-						startMs: Math.round(span.start),
-						endMs: Math.round(span.end),
-					}
+							...region,
+							startMs: Math.round(span.start),
+							endMs: Math.round(span.end),
+						}
 					: region,
 			),
 		);
@@ -2061,10 +2064,10 @@ export default function VideoEditor() {
 			prev.map((region) =>
 				region.id === id
 					? {
-						...region,
-						startMs: Math.round(span.start),
-						endMs: Math.round(span.end),
-					}
+							...region,
+							startMs: Math.round(span.start),
+							endMs: Math.round(span.end),
+						}
 					: region,
 			),
 		);
@@ -2075,9 +2078,9 @@ export default function VideoEditor() {
 			prev.map((region) =>
 				region.id === id
 					? {
-						...region,
-						focus: clampFocusToDepth(focus, region.depth),
-					}
+							...region,
+							focus: clampFocusToDepth(focus, region.depth),
+						}
 					: region,
 			),
 		);
@@ -2090,10 +2093,10 @@ export default function VideoEditor() {
 				prev.map((region) =>
 					region.id === selectedZoomId
 						? {
-							...region,
-							depth,
-							focus: clampFocusToDepth(region.focus, depth),
-						}
+								...region,
+								depth,
+								focus: clampFocusToDepth(region.focus, depth),
+							}
 						: region,
 				),
 			);
@@ -2130,67 +2133,54 @@ export default function VideoEditor() {
 		}
 	}, []);
 
-	const handleClipSplit = useCallback(
-		(splitMs: number) => {
-			setClipRegions((prev) => {
-				const target = prev.find((c) => splitMs > c.startMs && splitMs < c.endMs);
-				if (!target) return prev;
-				const leftId = `clip-${nextClipIdRef.current++}`;
-				const rightId = `clip-${nextClipIdRef.current++}`;
-				const left: ClipRegion = { id: leftId, startMs: target.startMs, endMs: Math.round(splitMs), speed: target.speed };
-				const right: ClipRegion = { id: rightId, startMs: Math.round(splitMs), endMs: target.endMs, speed: target.speed };
-				return prev.flatMap((c) => (c.id === target.id ? [left, right] : [c]));
-			});
-		},
-		[],
-	);
+	const handleClipSplit = useCallback((splitMs: number) => {
+		setClipRegions((prev) => {
+			const target = prev.find((c) => splitMs > c.startMs && splitMs < c.endMs);
+			if (!target) return prev;
+			const leftId = `clip-${nextClipIdRef.current++}`;
+			const rightId = `clip-${nextClipIdRef.current++}`;
+			const left: ClipRegion = {
+				id: leftId,
+				startMs: target.startMs,
+				endMs: Math.round(splitMs),
+				speed: target.speed,
+			};
+			const right: ClipRegion = {
+				id: rightId,
+				startMs: Math.round(splitMs),
+				endMs: target.endMs,
+				speed: target.speed,
+			};
+			return prev.flatMap((c) => (c.id === target.id ? [left, right] : [c]));
+		});
+	}, []);
 
-	const handleClipSpanChange = useCallback((id: string, span: Span) => {
-		const oldClip = clipRegions.find((c) => c.id === id);
-		const newStart = Math.round(span.start);
-		const newEnd = Math.round(span.end);
+	const handleClipSpanChange = useCallback(
+		(id: string, span: Span) => {
+			const oldClip = clipRegions.find((c) => c.id === id);
+			const newStart = Math.round(span.start);
+			const newEnd = Math.round(span.end);
 
-		if (oldClip) {
-			const startDelta = newStart - oldClip.startMs;
-			const endDelta = newEnd - oldClip.endMs;
-			const isMove = Math.abs(startDelta - endDelta) < 1 && Math.abs(startDelta) > 0;
+			if (oldClip) {
+				const startDelta = newStart - oldClip.startMs;
+				const endDelta = newEnd - oldClip.endMs;
+				const _isMove = Math.abs(startDelta - endDelta) < 1 && Math.abs(startDelta) > 0;
 
-			if (isMove) {
-				const delta = startDelta;
-				setZoomRegions((prev) =>
-					prev.map((zoom) => {
-						const overlaps = zoom.startMs < oldClip.endMs && zoom.endMs > oldClip.startMs;
-						if (overlaps) {
-							return {
-								...zoom,
-								startMs: zoom.startMs + delta,
-								endMs: zoom.endMs + delta,
-							};
-						}
-						return zoom;
-					}),
-				);
+				/* no-op move for now to keep PR focused on blur annotations */
 			}
-		}
 
-		setClipRegions((prev) =>
-			prev.map((clip) =>
-				clip.id === id
-					? { ...clip, startMs: newStart, endMs: newEnd }
-					: clip,
-			),
-		);
-	}, [clipRegions]);
+			setClipRegions((prev) =>
+				prev.map((clip) => (clip.id === id ? { ...clip, startMs: newStart, endMs: newEnd } : clip)),
+			);
+		},
+		[clipRegions],
+	);
 
 	const handleClipSpeedChange = useCallback(
 		(speed: number) => {
 			if (!selectedClipId) return;
 			setClipRegions((prev) =>
-				prev.map((clip) =>
-					clip.id === selectedClipId
-						? { ...clip, speed }
-						: clip,
-				),
+				prev.map((clip) => (clip.id === selectedClipId ? { ...clip, speed } : clip)),
 			);
 		},
 		[selectedClipId],
@@ -2236,10 +2226,10 @@ export default function VideoEditor() {
 			prev.map((region) =>
 				region.id === id
 					? {
-						...region,
-						startMs: Math.round(span.start),
-						endMs: Math.round(span.end),
-					}
+							...region,
+							startMs: Math.round(span.start),
+							endMs: Math.round(span.end),
+						}
 					: region,
 			),
 		);
@@ -2287,10 +2277,10 @@ export default function VideoEditor() {
 			prev.map((region) =>
 				region.id === id
 					? {
-						...region,
-						startMs: Math.round(span.start),
-						endMs: Math.round(span.end),
-					}
+							...region,
+							startMs: Math.round(span.start),
+							endMs: Math.round(span.end),
+						}
 					: region,
 			),
 		);
@@ -2341,10 +2331,10 @@ export default function VideoEditor() {
 			prev.map((region) =>
 				region.id === id
 					? {
-						...region,
-						startMs: Math.round(span.start),
-						endMs: Math.round(span.end),
-					}
+							...region,
+							startMs: Math.round(span.start),
+							endMs: Math.round(span.end),
+						}
 					: region,
 			),
 		);
@@ -3077,6 +3067,7 @@ export default function VideoEditor() {
 			markExportAsSaving,
 			remountPreview,
 			showExportSuccessToast,
+			sourceAudioFallbackPaths,
 		],
 	);
 
@@ -3122,12 +3113,12 @@ export default function VideoEditor() {
 			gifConfig:
 				exportFormat === "gif"
 					? {
-						frameRate: gifFrameRate,
-						loop: gifLoop,
-						sizePreset: gifSizePreset,
-						width: gifDimensions.width,
-						height: gifDimensions.height,
-					}
+							frameRate: gifFrameRate,
+							loop: gifLoop,
+							sizePreset: gifSizePreset,
+							width: gifDimensions.width,
+							height: gifDimensions.height,
+						}
 					: undefined,
 		};
 
@@ -3244,11 +3235,11 @@ export default function VideoEditor() {
 			? t("editor.exportStatus.saving", "Opening save dialog...")
 			: isExportFinalizing && typeof exportProgress.renderProgress === "number"
 				? t("editor.exportStatus.finalizingPercent", "Finalizing {{percent}}%", {
-					percent: Math.round(exportProgress.renderProgress),
-				})
+						percent: Math.round(exportProgress.renderProgress),
+					})
 				: t("editor.exportStatus.completePercent", "{{percent}}% complete", {
-					percent: Math.round(exportProgress.percentage),
-				})
+						percent: Math.round(exportProgress.percentage),
+					})
 		: t("editor.exportStatus.preparing", "Preparing export...");
 
 	const projectBrowser = (

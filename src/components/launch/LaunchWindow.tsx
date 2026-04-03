@@ -1,8 +1,8 @@
 import {
 	AppWindow,
 	ArrowUpCircle,
-	ChevronUp,
 	CheckCircle2,
+	ChevronUp,
 	Eye,
 	EyeOff,
 	FolderOpen,
@@ -678,8 +678,8 @@ export function LaunchWindow() {
 			case "ready":
 				return updateStatus.availableVersion
 					? t("recording.update.availableTitle", "Recordly {{version}} is available.", {
-						version: updateStatus.availableVersion,
-					})
+							version: updateStatus.availableVersion,
+						})
 					: t("recording.update.availableGenericTitle");
 			case "downloading":
 				return updateStatus.detail ?? t("recording.update.downloadingTitle");

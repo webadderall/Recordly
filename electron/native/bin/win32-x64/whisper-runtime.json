@@ -1,0 +1,6 @@
+{
+	"version": "v1.8.4",
+	"platform": "win32",
+	"arch": "x64",
+	"binary": "whisper-cli.exe"
+}

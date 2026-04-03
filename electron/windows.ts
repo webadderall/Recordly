@@ -87,7 +87,9 @@ function persistHudOverlayCaptureProtectionSetting(enabled: boolean): void {
 
 function getScreen() {
 	if (!app.isReady()) {
-		throw new Error("getScreen() called before app is ready. Ensure all screen access happens after app.whenReady().");
+		throw new Error(
+			"getScreen() called before app is ready. Ensure all screen access happens after app.whenReady().",
+		);
 	}
 	return nodeRequire("electron").screen as typeof import("electron").screen;
 }

@@ -1,58 +1,57 @@
 export interface DecodedVideoInfo {
-  width: number;
-  height: number;
-  duration: number; // in seconds
-  frameRate: number;
-  codec: string;
+	width: number;
+	height: number;
+	duration: number; // in seconds
+	frameRate: number;
+	codec: string;
 }
 
 export class VideoFileDecoder {
-  private info: DecodedVideoInfo | null = null;
-  private videoElement: HTMLVideoElement | null = null;
+	private info: DecodedVideoInfo | null = null;
+	private videoElement: HTMLVideoElement | null = null;
 
-  async loadVideo(videoUrl: string): Promise<DecodedVideoInfo> {
-    this.videoElement = document.createElement('video');
-    this.videoElement.src = videoUrl;
-    this.videoElement.preload = 'metadata';
+	async loadVideo(videoUrl: string): Promise<DecodedVideoInfo> {
+		this.videoElement = document.createElement("video");
+		this.videoElement.src = videoUrl;
+		this.videoElement.preload = "metadata";
 
-    return new Promise((resolve, reject) => {
-      this.videoElement!.addEventListener('loadedmetadata', () => {
-        const video = this.videoElement!;
-        
-        this.info = {
-          width: video.videoWidth,
-          height: video.videoHeight,
-          duration: video.duration,
-          frameRate: 60,
-          codec: 'avc1.640033',
-        };
+		return new Promise((resolve, reject) => {
+			this.videoElement!.addEventListener("loadedmetadata", () => {
+				const video = this.videoElement!;
 
-        resolve(this.info);
-      });
+				this.info = {
+					width: video.videoWidth,
+					height: video.videoHeight,
+					duration: video.duration,
+					frameRate: 60,
+					codec: "avc1.640033",
+				};
 
-      this.videoElement!.addEventListener('error', (e) => {
-        reject(new Error(`Failed to load video: ${e}`));
-      });
-    });
-  }
+				resolve(this.info);
+			});
 
-  /**
-   * Get video element for seeking
-   */
-  getVideoElement(): HTMLVideoElement | null {
-    return this.videoElement;
-  }
+			this.videoElement!.addEventListener("error", (e) => {
+				reject(new Error(`Failed to load video: ${e}`));
+			});
+		});
+	}
 
-  getInfo(): DecodedVideoInfo | null {
-    return this.info;
-  }
+	/**
+	 * Get video element for seeking
+	 */
+	getVideoElement(): HTMLVideoElement | null {
+		return this.videoElement;
+	}
 
-  destroy(): void {
-    if (this.videoElement) {
-      this.videoElement.pause();
-      this.videoElement.src = '';
-      this.videoElement = null;
-    }
-  }
+	getInfo(): DecodedVideoInfo | null {
+		return this.info;
+	}
+
+	destroy(): void {
+		if (this.videoElement) {
+			this.videoElement.pause();
+			this.videoElement.src = "";
+			this.videoElement = null;
+		}
+	}
 }
-

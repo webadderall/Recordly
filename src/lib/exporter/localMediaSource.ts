@@ -67,8 +67,7 @@ export async function resolveMediaElementSource(resource: string): Promise<{
 			return { src: normalizedResource, revoke: NOOP };
 		}
 
-		const bytes =
-			result.data instanceof Uint8Array ? result.data : new Uint8Array(result.data);
+		const bytes = result.data instanceof Uint8Array ? result.data : new Uint8Array(result.data);
 		const blob = new Blob([Uint8Array.from(bytes)], { type: inferMimeType(localFilePath) });
 		const objectUrl = URL.createObjectURL(blob);
 

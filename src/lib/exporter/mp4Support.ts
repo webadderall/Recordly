@@ -45,7 +45,11 @@ function buildEncoderSupportCacheKey(options: ResolveMp4EncoderPathOptions): str
 	].join(":");
 }
 
-function scaleDimensions(width: number, height: number, scale: number): { width: number; height: number } {
+function scaleDimensions(
+	width: number,
+	height: number,
+	scale: number,
+): { width: number; height: number } {
 	return {
 		width: normalizeEvenDimension(width * scale),
 		height: normalizeEvenDimension(height * scale),
@@ -145,7 +149,9 @@ export async function probeSupportedMp4Dimensions(
 			bestResult = {
 				width: candidateDimensions.width,
 				height: candidateDimensions.height,
-				capped: candidateDimensions.width !== normalizedWidth || candidateDimensions.height !== normalizedHeight,
+				capped:
+					candidateDimensions.width !== normalizedWidth ||
+					candidateDimensions.height !== normalizedHeight,
 				encoderPath: candidatePath,
 			};
 			low = mid + 1;

@@ -16,7 +16,7 @@ import {
 	DEFAULT_CURSOR_CLICK_BOUNCE_DURATION,
 	DEFAULT_CURSOR_STYLE,
 } from "../types";
-
+import { computeCursorSwayRotation } from "./cursorSway";
 import { type CursorViewportRect, projectCursorPositionToViewport } from "./cursorViewport";
 import {
 	createSpringState,
@@ -399,8 +399,6 @@ async function rasterizeAndCropSvg(
 	};
 }
 
-
-
 function getCursorStyleAsset(style: SingleCursorStyle) {
 	const asset = loadedCursorStyleAssets[style];
 	if (!asset) {
@@ -701,8 +699,6 @@ function getCursorViewportScale(viewport: CursorViewportRect) {
 	return Math.max(MIN_CURSOR_VIEWPORT_SCALE, viewport.width / REFERENCE_WIDTH);
 }
 
-
-
 function getCursorVisualState(
 	samples: CursorTelemetryPoint[],
 	timeMs: number,
@@ -738,10 +734,13 @@ export class SmoothedCursorState {
 	public x = 0.5;
 	public y = 0.5;
 	public trail: Array<{ x: number; y: number }> = [];
+	public vx = 0;
+	public vy = 0;
 	private smoothingFactor: number;
 	private trailLength: number;
 	private initialized = false;
 	private lastTimeMs: number | null = null;
+	private lastDtMs = 16.67;
 	private xSpring = createSpringState(0.5);
 	private ySpring = createSpringState(0.5);
 
@@ -777,11 +776,16 @@ export class SmoothedCursorState {
 		}
 
 		const deltaMs = this.lastTimeMs === null ? 1000 / 60 : Math.max(1, timeMs - this.lastTimeMs);
+		this.lastDtMs = deltaMs;
 		this.lastTimeMs = timeMs;
 
 		const springConfig = getCursorSpringConfig(this.smoothingFactor);
+		const prevX = this.x;
+		const prevY = this.y;
 		this.x = stepSpringValue(this.xSpring, targetX, deltaMs, springConfig);
 		this.y = stepSpringValue(this.ySpring, targetY, deltaMs, springConfig);
+		this.vx = this.x - prevX;
+		this.vy = this.y - prevY;
 	}
 
 	setSmoothingFactor(smoothingFactor: number): void {
@@ -805,15 +809,17 @@ export class SmoothedCursorState {
 	reset(): void {
 		this.initialized = false;
 		this.lastTimeMs = null;
+		this.vx = 0;
+		this.vy = 0;
 		this.trail = [];
 		resetSpringState(this.xSpring, this.x);
 		resetSpringState(this.ySpring, this.y);
 	}
+
+	get lastDt(): number {
+		return this.lastDtMs;
+	}
 }
-
-
-
-
 
 export function drawCursorOnCanvas(
 	ctx: CanvasRenderingContext2D,
@@ -854,17 +860,54 @@ export function drawCursorOnCanvas(
 		1 - Math.sin(clickBounceProgress * Math.PI) * (0.08 * config.clickBounce),
 	);
 
-	ctx.save();
-	if (config.style !== "figma") {
-		ctx.filter = CURSOR_SVG_DROP_SHADOW_FILTER;
-	}
-
 	const drawHeight = h * bounceScale;
 	const drawWidth = drawHeight * asset.aspectRatio;
 	const hotspotX = asset.anchorX * drawWidth;
 	const hotspotY = asset.anchorY * drawHeight;
+
+	const swayRotation = computeCursorSwayRotation(
+		smoothedState.vx * viewport.width,
+		smoothedState.vy * viewport.height,
+		smoothedState.lastDt,
+		config.sway,
+	);
+
+	ctx.save();
 	ctx.globalAlpha = config.dotAlpha;
-	ctx.drawImage(asset.image, px - hotspotX, py - hotspotY, drawWidth, drawHeight);
+
+	// Use temporary coordinates for rotation if sway is active
+	ctx.translate(px, py);
+	// Implementation of motion blur on 2D canvas:
+	// We duplicate the cursor along the motion vector with decreasing opacity.
+	// We draw these BEFORE rotation so the blur tail follows the actual movement path.
+	const motionBlur = config.motionBlur;
+	if (motionBlur > 0) {
+		const steps = Math.min(3, Math.ceil(motionBlur * 4));
+		const stepVx = (smoothedState.vx * viewport.width * motionBlur) / steps;
+		const stepVy = (smoothedState.vy * viewport.height * motionBlur) / steps;
+
+		for (let index = 1; index <= steps; index += 1) {
+			ctx.save();
+			// These translations are relative to the CURRENT viewport (px, py)
+			// but we are already translated to (px, py) in the outer context.
+			// However, at this point we haven't rotated yet.
+			ctx.translate(-stepVx * index, -stepVy * index);
+			ctx.globalAlpha = config.dotAlpha * (1 - index / (steps + 1)) * 0.5;
+			ctx.drawImage(asset.image, -hotspotX, -hotspotY, drawWidth, drawHeight);
+			ctx.restore();
+		}
+	}
+
+	// Apply sway rotation ONLY to the main cursor body
+	if (Math.abs(swayRotation) > 0.001) {
+		ctx.rotate(swayRotation);
+	}
+
+	if (config.style !== "figma") {
+		ctx.filter = CURSOR_SVG_DROP_SHADOW_FILTER;
+	}
+
+	ctx.drawImage(asset.image, -hotspotX, -hotspotY, drawWidth, drawHeight);
 
 	ctx.restore();
 }

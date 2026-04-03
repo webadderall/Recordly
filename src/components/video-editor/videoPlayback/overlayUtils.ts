@@ -1,65 +1,65 @@
-import { ZOOM_DEPTH_SCALES, type ZoomRegion, type ZoomFocus } from "../types";
+import { ZOOM_DEPTH_SCALES, type ZoomFocus, type ZoomRegion } from "../types";
 import { clampFocusToStage } from "./focusUtils";
 
 interface OverlayUpdateParams {
-  overlayEl: HTMLDivElement;
-  indicatorEl: HTMLDivElement;
-  region: ZoomRegion | null;
-  focusOverride?: ZoomFocus;
-  baseMask: { x: number; y: number; width: number; height: number };
-  isPlaying: boolean;
+	overlayEl: HTMLDivElement;
+	indicatorEl: HTMLDivElement;
+	region: ZoomRegion | null;
+	focusOverride?: ZoomFocus;
+	baseMask: { x: number; y: number; width: number; height: number };
+	isPlaying: boolean;
 }
 
 export function updateOverlayIndicator(params: OverlayUpdateParams) {
-  const { overlayEl, indicatorEl, region, focusOverride, baseMask, isPlaying } = params;
+	const { overlayEl, indicatorEl, region, focusOverride, baseMask, isPlaying } = params;
 
-  if (!region) {
-    indicatorEl.style.display = 'none';
-    overlayEl.style.pointerEvents = 'none';
-    return;
-  }
+	if (!region) {
+		indicatorEl.style.display = "none";
+		overlayEl.style.pointerEvents = "none";
+		return;
+	}
 
-  const stageWidth = overlayEl.clientWidth;
-  const stageHeight = overlayEl.clientHeight;
-  
-  if (!stageWidth || !stageHeight) {
-    indicatorEl.style.display = 'none';
-    overlayEl.style.pointerEvents = 'none';
-    return;
-  }
+	const stageWidth = overlayEl.clientWidth;
+	const stageHeight = overlayEl.clientHeight;
 
-  if (!baseMask.width || !baseMask.height) {
-    indicatorEl.style.display = 'none';
-    overlayEl.style.pointerEvents = isPlaying ? 'none' : 'auto';
-    return;
-  }
+	if (!stageWidth || !stageHeight) {
+		indicatorEl.style.display = "none";
+		overlayEl.style.pointerEvents = "none";
+		return;
+	}
 
-  const zoomScale = ZOOM_DEPTH_SCALES[region.depth];
-  const focus = clampFocusToStage(
-    focusOverride ?? region.focus,
-    region.depth,
-    { width: stageWidth, height: stageHeight }
-  );
+	if (!baseMask.width || !baseMask.height) {
+		indicatorEl.style.display = "none";
+		overlayEl.style.pointerEvents = isPlaying ? "none" : "auto";
+		return;
+	}
 
-  const indicatorWidth = baseMask.width / zoomScale;
-  const indicatorHeight = baseMask.height / zoomScale;
+	const zoomScale = ZOOM_DEPTH_SCALES[region.depth];
+	const focus = clampFocusToStage(focusOverride ?? region.focus, region.depth, {
+		width: stageWidth,
+		height: stageHeight,
+	});
 
-  const rawLeft = baseMask.x + focus.cx * baseMask.width - indicatorWidth / 2;
-  const rawTop = baseMask.y + focus.cy * baseMask.height - indicatorHeight / 2;
+	const indicatorWidth = baseMask.width / zoomScale;
+	const indicatorHeight = baseMask.height / zoomScale;
 
-  const adjustedLeft = indicatorWidth >= baseMask.width
-    ? baseMask.x + (baseMask.width - indicatorWidth) / 2
-    : Math.max(baseMask.x, Math.min(baseMask.x + baseMask.width - indicatorWidth, rawLeft));
+	const rawLeft = baseMask.x + focus.cx * baseMask.width - indicatorWidth / 2;
+	const rawTop = baseMask.y + focus.cy * baseMask.height - indicatorHeight / 2;
 
-  const adjustedTop = indicatorHeight >= baseMask.height
-    ? baseMask.y + (baseMask.height - indicatorHeight) / 2
-    : Math.max(baseMask.y, Math.min(baseMask.y + baseMask.height - indicatorHeight, rawTop));
+	const adjustedLeft =
+		indicatorWidth >= baseMask.width
+			? baseMask.x + (baseMask.width - indicatorWidth) / 2
+			: Math.max(baseMask.x, Math.min(baseMask.x + baseMask.width - indicatorWidth, rawLeft));
 
-  indicatorEl.style.display = 'block';
-  indicatorEl.style.width = `${indicatorWidth}px`;
-  indicatorEl.style.height = `${indicatorHeight}px`;
-  indicatorEl.style.left = `${adjustedLeft}px`;
-  indicatorEl.style.top = `${adjustedTop}px`;
-  overlayEl.style.pointerEvents = isPlaying ? 'none' : 'auto';
+	const adjustedTop =
+		indicatorHeight >= baseMask.height
+			? baseMask.y + (baseMask.height - indicatorHeight) / 2
+			: Math.max(baseMask.y, Math.min(baseMask.y + baseMask.height - indicatorHeight, rawTop));
+
+	indicatorEl.style.display = "block";
+	indicatorEl.style.width = `${indicatorWidth}px`;
+	indicatorEl.style.height = `${indicatorHeight}px`;
+	indicatorEl.style.left = `${adjustedLeft}px`;
+	indicatorEl.style.top = `${adjustedTop}px`;
+	overlayEl.style.pointerEvents = isPlaying ? "none" : "auto";
 }
-

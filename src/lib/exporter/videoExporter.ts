@@ -1,7 +1,7 @@
 import type {
-	AutoCaptionSettings,
 	AnnotationRegion,
 	AudioRegion,
+	AutoCaptionSettings,
 	CaptionCue,
 	CropRegion,
 	CursorStyle,
@@ -9,8 +9,8 @@ import type {
 	SpeedRegion,
 	TrimRegion,
 	WebcamOverlaySettings,
-	ZoomTransitionEasing,
 	ZoomRegion,
+	ZoomTransitionEasing,
 } from "@/components/video-editor/types";
 import { AudioProcessor } from "./audioEncoder";
 import { FrameRenderer } from "./frameRenderer";

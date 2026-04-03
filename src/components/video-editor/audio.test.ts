@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
 import * as fc from "fast-check";
-import { toFileUrl, fromFileUrl, normalizeProjectEditor } from "./projectPersistence";
+import { describe, expect, it } from "vitest";
+import { fromFileUrl, normalizeProjectEditor, toFileUrl } from "./projectPersistence";
 
 describe("Audio path handling", () => {
 	describe("toFileUrl produces valid file:// URLs for audio paths", () => {
@@ -77,17 +77,14 @@ describe("Audio region normalization", () => {
 
 		it("should preserve valid volume values in [0, 1]", () => {
 			fc.assert(
-				fc.property(
-					fc.double({ min: 0, max: 1, noNaN: true }),
-					(volume) => {
-						const result = normalizeProjectEditor({
-							audioRegions: [
-								{ id: "audio-1", startMs: 0, endMs: 1000, audioPath: "/test.mp3", volume },
-							],
-						} as any);
-						expect(result.audioRegions[0].volume).toBeCloseTo(volume, 10);
-					},
-				),
+				fc.property(fc.double({ min: 0, max: 1, noNaN: true }), (volume) => {
+					const result = normalizeProjectEditor({
+						audioRegions: [
+							{ id: "audio-1", startMs: 0, endMs: 1000, audioPath: "/test.mp3", volume },
+						],
+					} as any);
+					expect(result.audioRegions[0].volume).toBeCloseTo(volume, 10);
+				}),
 			);
 		});
 
@@ -102,9 +99,7 @@ describe("Audio region normalization", () => {
 
 		it("should default to 1 when volume is undefined", () => {
 			const result = normalizeProjectEditor({
-				audioRegions: [
-					{ id: "audio-1", startMs: 0, endMs: 1000, audioPath: "/test.mp3" },
-				],
+				audioRegions: [{ id: "audio-1", startMs: 0, endMs: 1000, audioPath: "/test.mp3" }],
 			} as any);
 			expect(result.audioRegions[0].volume).toBe(1);
 		});
@@ -170,9 +165,7 @@ describe("Audio region normalization", () => {
 
 		it("should default to empty string for missing audioPath", () => {
 			const result = normalizeProjectEditor({
-				audioRegions: [
-					{ id: "audio-1", startMs: 0, endMs: 1000, volume: 1 },
-				],
+				audioRegions: [{ id: "audio-1", startMs: 0, endMs: 1000, volume: 1 }],
 			} as any);
 			expect(result.audioRegions[0].audioPath).toBe("");
 		});

@@ -1,194 +1,210 @@
 .glassGreen {
-  position: relative;
-  border-radius: 8px;
-  -corner-smoothing: antialiased;
-  background: linear-gradient(to bottom, rgba(37, 99, 235, 0.22), rgba(37, 99, 235, 0.08));
-  border: 1px solid rgba(37, 99, 235, 0.3);
-  box-shadow: 0 2px 12px 0 rgba(37, 99, 235, 0.1) inset;
-  margin: 1px 0;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+	position: relative;
+	border-radius: 8px;
+	-corner-smoothing: antialiased;
+	background: linear-gradient(to bottom, rgba(37, 99, 235, 0.22), rgba(37, 99, 235, 0.08));
+	border: 1px solid rgba(37, 99, 235, 0.3);
+	box-shadow: 0 2px 12px 0 rgba(37, 99, 235, 0.1) inset;
+	margin: 1px 0;
+	backdrop-filter: blur(4px);
+	-webkit-backdrop-filter: blur(4px);
+	transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .glassGreen:hover {
-  background: linear-gradient(to bottom, rgba(37, 99, 235, 0.32), rgba(37, 99, 235, 0.15));
-  border-color: rgba(37, 99, 235, 0.5);
-  box-shadow: 0 4px 20px 0 rgba(37, 99, 235, 0.2) inset;
+	background: linear-gradient(to bottom, rgba(37, 99, 235, 0.32), rgba(37, 99, 235, 0.15));
+	border-color: rgba(37, 99, 235, 0.5);
+	box-shadow: 0 4px 20px 0 rgba(37, 99, 235, 0.2) inset;
 }
 
 .glassGreen.selected {
-  background: linear-gradient(to bottom, rgba(37, 99, 235, 0.42), rgba(37, 99, 235, 0.22));
-  border-color: #2563EB;
-  box-shadow: 0 0 0 1px #2563EB, 0 4px 20px 0 rgba(37, 99, 235, 0.3) inset;
-  z-index: 10;
+	background: linear-gradient(to bottom, rgba(37, 99, 235, 0.42), rgba(37, 99, 235, 0.22));
+	border-color: #2563eb;
+	box-shadow:
+		0 0 0 1px #2563eb,
+		0 4px 20px 0 rgba(37, 99, 235, 0.3) inset;
+	z-index: 10;
 }
 
 .glassRed {
-  position: relative;
-  border-radius: 8px;
-  -corner-smoothing: antialiased;
-  background: linear-gradient(to bottom, rgba(239, 68, 68, 0.22), rgba(239, 68, 68, 0.08));
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  box-shadow: 0 2px 12px 0 rgba(239, 68, 68, 0.1) inset;
-  margin: 1px 0;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+	position: relative;
+	border-radius: 8px;
+	-corner-smoothing: antialiased;
+	background: linear-gradient(to bottom, rgba(239, 68, 68, 0.22), rgba(239, 68, 68, 0.08));
+	border: 1px solid rgba(239, 68, 68, 0.3);
+	box-shadow: 0 2px 12px 0 rgba(239, 68, 68, 0.1) inset;
+	margin: 1px 0;
+	backdrop-filter: blur(4px);
+	-webkit-backdrop-filter: blur(4px);
+	transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .glassRed:hover {
-  background: linear-gradient(to bottom, rgba(239, 68, 68, 0.32), rgba(239, 68, 68, 0.15));
-  border-color: rgba(239, 68, 68, 0.5);
-  box-shadow: 0 4px 20px 0 rgba(239, 68, 68, 0.2) inset;
+	background: linear-gradient(to bottom, rgba(239, 68, 68, 0.32), rgba(239, 68, 68, 0.15));
+	border-color: rgba(239, 68, 68, 0.5);
+	box-shadow: 0 4px 20px 0 rgba(239, 68, 68, 0.2) inset;
 }
 
 .glassRed.selected {
-  background: linear-gradient(to bottom, rgba(239, 68, 68, 0.42), rgba(239, 68, 68, 0.22));
-  border-color: #ef4444;
-  box-shadow: 0 0 0 1px #ef4444, 0 4px 20px 0 rgba(239, 68, 68, 0.3) inset;
-  z-index: 10;
+	background: linear-gradient(to bottom, rgba(239, 68, 68, 0.42), rgba(239, 68, 68, 0.22));
+	border-color: #ef4444;
+	box-shadow:
+		0 0 0 1px #ef4444,
+		0 4px 20px 0 rgba(239, 68, 68, 0.3) inset;
+	z-index: 10;
 }
 
 .glassYellow {
-  position: relative;
-  border-radius: 8px;
-  -corner-smoothing: antialiased;
-  background: linear-gradient(to bottom, rgba(180, 160, 70, 0.22), rgba(180, 160, 70, 0.08));
-  border: 1px solid rgba(180, 160, 70, 0.3);
-  box-shadow: 0 2px 12px 0 rgba(180, 160, 70, 0.1) inset;
-  margin: 1px 0;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+	position: relative;
+	border-radius: 8px;
+	-corner-smoothing: antialiased;
+	background: linear-gradient(to bottom, rgba(180, 160, 70, 0.22), rgba(180, 160, 70, 0.08));
+	border: 1px solid rgba(180, 160, 70, 0.3);
+	box-shadow: 0 2px 12px 0 rgba(180, 160, 70, 0.1) inset;
+	margin: 1px 0;
+	backdrop-filter: blur(4px);
+	-webkit-backdrop-filter: blur(4px);
+	transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .glassYellow:hover {
-  background: linear-gradient(to bottom, rgba(180, 160, 70, 0.32), rgba(180, 160, 70, 0.15));
-  border-color: rgba(180, 160, 70, 0.5);
-  box-shadow: 0 4px 20px 0 rgba(180, 160, 70, 0.2) inset;
+	background: linear-gradient(to bottom, rgba(180, 160, 70, 0.32), rgba(180, 160, 70, 0.15));
+	border-color: rgba(180, 160, 70, 0.5);
+	box-shadow: 0 4px 20px 0 rgba(180, 160, 70, 0.2) inset;
 }
 
 .glassYellow.selected {
-  background: linear-gradient(to bottom, rgba(180, 160, 70, 0.42), rgba(180, 160, 70, 0.22));
-  border-color: #B4A046;
-  box-shadow: 0 0 0 1px #B4A046, 0 4px 20px 0 rgba(180, 160, 70, 0.3) inset;
-  z-index: 10;
+	background: linear-gradient(to bottom, rgba(180, 160, 70, 0.42), rgba(180, 160, 70, 0.22));
+	border-color: #b4a046;
+	box-shadow:
+		0 0 0 1px #b4a046,
+		0 4px 20px 0 rgba(180, 160, 70, 0.3) inset;
+	z-index: 10;
 }
 
 .glassAmber {
-  position: relative;
-  border-radius: 8px;
-  -corner-smoothing: antialiased;
-  background: linear-gradient(to bottom, rgba(245, 158, 11, 0.22), rgba(245, 158, 11, 0.08));
-  border: 1px solid rgba(245, 158, 11, 0.3);
-  box-shadow: 0 2px 12px 0 rgba(245, 158, 11, 0.1) inset;
-  margin: 1px 0;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+	position: relative;
+	border-radius: 8px;
+	-corner-smoothing: antialiased;
+	background: linear-gradient(to bottom, rgba(245, 158, 11, 0.22), rgba(245, 158, 11, 0.08));
+	border: 1px solid rgba(245, 158, 11, 0.3);
+	box-shadow: 0 2px 12px 0 rgba(245, 158, 11, 0.1) inset;
+	margin: 1px 0;
+	backdrop-filter: blur(4px);
+	-webkit-backdrop-filter: blur(4px);
+	transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .glassAmber:hover {
-  background: linear-gradient(to bottom, rgba(245, 158, 11, 0.32), rgba(245, 158, 11, 0.15));
-  border-color: rgba(245, 158, 11, 0.5);
-  box-shadow: 0 4px 20px 0 rgba(245, 158, 11, 0.2) inset;
+	background: linear-gradient(to bottom, rgba(245, 158, 11, 0.32), rgba(245, 158, 11, 0.15));
+	border-color: rgba(245, 158, 11, 0.5);
+	box-shadow: 0 4px 20px 0 rgba(245, 158, 11, 0.2) inset;
 }
 
 .glassAmber.selected {
-  background: linear-gradient(to bottom, rgba(245, 158, 11, 0.42), rgba(245, 158, 11, 0.22));
-  border-color: #f59e0b;
-  box-shadow: 0 0 0 1px #f59e0b, 0 4px 20px 0 rgba(245, 158, 11, 0.3) inset;
-  z-index: 10;
+	background: linear-gradient(to bottom, rgba(245, 158, 11, 0.42), rgba(245, 158, 11, 0.22));
+	border-color: #f59e0b;
+	box-shadow:
+		0 0 0 1px #f59e0b,
+		0 4px 20px 0 rgba(245, 158, 11, 0.3) inset;
+	z-index: 10;
 }
 
 .glassPurple {
-  position: relative;
-  border-radius: 8px;
-  -corner-smoothing: antialiased;
-  background: linear-gradient(to bottom, rgba(168, 85, 247, 0.22), rgba(168, 85, 247, 0.08));
-  border: 1px solid rgba(168, 85, 247, 0.3);
-  box-shadow: 0 2px 12px 0 rgba(168, 85, 247, 0.1) inset;
-  margin: 1px 0;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+	position: relative;
+	border-radius: 8px;
+	-corner-smoothing: antialiased;
+	background: linear-gradient(to bottom, rgba(168, 85, 247, 0.22), rgba(168, 85, 247, 0.08));
+	border: 1px solid rgba(168, 85, 247, 0.3);
+	box-shadow: 0 2px 12px 0 rgba(168, 85, 247, 0.1) inset;
+	margin: 1px 0;
+	backdrop-filter: blur(4px);
+	-webkit-backdrop-filter: blur(4px);
+	transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .glassPurple:hover {
-  background: linear-gradient(to bottom, rgba(168, 85, 247, 0.32), rgba(168, 85, 247, 0.15));
-  border-color: rgba(168, 85, 247, 0.5);
-  box-shadow: 0 4px 20px 0 rgba(168, 85, 247, 0.2) inset;
+	background: linear-gradient(to bottom, rgba(168, 85, 247, 0.32), rgba(168, 85, 247, 0.15));
+	border-color: rgba(168, 85, 247, 0.5);
+	box-shadow: 0 4px 20px 0 rgba(168, 85, 247, 0.2) inset;
 }
 
 .glassPurple.selected {
-  background: linear-gradient(to bottom, rgba(168, 85, 247, 0.42), rgba(168, 85, 247, 0.22));
-  border-color: #a855f7;
-  box-shadow: 0 0 0 1px #a855f7, 0 4px 20px 0 rgba(168, 85, 247, 0.3) inset;
-  z-index: 10;
+	background: linear-gradient(to bottom, rgba(168, 85, 247, 0.42), rgba(168, 85, 247, 0.22));
+	border-color: #a855f7;
+	box-shadow:
+		0 0 0 1px #a855f7,
+		0 4px 20px 0 rgba(168, 85, 247, 0.3) inset;
+	z-index: 10;
 }
 
 .glassCyan {
-  position: relative;
-  border-radius: 8px;
-  -corner-smoothing: antialiased;
-  background: linear-gradient(to bottom, rgba(6, 182, 212, 0.22), rgba(6, 182, 212, 0.08));
-  border: 1px solid rgba(6, 182, 212, 0.3);
-  box-shadow: 0 2px 12px 0 rgba(6, 182, 212, 0.1) inset;
-  margin: 1px 0;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+	position: relative;
+	border-radius: 8px;
+	-corner-smoothing: antialiased;
+	background: linear-gradient(to bottom, rgba(6, 182, 212, 0.22), rgba(6, 182, 212, 0.08));
+	border: 1px solid rgba(6, 182, 212, 0.3);
+	box-shadow: 0 2px 12px 0 rgba(6, 182, 212, 0.1) inset;
+	margin: 1px 0;
+	backdrop-filter: blur(4px);
+	-webkit-backdrop-filter: blur(4px);
+	transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .glassCyan:hover {
-  background: linear-gradient(to bottom, rgba(6, 182, 212, 0.32), rgba(6, 182, 212, 0.15));
-  border-color: rgba(6, 182, 212, 0.5);
-  box-shadow: 0 4px 20px 0 rgba(6, 182, 212, 0.2) inset;
+	background: linear-gradient(to bottom, rgba(6, 182, 212, 0.32), rgba(6, 182, 212, 0.15));
+	border-color: rgba(6, 182, 212, 0.5);
+	box-shadow: 0 4px 20px 0 rgba(6, 182, 212, 0.2) inset;
 }
 
 .glassCyan.selected {
-  background: linear-gradient(to bottom, rgba(6, 182, 212, 0.42), rgba(6, 182, 212, 0.22));
-  border-color: #06b6d4;
-  box-shadow: 0 0 0 1px #06b6d4, 0 4px 20px 0 rgba(6, 182, 212, 0.3) inset;
-  z-index: 10;
+	background: linear-gradient(to bottom, rgba(6, 182, 212, 0.42), rgba(6, 182, 212, 0.22));
+	border-color: #06b6d4;
+	box-shadow:
+		0 0 0 1px #06b6d4,
+		0 4px 20px 0 rgba(6, 182, 212, 0.3) inset;
+	z-index: 10;
 }
 
 .glassDarkGreen {
-  position: relative;
-  border-radius: 8px;
-  -corner-smoothing: antialiased;
-  background: linear-gradient(to bottom, rgba(22, 101, 52, 0.22), rgba(22, 101, 52, 0.08));
-  border: 1px solid rgba(22, 101, 52, 0.3);
-  box-shadow: 0 2px 12px 0 rgba(22, 101, 52, 0.1) inset;
-  margin: 1px 0;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+	position: relative;
+	border-radius: 8px;
+	-corner-smoothing: antialiased;
+	background: linear-gradient(to bottom, rgba(22, 101, 52, 0.22), rgba(22, 101, 52, 0.08));
+	border: 1px solid rgba(22, 101, 52, 0.3);
+	box-shadow: 0 2px 12px 0 rgba(22, 101, 52, 0.1) inset;
+	margin: 1px 0;
+	backdrop-filter: blur(4px);
+	-webkit-backdrop-filter: blur(4px);
+	transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .glassDarkGreen:hover {
-  background: linear-gradient(to bottom, rgba(22, 101, 52, 0.32), rgba(22, 101, 52, 0.15));
-  border-color: rgba(22, 101, 52, 0.5);
-  box-shadow: 0 4px 20px 0 rgba(22, 101, 52, 0.2) inset;
+	background: linear-gradient(to bottom, rgba(22, 101, 52, 0.32), rgba(22, 101, 52, 0.15));
+	border-color: rgba(22, 101, 52, 0.5);
+	box-shadow: 0 4px 20px 0 rgba(22, 101, 52, 0.2) inset;
 }
 
 .glassDarkGreen.selected {
-  background: linear-gradient(to bottom, rgba(22, 101, 52, 0.42), rgba(22, 101, 52, 0.22));
-  border-color: #166534;
-  box-shadow: 0 0 0 1px #166534, 0 4px 20px 0 rgba(22, 101, 52, 0.3) inset;
-  z-index: 10;
+	background: linear-gradient(to bottom, rgba(22, 101, 52, 0.42), rgba(22, 101, 52, 0.22));
+	border-color: #166534;
+	box-shadow:
+		0 0 0 1px #166534,
+		0 4px 20px 0 rgba(22, 101, 52, 0.3) inset;
+	z-index: 10;
 }
 
 .zoomEndCap {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-  pointer-events: none;
-  z-index: 2;
-  opacity: 0.45;
-  transition: opacity 0.2s, width 0.2s;
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	width: 4px;
+	pointer-events: none;
+	z-index: 2;
+	opacity: 0.45;
+	transition:
+		opacity 0.2s,
+		width 0.2s;
 }
 
 .glassGreen:hover .zoomEndCap,
@@ -205,19 +221,19 @@
 .glassCyan.selected .zoomEndCap,
 .glassDarkGreen:hover .zoomEndCap,
 .glassDarkGreen.selected .zoomEndCap {
-  opacity: 1;
+	opacity: 1;
 }
 
 .zoomEndCap.left {
-  left: 0;
-  cursor: ew-resize;
-  border-top-left-radius: 7px;
-  border-bottom-left-radius: 7px;
+	left: 0;
+	cursor: ew-resize;
+	border-top-left-radius: 7px;
+	border-bottom-left-radius: 7px;
 }
 
 .zoomEndCap.right {
-  right: 0;
-  cursor: ew-resize;
-  border-top-right-radius: 7px;
-  border-bottom-right-radius: 7px;
+	right: 0;
+	cursor: ew-resize;
+	border-top-right-radius: 7px;
+	border-bottom-right-radius: 7px;
 }

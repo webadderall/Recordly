@@ -36,14 +36,6 @@ vite.config.d.ts
 electron/native/wgc-capture/build/
 electron/native/cursor-monitor/build/
 
-# Local build tools and caches
-.cache/
-.cmake_ext/
-ebcache/
-docs/
-recordly_dev/
-.agent/
-
 # Local debug helpers
 tmp-*.ps1
 .tmp-*.ps1

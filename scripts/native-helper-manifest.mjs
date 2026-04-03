@@ -1,12 +1,5 @@
 import { createHash } from "node:crypto";
-import {
-	existsSync,
-	mkdirSync,
-	readFileSync,
-	readdirSync,
-	statSync,
-	writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 const MANIFEST_FILE_NAME = "helpers-manifest.json";
@@ -66,7 +59,11 @@ function hashFile(filePath) {
 	return hashBuffer(readFileSync(filePath));
 }
 
-export function getNativeHelperManifestPath({ projectRoot, platform = process.platform, arch = process.arch }) {
+export function getNativeHelperManifestPath({
+	projectRoot,
+	platform = process.platform,
+	arch = process.arch,
+}) {
 	return path.join(
 		projectRoot,
 		"electron",

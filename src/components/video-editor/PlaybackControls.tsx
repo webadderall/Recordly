@@ -103,7 +103,10 @@ export default function PlaybackControls({
 				)}
 				<div className="group relative flex h-6 w-20 items-center">
 					<div className="absolute left-0 right-0 h-0.5 rounded-full bg-white/10 overflow-hidden">
-						<div className="h-full rounded-full bg-white/70" style={{ width: `${volume * 100}%` }} />
+						<div
+							className="h-full rounded-full bg-white/70"
+							style={{ width: `${volume * 100}%` }}
+						/>
 					</div>
 					<input
 						type="range"

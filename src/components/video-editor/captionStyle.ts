@@ -4,8 +4,7 @@ import { DEFAULT_AUTO_CAPTION_SETTINGS } from "./types";
 export const CAPTION_FONT_WEIGHT = 400;
 export const CAPTION_LINE_HEIGHT = 1.32;
 
-const DEFAULT_CAPTION_REFERENCE_WIDTH =
-	1920 * (DEFAULT_AUTO_CAPTION_SETTINGS.maxWidth / 100);
+const DEFAULT_CAPTION_REFERENCE_WIDTH = 1920 * (DEFAULT_AUTO_CAPTION_SETTINGS.maxWidth / 100);
 
 export function getCaptionTargetWidth(containerWidth: number, maxWidthPercent: number) {
 	return Math.max(1, containerWidth * (maxWidthPercent / 100));
@@ -18,7 +17,8 @@ export function getCaptionScaledFontSize(
 ) {
 	return Math.max(
 		14,
-		fontSize * (getCaptionTargetWidth(containerWidth, maxWidthPercent) / DEFAULT_CAPTION_REFERENCE_WIDTH),
+		fontSize *
+			(getCaptionTargetWidth(containerWidth, maxWidthPercent) / DEFAULT_CAPTION_REFERENCE_WIDTH),
 	);
 }
 
@@ -34,9 +34,16 @@ export function getCaptionScaledRadius(radius: number, fontSize: number) {
 	return Math.max(0, radius * (fontSize / baseline));
 }
 
-export function getCaptionTextMaxWidth(containerWidth: number, maxWidthPercent: number, fontSize: number) {
+export function getCaptionTextMaxWidth(
+	containerWidth: number,
+	maxWidthPercent: number,
+	fontSize: number,
+) {
 	const padding = getCaptionPadding(fontSize);
-	return Math.max(fontSize * 4, getCaptionTargetWidth(containerWidth, maxWidthPercent) - padding.x * 2);
+	return Math.max(
+		fontSize * 4,
+		getCaptionTargetWidth(containerWidth, maxWidthPercent) - padding.x * 2,
+	);
 }
 
 export function getCaptionWordVisualState(hasWordTimings: boolean, state: CaptionWordState) {

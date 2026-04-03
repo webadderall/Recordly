@@ -23,9 +23,7 @@ function runScript(scriptName) {
 	});
 
 	if (result.error) {
-		console.error(
-			`[postinstall] Failed to start "${scriptName}" (${result.error.message}).`,
-		);
+		console.error(`[postinstall] Failed to start "${scriptName}" (${result.error.message}).`);
 		return false;
 	}
 
@@ -35,9 +33,7 @@ function runScript(scriptName) {
 	}
 
 	if (result.status !== 0) {
-		console.error(
-			`[postinstall] "${scriptName}" exited with code ${result.status}.`,
-		);
+		console.error(`[postinstall] "${scriptName}" exited with code ${result.status}.`);
 		return false;
 	}
 

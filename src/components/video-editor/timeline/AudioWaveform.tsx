@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
 import { useTimelineContext } from "dnd-timeline";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { AudioPeaksData } from "./useAudioPeaks";
 
 interface AudioWaveformProps {
