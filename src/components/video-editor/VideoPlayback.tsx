@@ -1036,13 +1036,11 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
       let app: Application | null = null;
 
       (async () => {
-        let cursorOverlayEnabled = true;
         try {
           await preloadCursorAssets();
         } catch (error) {
-          cursorOverlayEnabled = false;
           console.warn(
-            "Native cursor assets are unavailable in preview; continuing without cursor overlay.",
+            "Native cursor assets are unavailable in preview.",
             error,
           );
         }
@@ -1445,29 +1443,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
       };
     }, [pixiReady, videoReady, clampFocusToStage, applyWebcamBubbleLayout]);
 
-    useEffect(() => {
-      const overlay = cursorOverlayRef.current;
-      if (!overlay) {
-        return;
-      }
 
-      overlay.setDotRadius(DEFAULT_CURSOR_CONFIG.dotRadius * cursorSize);
-      overlay.setStyle(cursorStyle);
-      overlay.setSmoothingFactor(cursorSmoothing);
-      overlay.setMotionBlur(cursorMotionBlur);
-      overlay.setClickBounce(cursorClickBounce);
-      overlay.setClickBounceDuration(cursorClickBounceDuration);
-      overlay.setSway(cursorSway);
-      overlay.reset();
-    }, [
-      cursorStyle,
-      cursorSize,
-      cursorSmoothing,
-      cursorMotionBlur,
-      cursorClickBounce,
-      cursorClickBounceDuration,
-      cursorSway,
-    ]);
 
     const handleLoadedMetadata = (
       e: React.SyntheticEvent<HTMLVideoElement, Event>,

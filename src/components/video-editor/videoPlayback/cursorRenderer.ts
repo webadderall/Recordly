@@ -399,19 +399,7 @@ async function rasterizeAndCropSvg(
 	};
 }
 
-function getCursorAsset(key: CursorAssetKey): LoadedCursorAsset {
-	const asset = loadedCursorAssets[key];
-	if (!asset) {
-		throw new Error(`Missing cursor asset for ${key}`);
-	}
 
-	return asset;
-}
-
-function getAvailableCursorKeys(): CursorAssetKey[] {
-	const loadedKeys = Object.keys(loadedCursorAssets) as CursorAssetKey[];
-	return loadedKeys.length > 0 ? loadedKeys : ["arrow"];
-}
 
 function getCursorStyleAsset(style: SingleCursorStyle) {
 	const asset = loadedCursorStyleAssets[style];
