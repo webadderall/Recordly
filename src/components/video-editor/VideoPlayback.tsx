@@ -871,6 +871,10 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
     }, [currentTime]);
 
     useEffect(() => {
+      smoothedCursorStateRef.current?.setSmoothingFactor(cursorSmoothing);
+    }, [cursorSmoothing]);
+
+    useEffect(() => {
       if (!pixiReady || !videoReady) return;
 
       const app = appRef.current;
@@ -1425,10 +1429,8 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
                 style: cursorStyleRef.current,
                 dotRadius: 28 * cursorSizeRef.current, // Matches Pixi scaling approx
                 smoothingFactor: cursorSmoothingRef.current,
-                motionBlur: cursorMotionBlurRef.current,
                 clickBounce: cursorClickBounceRef.current,
                 clickBounceDuration: cursorClickBounceDurationRef.current,
-                sway: cursorSwayRef.current,
               }
             );
           }

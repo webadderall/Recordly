@@ -358,13 +358,13 @@ function renderBlur(
 
   ctx.save();
   try {
-    // Pad the capture region to provide context for the blur kernel
-    // This prevents clipping at the edges of the annotation box
-    const padding = Math.ceil(intensity * 2);
-    const srcX = Math.max(0, x - padding);
-    const srcY = Math.max(0, y - padding);
-    const srcWidth = Math.min(x + width + padding, ctx.canvas.width) - srcX;
-    const srcHeight = Math.min(y + height + padding, ctx.canvas.height) - srcY;
+    // Pad the capture region more generously to provide context for the blur kernel
+    // This prevents clipping at the edges of the annotation box and helps smooth the falloff
+    const padding = Math.ceil(intensity * 3);
+    const srcX = Math.floor(Math.max(0, x - padding));
+    const srcY = Math.floor(Math.max(0, y - padding));
+    const srcWidth = Math.ceil(Math.min(x + width + padding, ctx.canvas.width) - srcX);
+    const srcHeight = Math.ceil(Math.min(y + height + padding, ctx.canvas.height) - srcY);
 
     if (srcWidth <= 0 || srcHeight <= 0) {
       ctx.restore();
@@ -383,7 +383,7 @@ function renderBlur(
     offscreen.width = srcWidth;
     offscreen.height = srcHeight;
     
-    const offCtx = offscreen.getContext('2d') as CanvasRenderingContext2D;
+    const offCtx = (offscreen as HTMLCanvasElement).getContext('2d', { alpha: false }) as CanvasRenderingContext2D;
     offCtx.putImageData(imageData, 0, 0);
 
     // Create rounded rect clipping path (matches UI's rounded-lg approx 8px)
@@ -396,9 +396,16 @@ function renderBlur(
     }
     ctx.clip();
 
-    // Apply the blur filter and draw the captured region back at its source position
-    ctx.filter = `blur(${intensity}px)`;
+    // Apply the blur filter with a subtle brightness boost to give it a "premium glass" feel
+    // and draw the captured region back at its source position. This looks much smoother
+    // than a raw blur which can sometimes look "dirty" or flat.
+    ctx.filter = `blur(${intensity}px) brightness(1.02)`;
     ctx.drawImage(offscreen as any, srcX, srcY);
+    
+    // Optional: draw a very faint edge highlight to further soften the clip line
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+    ctx.lineWidth = 1 * scaleFactor;
+    ctx.stroke();
 
   } catch (err) {
     console.warn('[AnnotationRenderer] Blur annotation render failed:', err);

@@ -22,6 +22,7 @@ import type {
 import { ZOOM_DEPTH_SCALES } from "@/components/video-editor/types";
 import { getAssetPath, getRenderableAssetUrl } from "@/lib/assetPath";
 import { findDominantRegion } from "@/components/video-editor/videoPlayback/zoomRegionUtils";
+import { MotionBlurFilter } from "pixi-filters/motion-blur";
 import {
   applyZoomTransform,
   computeFocusFromTransform,
@@ -138,7 +139,7 @@ export class FrameRenderer {
   private backgroundSprite: Sprite | null = null;
   private maskGraphics: Graphics | null = null;
   private blurFilter: BlurFilter | null = null;
-  private motionBlurFilter: any | null = null;
+  private motionBlurFilter: MotionBlurFilter | null = null;
   private shadowCanvas: HTMLCanvasElement | null = null;
   private shadowCtx: CanvasRenderingContext2D | null = null;
   private compositeCanvas: HTMLCanvasElement | null = null;
@@ -229,7 +230,6 @@ export class FrameRenderer {
     this.blurFilter.quality = 5;
     this.blurFilter.resolution = this.app.renderer.resolution;
     this.blurFilter.blur = 0;
-    // @ts-ignore
     this.motionBlurFilter = new MotionBlurFilter([0, 0], 5, 0);
     this.videoContainer.filters = [this.blurFilter, this.motionBlurFilter];
 
@@ -813,26 +813,6 @@ export class FrameRenderer {
 
     const timeMs = this.currentVideoTime * 1000;
 
-    if (this.smoothedCursorState && this.compositeCtx) {
-      drawCursorOnCanvas(
-        this.compositeCtx,
-        this.config.cursorTelemetry ?? [],
-        timeMs,
-        this.layoutCache.maskRect,
-        this.smoothedCursorState,
-        {
-          ...DEFAULT_CURSOR_CONFIG,
-          style: this.config.cursorStyle ?? "tahoe",
-          dotRadius: DEFAULT_CURSOR_CONFIG.dotRadius * (this.config.cursorSize ?? 1.4),
-          smoothingFactor: this.config.cursorSmoothing ?? DEFAULT_CURSOR_CONFIG.smoothingFactor,
-          motionBlur: this.config.cursorMotionBlur ?? 0,
-          clickBounce: this.config.cursorClickBounce ?? DEFAULT_CURSOR_CONFIG.clickBounce,
-          clickBounceDuration: this.config.cursorClickBounceDuration ?? DEFAULT_CURSOR_CONFIG.clickBounceDuration,
-          sway: this.config.cursorSway ?? DEFAULT_CURSOR_CONFIG.sway,
-        }
-      );
-    }
-
     const TICKS_PER_FRAME = 1;
 
     let maxMotionIntensity = 0;
@@ -909,6 +889,26 @@ export class FrameRenderer {
     timeMs,
     );
   }
+
+    if (this.smoothedCursorState && this.compositeCtx && this.config.showCursor) {
+      drawCursorOnCanvas(
+        this.compositeCtx,
+        this.config.cursorTelemetry ?? [],
+        timeMs,
+        this.layoutCache.maskRect,
+        this.smoothedCursorState,
+        {
+          ...DEFAULT_CURSOR_CONFIG,
+          style: this.config.cursorStyle ?? "tahoe",
+          dotRadius: DEFAULT_CURSOR_CONFIG.dotRadius * (this.config.cursorSize ?? 1.4),
+          smoothingFactor: this.config.cursorSmoothing ?? DEFAULT_CURSOR_CONFIG.smoothingFactor,
+          motionBlur: this.config.cursorMotionBlur ?? 0,
+          clickBounce: this.config.cursorClickBounce ?? DEFAULT_CURSOR_CONFIG.clickBounce,
+          clickBounceDuration: this.config.cursorClickBounceDuration ?? DEFAULT_CURSOR_CONFIG.clickBounceDuration,
+          sway: this.config.cursorSway ?? DEFAULT_CURSOR_CONFIG.sway,
+        }
+      );
+    }
   }
 
   private updateLayout(): void {
