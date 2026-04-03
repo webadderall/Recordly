@@ -1,30 +1,30 @@
 {
 	"zoom": {
-		"cannotPlace": "Nao e possivel colocar zoom aqui",
-		"existsOrNoSpace": "Zoom ja existe neste local ou espaco insuficiente disponivel.",
-		"suggestHandlerUnavailable": "Manipulador de sugestao de zoom indisponivel",
-		"noTelemetry": "Sem telemetria de cursor disponivel",
-		"recordFirst": "Grave uma screencast primeiro para gerar sugestoes baseadas em cursor.",
-		"noUsableTelemetry": "Sem telemetria de cursor utilizavel",
-		"notEnoughMovement": "A gravacao nao inclui dados suficientes de movimento do cursor.",
-		"noInteractionMoments": "Nenhum momento de interacao claro encontrado",
-		"tryRecording": "Tente uma gravacao com pausas ou cliques em torno de acoes importantes.",
-		"noAutoZoomSlots": "Nenhum slot de auto-zoom disponivel",
-		"dwellPointsOverlap": "Pontos de permanencia detectados se sobrepoem a regioes de zoom existentes.",
-		"addedSuggestions": "Adicionadas {{count}} sugestao(oes) de zoom baseada(s) em interacao",
+		"cannotPlace": "Não é possível colocar zoom aqui",
+		"existsOrNoSpace": "Zoom já existe neste local ou espaço insuficiente disponível.",
+		"suggestHandlerUnavailable": "Manipulador de sugestão de zoom indisponível",
+		"noTelemetry": "Sem telemetria de cursor disponível",
+		"recordFirst": "Grave uma screencast primeiro para gerar sugestões baseadas em cursor.",
+		"noUsableTelemetry": "Sem telemetria de cursor utilizável",
+		"notEnoughMovement": "A gravação não inclui dados suficientes de movimento do cursor.",
+		"noInteractionMoments": "Nenhum momento de interação claro encontrado",
+		"tryRecording": "Tente uma gravação com pausas ou cliques em torno de ações importantes.",
+		"noAutoZoomSlots": "Nenhum slot de auto-zoom disponível",
+		"dwellPointsOverlap": "Pontos de permanência detectados se sobrepõem a regiões de zoom existentes.",
+		"addedSuggestions": "Adicionadas {{count}} sugestão(ões) de zoom baseada(s) em interação",
 		"label": "Zoom {{index}}",
 		"addZoom": "Adicionar Zoom (Z)",
 		"suggestZooms": "Sugerir Zooms do Cursor"
 	},
 	"trim": {
-		"cannotPlace": "Nao e possivel colocar trim aqui",
-		"existsOrNoSpace": "Trim ja existe neste local ou espaco insuficiente disponivel.",
+		"cannotPlace": "Não é possível colocar trim aqui",
+		"existsOrNoSpace": "Trim já existe neste local ou espaço insuficiente disponível.",
 		"label": "Trim {{index}}",
 		"addTrim": "Adicionar Trim (T)"
 	},
 	"speed": {
-		"cannotPlace": "Nao e possivel colocar velocidade aqui",
-		"existsOrNoSpace": "Regiao de velocidade ja existe neste local ou espaco insuficiente disponivel.",
+		"cannotPlace": "Não é possível colocar velocidade aqui",
+		"existsOrNoSpace": "Região de velocidade já existe neste local ou espaço insuficiente disponível.",
 		"label": "Velocidade"
 	},
 	"annotation": {
