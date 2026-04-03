@@ -1178,7 +1178,14 @@ export function LaunchWindow() {
 								e.preventDefault();
 								isDraggingRef.current = true;
 								window.electronAPI?.hudOverlayDrag?.("start", e.screenX, e.screenY);
+								let lastScreenX = e.screenX;
+								let lastScreenY = e.screenY;
 								const handleMove = (ev: MouseEvent) => {
+									if (ev.screenX === lastScreenX && ev.screenY === lastScreenY) {
+										return;
+									}
+									lastScreenX = ev.screenX;
+									lastScreenY = ev.screenY;
 									window.electronAPI?.hudOverlayDrag?.("move", ev.screenX, ev.screenY);
 								};
 								const handleUp = () => {

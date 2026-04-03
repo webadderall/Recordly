@@ -183,6 +183,7 @@ ipcMain.on("hud-overlay-set-ignore-mouse", (_event, ignore: boolean) => {
 });
 
 let hudDragOffset: { x: number; y: number } | null = null;
+let hudDragLastCursor: { x: number; y: number } | null = null;
 
 ipcMain.on("hud-overlay-drag", (_event, phase: string, screenX: number, screenY: number) => {
 	if (!hudOverlayWindow || hudOverlayWindow.isDestroyed()) return;
@@ -190,13 +191,20 @@ ipcMain.on("hud-overlay-drag", (_event, phase: string, screenX: number, screenY:
 	if (phase === "start") {
 		const bounds = hudOverlayWindow.getBounds();
 		hudDragOffset = { x: screenX - bounds.x, y: screenY - bounds.y };
+		hudDragLastCursor = { x: screenX, y: screenY };
 	} else if (phase === "move" && hudDragOffset) {
+		if (hudDragLastCursor && hudDragLastCursor.x === screenX && hudDragLastCursor.y === screenY) {
+			return;
+		}
+
+		hudDragLastCursor = { x: screenX, y: screenY };
 		hudOverlayWindow.setPosition(
 			Math.round(screenX - hudDragOffset.x),
 			Math.round(screenY - hudDragOffset.y),
 		);
 	} else if (phase === "end") {
 		hudDragOffset = null;
+		hudDragLastCursor = null;
 	}
 });
 
