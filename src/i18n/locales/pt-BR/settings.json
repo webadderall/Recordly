@@ -142,12 +142,12 @@
 		"gif": "GIF",
 		"quality": {
 			"low": "Baixa",
-			"medium": "Media",
+			"medium": "Média",
 			"high": "Alta",
 			"original": "Original"
 		},
 		"loop": "Loop",
-		"outputDimensions": "Saida: {{dimensions}}px",
+		"outputDimensions": "Saída: {{dimensions}}px",
 		"sizePresetOriginalShort": "Orig",
 		"sizePresetMediumShort": "Med",
 		"sizePresetLargeShort": "Lar",
