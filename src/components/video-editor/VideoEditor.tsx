@@ -69,18 +69,18 @@ import {
 	KeyboardShortcutsDialog,
 } from "./TutorialHelp";
 import TimelineEditor from "./timeline/TimelineEditor";
-import {
-	normalizeCursorTelemetry,
-} from "./timeline/zoomSuggestionUtils";
+import { normalizeCursorTelemetry } from "./timeline/zoomSuggestionUtils";
 import {
 	type AnnotationRegion,
 	type AudioRegion,
 	type AutoCaptionSettings,
 	type CaptionCue,
+	type ClipRegion,
 	type CropRegion,
 	type CursorStyle,
 	type CursorTelemetryPoint,
 	clampFocusToDepth,
+	clipsToTrims,
 	DEFAULT_ANNOTATION_POSITION,
 	DEFAULT_ANNOTATION_SIZE,
 	DEFAULT_ANNOTATION_STYLE,
@@ -103,8 +103,6 @@ import {
 	type PlaybackSpeed,
 	type SpeedRegion,
 	type TrimRegion,
-	type ClipRegion,
-	clipsToTrims,
 	type WebcamOverlaySettings,
 	type ZoomDepth,
 	type ZoomFocus,
@@ -1183,8 +1181,12 @@ export default function VideoEditor() {
 			setWebcam(normalizedEditor.webcam);
 			setZoomRegions(normalizedEditor.zoomRegions);
 			setTrimRegions(normalizedEditor.trimRegions);
-			setClipRegions((normalizedEditor as any).clipRegions ?? []);
-			clipInitializedRef.current = ((normalizedEditor as any).clipRegions ?? []).length > 0;
+			setClipRegions(
+				(normalizedEditor as unknown as { clipRegions?: ClipRegion[] }).clipRegions ?? [],
+			);
+			clipInitializedRef.current =
+				((normalizedEditor as unknown as { clipRegions?: ClipRegion[] }).clipRegions ?? []).length >
+				0;
 			setSpeedRegions(normalizedEditor.speedRegions);
 			setAnnotationRegions(normalizedEditor.annotationRegions);
 			setAudioRegions(normalizedEditor.audioRegions);
@@ -1214,7 +1216,9 @@ export default function VideoEditor() {
 			);
 			nextClipIdRef.current = deriveNextId(
 				"clip",
-				((normalizedEditor as any).clipRegions ?? []).map((region: ClipRegion) => region.id),
+				((normalizedEditor as unknown as { clipRegions?: ClipRegion[] }).clipRegions ?? []).map(
+					(region: ClipRegion) => region.id,
+				),
 			);
 			nextSpeedIdRef.current = deriveNextId(
 				"speed",
@@ -1835,10 +1839,7 @@ export default function VideoEditor() {
 				console.warn("Unable to load cursor telemetry:", telemetryError);
 				if (mounted) {
 					setCursorTelemetry([]);
-					if (
-						pendingFreshRecordingAutoZoomPathRef.current === videoPath &&
-						retryAttempts < 12
-					) {
+					if (pendingFreshRecordingAutoZoomPathRef.current === videoPath && retryAttempts < 12) {
 						retryAttempts += 1;
 						pendingTelemetryRetryTimeoutRef.current = window.setTimeout(() => {
 							pendingTelemetryRetryTimeoutRef.current = null;
@@ -1949,7 +1950,15 @@ export default function VideoEditor() {
 		autoSuggestedVideoPathRef.current = videoPath;
 		pendingFreshRecordingAutoZoomPathRef.current = null;
 		setAutoSuggestZoomsTrigger((value) => value + 1);
-	}, [videoPath, loading, isPreviewReady, duration, effectiveCursorTelemetry.length, loopCursor, zoomRegions.length]);
+	}, [
+		videoPath,
+		loading,
+		isPreviewReady,
+		duration,
+		effectiveCursorTelemetry.length,
+		loopCursor,
+		zoomRegions.length,
+	]);
 
 	function togglePlayPause() {
 		const playback = videoPlaybackRef.current;
@@ -2130,67 +2139,69 @@ export default function VideoEditor() {
 		}
 	}, []);
 
-	const handleClipSplit = useCallback(
-		(splitMs: number) => {
-			setClipRegions((prev) => {
-				const target = prev.find((c) => splitMs > c.startMs && splitMs < c.endMs);
-				if (!target) return prev;
-				const leftId = `clip-${nextClipIdRef.current++}`;
-				const rightId = `clip-${nextClipIdRef.current++}`;
-				const left: ClipRegion = { id: leftId, startMs: target.startMs, endMs: Math.round(splitMs), speed: target.speed };
-				const right: ClipRegion = { id: rightId, startMs: Math.round(splitMs), endMs: target.endMs, speed: target.speed };
-				return prev.flatMap((c) => (c.id === target.id ? [left, right] : [c]));
-			});
-		},
-		[],
-	);
+	const handleClipSplit = useCallback((splitMs: number) => {
+		setClipRegions((prev) => {
+			const target = prev.find((c) => splitMs > c.startMs && splitMs < c.endMs);
+			if (!target) return prev;
+			const leftId = `clip-${nextClipIdRef.current++}`;
+			const rightId = `clip-${nextClipIdRef.current++}`;
+			const left: ClipRegion = {
+				id: leftId,
+				startMs: target.startMs,
+				endMs: Math.round(splitMs),
+				speed: target.speed,
+			};
+			const right: ClipRegion = {
+				id: rightId,
+				startMs: Math.round(splitMs),
+				endMs: target.endMs,
+				speed: target.speed,
+			};
+			return prev.flatMap((c) => (c.id === target.id ? [left, right] : [c]));
+		});
+	}, []);
 
-	const handleClipSpanChange = useCallback((id: string, span: Span) => {
-		const oldClip = clipRegions.find((c) => c.id === id);
-		const newStart = Math.round(span.start);
-		const newEnd = Math.round(span.end);
+	const handleClipSpanChange = useCallback(
+		(id: string, span: Span) => {
+			const oldClip = clipRegions.find((c) => c.id === id);
+			const newStart = Math.round(span.start);
+			const newEnd = Math.round(span.end);
 
-		if (oldClip) {
-			const startDelta = newStart - oldClip.startMs;
-			const endDelta = newEnd - oldClip.endMs;
-			const isMove = Math.abs(startDelta - endDelta) < 1 && Math.abs(startDelta) > 0;
+			if (oldClip) {
+				const startDelta = newStart - oldClip.startMs;
+				const endDelta = newEnd - oldClip.endMs;
+				const isMove = Math.abs(startDelta - endDelta) < 1 && Math.abs(startDelta) > 0;
 
-			if (isMove) {
-				const delta = startDelta;
-				setZoomRegions((prev) =>
-					prev.map((zoom) => {
-						const overlaps = zoom.startMs < oldClip.endMs && zoom.endMs > oldClip.startMs;
-						if (overlaps) {
-							return {
-								...zoom,
-								startMs: zoom.startMs + delta,
-								endMs: zoom.endMs + delta,
-							};
-						}
-						return zoom;
-					}),
-				);
+				if (isMove) {
+					const delta = startDelta;
+					setZoomRegions((prev) =>
+						prev.map((zoom) => {
+							const overlaps = zoom.startMs < oldClip.endMs && zoom.endMs > oldClip.startMs;
+							if (overlaps) {
+								return {
+									...zoom,
+									startMs: zoom.startMs + delta,
+									endMs: zoom.endMs + delta,
+								};
+							}
+							return zoom;
+						}),
+					);
+				}
 			}
-		}
 
-		setClipRegions((prev) =>
-			prev.map((clip) =>
-				clip.id === id
-					? { ...clip, startMs: newStart, endMs: newEnd }
-					: clip,
-			),
-		);
-	}, [clipRegions]);
+			setClipRegions((prev) =>
+				prev.map((clip) => (clip.id === id ? { ...clip, startMs: newStart, endMs: newEnd } : clip)),
+			);
+		},
+		[clipRegions],
+	);
 
 	const handleClipSpeedChange = useCallback(
 		(speed: number) => {
 			if (!selectedClipId) return;
 			setClipRegions((prev) =>
-				prev.map((clip) =>
-					clip.id === selectedClipId
-						? { ...clip, speed }
-						: clip,
-				),
+				prev.map((clip) => (clip.id === selectedClipId ? { ...clip, speed } : clip)),
 			);
 		},
 		[selectedClipId],
@@ -2395,6 +2406,11 @@ export default function VideoEditor() {
 					if (!region.figureData) {
 						updatedRegion.figureData = { ...DEFAULT_FIGURE_DATA };
 					}
+				} else if (type === "blur") {
+					updatedRegion.content = "Blur Region";
+					if (updatedRegion.blurIntensity === undefined) {
+						updatedRegion.blurIntensity = 12;
+					}
 				}
 
 				return updatedRegion;
@@ -2417,6 +2433,12 @@ export default function VideoEditor() {
 	const handleAnnotationFigureDataChange = useCallback((id: string, figureData: FigureData) => {
 		setAnnotationRegions((prev) =>
 			prev.map((region) => (region.id === id ? { ...region, figureData } : region)),
+		);
+	}, []);
+
+	const handleAnnotationBlurIntensityChange = useCallback((id: string, blurIntensity: number) => {
+		setAnnotationRegions((prev) =>
+			prev.map((region) => (region.id === id ? { ...region, blurIntensity } : region)),
 		);
 	}, []);
 
@@ -3812,6 +3834,7 @@ export default function VideoEditor() {
 						onAnnotationTypeChange={handleAnnotationTypeChange}
 						onAnnotationStyleChange={handleAnnotationStyleChange}
 						onAnnotationFigureDataChange={handleAnnotationFigureDataChange}
+						onAnnotationBlurIntensityChange={handleAnnotationBlurIntensityChange}
 						onAnnotationDelete={handleAnnotationDelete}
 						selectedSpeedId={selectedSpeedId}
 						selectedSpeedValue={
