@@ -321,6 +321,40 @@
 	animation: blink 1.2s ease-in-out infinite;
 }
 
+.recordingWebcamPreview {
+	position: fixed;
+	right: 32px;
+	bottom: 120px;
+	height: 288px;
+	width: 288px;
+	overflow: hidden;
+	border-radius: 24px;
+	background: rgba(22, 22, 30, 0.95);
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	box-shadow:
+		0 10px 24px rgba(0, 0, 0, 0.28),
+		inset 0 1px 0 rgba(255, 255, 255, 0.08);
+	cursor: grab;
+	touch-action: none;
+	user-select: none;
+	will-change: transform;
+	z-index: 120;
+}
+
+.recordingWebcamPreview:active {
+	cursor: grabbing;
+}
+
+.recordingWebcamPreviewVideo {
+	display: block;
+	height: 100%;
+	width: 100%;
+	object-fit: cover;
+	border-radius: inherit;
+	overflow: hidden;
+	transform: translateZ(0);
+}
+
 @keyframes blink {
 	0%,
 	100% {
