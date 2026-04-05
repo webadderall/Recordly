@@ -1,0 +1,118 @@
+{
+	"playback": {
+		"play": "재생",
+		"pause": "일시 정지"
+	},
+	"annotations": {
+		"settings": "주석 설정",
+		"active": "활성",
+		"text": "텍스트",
+		"image": "이미지",
+		"arrow": "화살표",
+		"textContent": "텍스트 내용",
+		"textPlaceholder": "텍스트를 입력하세요...",
+		"fontStyle": "글꼴 스타일",
+		"selectStyle": "스타일 선택",
+		"size": "크기",
+		"toggleBold": "굵게 전환",
+		"toggleItalic": "기울임꼴 전환",
+		"toggleUnderline": "밑줄 전환",
+		"alignLeft": "왼쪽 정렬",
+		"alignCenter": "가운데 정렬",
+		"alignRight": "오른쪽 정렬",
+		"textColor": "텍스트 색상",
+		"background": "배경",
+		"none": "없음",
+		"clearBackground": "배경 지우기",
+		"uploadImage": "이미지 업로드",
+		"supportedFormats": "지원 형식: JPG, PNG, GIF, WebP",
+		"arrowDirection": "화살표 방향",
+		"strokeWidth": "선 두께: {{width}}px",
+		"arrowColor": "화살표 색상",
+		"deleteAnnotation": "주석 삭제",
+		"shortcutsAndTips": "단축키 및 팁",
+		"tipSelectAnnotation": "재생 헤드를 겹치는 주석 구간으로 이동한 뒤 항목을 선택하세요.",
+		"tipCycleForward": "Tab 키로 겹치는 항목을 순환할 수 있습니다.",
+		"tipCycleBackward": "Shift+Tab으로 이전 항목으로 이동할 수 있습니다.",
+		"imageUploadSuccess": "이미지를 업로드했습니다!",
+		"imageUploadError": "JPG, PNG, GIF 또는 WebP 이미지 파일을 업로드해 주세요."
+	},
+	"fontStyles": {
+		"classic": "클래식",
+		"editor": "에디터",
+		"strong": "강조",
+		"typewriter": "타자기",
+		"deco": "장식",
+		"simple": "심플",
+		"modern": "모던",
+		"clean": "클린"
+	},
+	"format": {
+		"mp4Video": "MP4 비디오",
+		"mp4Description": "고화질 비디오 파일",
+		"gifAnimation": "GIF 애니메이션",
+		"gifDescription": "공유용 애니메이션 이미지"
+	},
+	"gifOptions": {
+		"frameRate": "프레임 속도",
+		"outputSize": "출력 크기",
+		"outputDimensions": "출력: {{width}} × {{height}}px",
+		"loopAnimation": "반복 재생",
+		"loopDescription": "GIF가 계속 반복 재생됩니다"
+	},
+	"tutorial": {
+		"howTrimmingWorks": "트림 사용법",
+		"title": "트림 작동 방식",
+		"understanding": "비디오에서 원하지 않는 부분을 잘라내는 방법을 알아보세요.",
+		"descriptionP1": "트림 도구는 제거하고 싶은 구간을",
+		"descriptionRemove": "삭제",
+		"descriptionP2": "하도록 설정합니다.",
+		"descriptionP3": "타임라인에서 빨간 트림 구간으로 덮인 부분은 내보낼 때 잘려 나갑니다.",
+		"visualExample": "예시 보기",
+		"removed": "제거됨",
+		"kept": "유지됨",
+		"finalVideo": "최종 비디오",
+		"part": "파트 {{number}}",
+		"addTrimStep": "1. 트림 추가",
+		"addTrimDesc": "T 키를 누르거나 가위 아이콘을 클릭해 제거할 구간을 표시하세요.",
+		"adjustStep": "2. 조정",
+		"adjustDesc": "빨간 구간의 가장자리를 드래그해 정확히 잘라낼 범위를 지정하세요."
+	},
+	"feedback": {
+		"trigger": "피드백",
+		"title": "피드백 및 문의",
+		"description": "문제가 있거나 빠진 기능이 있으면 직접 연락하거나 이슈를 등록해 주세요.",
+		"emailLabel": "이메일",
+		"xLabel": "X",
+		"reportIssue": "이슈 등록 / 피드백 보내기",
+		"openFailed": "링크를 열지 못했습니다."
+	},
+	"keyboardShortcuts": {
+		"trigger": "단축키",
+		"title": "키보드 단축키",
+		"description": "타임라인과 편집기 컨트롤에 대한 빠른 참고입니다.",
+		"customizeTooltip": "단축키 사용자 지정",
+		"customize": "사용자 지정",
+		"panTimeline": "타임라인 이동",
+		"zoomTimeline": "타임라인 확대/축소",
+		"cycleAnnotations": "주석 순환",
+		"tab": "Tab"
+	},
+	"actions": {
+		"saveAgain": "다시 저장",
+		"showInFolder": "폴더에서 보기"
+	},
+	"project": {
+		"untitled": "제목 없음"
+	},
+	"exportStatus": {
+		"exporting": "내보내는 중",
+		"renderingFile": "파일을 렌더링하고 있습니다.",
+		"preparing": "내보내기를 준비하는 중...",
+		"completePercent": "{{percent}}% 완료",
+		"issue": "내보내기 오류",
+		"complete": "내보내기 완료",
+		"savedSuccessfully": "파일이 성공적으로 저장되었습니다."
+	},
+	"openRecordingsFolder": "녹화 폴더 열기"
+}

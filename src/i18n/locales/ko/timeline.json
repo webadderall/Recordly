@@ -1,0 +1,38 @@
+{
+	"zoom": {
+		"cannotPlace": "여기에는 확대를 배치할 수 없습니다",
+		"existsOrNoSpace": "이 위치에는 이미 확대가 있거나 사용할 수 있는 공간이 부족합니다.",
+		"suggestHandlerUnavailable": "확대 추천 기능을 사용할 수 없습니다",
+		"noTelemetry": "사용 가능한 커서 텔레메트리가 없습니다",
+		"recordFirst": "커서 기반 추천을 만들려면 먼저 화면 녹화를 진행해 주세요.",
+		"noUsableTelemetry": "사용 가능한 커서 텔레메트리가 없습니다",
+		"notEnoughMovement": "이 녹화에는 충분한 커서 이동 데이터가 포함되어 있지 않습니다.",
+		"noInteractionMoments": "명확한 상호작용 지점을 찾지 못했습니다",
+		"tryRecording": "중요한 동작 주변에서 잠시 멈추거나 클릭하는 녹화를 시도해 보세요.",
+		"noAutoZoomSlots": "자동 확대를 배치할 수 있는 구간이 없습니다",
+		"dwellPointsOverlap": "감지된 머무름 지점이 기존 확대 구간과 겹칩니다.",
+		"addedSuggestions": "상호작용 기반 확대 추천 {{count}}개를 추가했습니다",
+		"label": "확대 {{index}}",
+		"addZoom": "확대 추가 (Z)",
+		"suggestZooms": "커서 기반 확대 추천"
+	},
+	"trim": {
+		"cannotPlace": "여기에는 트림을 배치할 수 없습니다",
+		"existsOrNoSpace": "이 위치에는 이미 트림이 있거나 사용할 수 있는 공간이 부족합니다.",
+		"label": "트림 {{index}}",
+		"addTrim": "트림 추가 (T)"
+	},
+	"speed": {
+		"cannotPlace": "여기에는 속도 구간을 배치할 수 없습니다",
+		"existsOrNoSpace": "이 위치에는 이미 속도 구간이 있거나 사용할 수 있는 공간이 부족합니다.",
+		"label": "속도"
+	},
+	"annotation": {
+		"label": "주석",
+		"image": "이미지",
+		"addAnnotation": "주석 추가 (A)"
+	},
+	"addSpeed": "속도 추가 (S)",
+	"resizeLeft": "왼쪽 크기 조절",
+	"resizeRight": "오른쪽 크기 조절"
+}
