@@ -871,7 +871,22 @@ app.whenReady().then(async () => {
 		try {
 			const sources = await desktopCapturer.getSources({ types: ["screen", "window"] });
 			const sourceId = getSelectedSourceId();
-			const source = sourceId ? (sources.find((s) => s.id === sourceId) ?? sources[0]) : sources[0];
+
+			let source = sourceId ? sources.find((s) => s.id === sourceId) ?? null : null;
+
+			// On Linux/Wayland, desktopCapturer.getSources() returns PipeWire sources
+			// whose IDs don't match the fallback IDs assigned during source enumeration
+			// (screen:fallback:<displayId>). Recover the correct source by matching on
+			// display_id before falling back to the first available source.
+			if (!source && sourceId?.startsWith("screen:fallback:")) {
+				const displayId = sourceId.slice("screen:fallback:".length);
+				source = sources.find((s) => String(s.display_id ?? "") === displayId) ?? null;
+			}
+
+			if (!source && sources.length > 0) {
+				source = sources[0];
+			}
+
 			if (source) {
 				callback({
 					video: { id: source.id, name: source.name },

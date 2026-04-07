@@ -826,7 +826,15 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
         browserCaptureSource?.id?.startsWith("screen:fallback:") ||
         browserCaptureSource?.id?.startsWith("window:fallback:")
       ) {
-        throw new Error("Selected display is not available for browser capture on this system.");
+        // On Linux/Wayland, desktopCapturer cannot enumerate screen sources with
+        // display IDs that match Electron's screen.getAllDisplays() output, so
+        // sources are assigned a fallback ID (screen:fallback:<displayId>).
+        // Recording still works because setDisplayMediaRequestHandler resolves
+        // the correct PipeWire source by display_id at capture time, so we
+        // allow the flow to proceed instead of throwing here.
+        if (platform !== "linux") {
+          throw new Error("Selected display is not available for browser capture on this system.");
+        }
       }
 
       try {
