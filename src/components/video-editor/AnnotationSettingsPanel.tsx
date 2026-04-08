@@ -119,7 +119,7 @@ export function AnnotationSettingsPanel({
   };
 
   return (
-    <div className="flex-[2] min-w-0 bg-[#161619] border border-white/10 rounded-2xl p-4 flex flex-col shadow-xl h-full overflow-y-auto custom-scrollbar">
+    <div className="flex-[2] w-[332px] min-w-[280px] max-w-[332px] bg-[#161619] border border-white/10 rounded-2xl p-4 flex flex-col shadow-xl h-full overflow-y-auto custom-scrollbar">
       <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
           <span className="text-sm font-medium text-slate-200">{t('annotations.settings')}</span>
@@ -130,7 +130,7 @@ export function AnnotationSettingsPanel({
         
         {/* Type Selector */}
         <Tabs value={annotation.type} onValueChange={(value) => onTypeChange(value as AnnotationType)} className="mb-6">
-          <TabsList className="mb-4 bg-white/5 border border-white/5 p-1 w-full grid grid-cols-4 h-auto rounded-xl">
+          <TabsList className="mb-4 bg-white/5 border border-white/5 p-1 w-full grid grid-cols-4 h-11 rounded-xl">
             <TabsTrigger value="text" className="data-[state=active]:bg-[#2563EB] data-[state=active]:text-white text-slate-400 py-2 rounded-lg transition-all gap-2">
               <Type className="w-4 h-4" />
               {t('annotations.text')}
@@ -506,21 +506,17 @@ export function AnnotationSettingsPanel({
             </div>
           </TabsContent>
 
-          <TabsContent value="blur" className="mt-0 space-y-4">
+          <TabsContent value="blur" className="mt-0 space-y-6">
             <div className="space-y-4">
-              <div className="flex items-center gap-2 text-slate-300">
-                <Info className="w-4 h-4 text-[#2563EB]" />
-                <span className="text-xs font-medium">Blur Annotation Settings</span>
-              </div>
-              <p className="text-[10px] text-slate-400 leading-relaxed">
-                Drag the box on the video to position the blur. Use the slider below to adjust how
-                much the content is obscured.
-              </p>
-
               <div className="space-y-3">
-                <label className="text-xs font-medium text-slate-200 block">
-                  Blur Intensity ({Math.round((annotation.figureData?.blurIntensity || 1.0) * 100)}%)
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-medium text-slate-200">
+                    Blur Intensity
+                  </label>
+                  <span className="text-[10px] font-mono text-[#2563EB] bg-[#2563EB]/10 px-1.5 py-0.5 rounded">
+                    {Math.round((annotation.figureData?.blurIntensity || 1.0) * 100)}%
+                  </span>
+                </div>
                 <Slider
                   value={[annotation.figureData?.blurIntensity || 1.0]}
                   onValueChange={([value]) => {
@@ -531,6 +527,16 @@ export function AnnotationSettingsPanel({
                   step={0.05}
                   className="w-full"
                 />
+              </div>
+              
+              <div className="bg-white/[0.03] border border-white/5 rounded-lg p-3 space-y-2">
+                <div className="flex items-center gap-2 text-slate-300">
+                  <Info className="w-3.5 h-3.5 text-[#2563EB]" />
+                  <span className="text-[11px] font-medium">How to use</span>
+                </div>
+                <p className="text-[10px] text-slate-400 leading-relaxed">
+                  Position the box on the video to select the blur area.
+                </p>
               </div>
             </div>
           </TabsContent>
