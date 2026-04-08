@@ -1131,7 +1131,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
         });
         cursorAppRef.current = cursorApp;
         if (cursorCanvasContainerRef.current) {
-          cursorCanvasContainerRef.current.appendChild(cursorApp.canvas);
+          cursorCanvasContainerRef.current.appendChild(cursorApp.canvas as HTMLCanvasElement);
         }
 
         const cursorCameraContainer = new Container();
@@ -1356,12 +1356,12 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
         };
 
         const ticker = () => {
-          // Sync cursor camera container with main camera container
-          if (cursorCameraContainerRef.current && cameraContainerRef.current) {
-            cursorCameraContainerRef.current.scale.copyFrom(cameraContainerRef.current.scale);
-            cursorCameraContainerRef.current.position.copyFrom(cameraContainerRef.current.position);
-            cursorCameraContainerRef.current.pivot.copyFrom(cameraContainerRef.current.pivot);
-          }
+        // Sync cursor camera container with main camera container
+        if (cursorCameraContainerRef.current && cameraContainerRef.current) {
+          cursorCameraContainerRef.current.scale.copyFrom(cameraContainerRef.current.scale);
+          cursorCameraContainerRef.current.position.copyFrom(cameraContainerRef.current.position);
+          cursorCameraContainerRef.current.pivot.copyFrom(cameraContainerRef.current.pivot);
+        }
         const { region, strength, blendedScale, transition } =
           findDominantRegion(zoomRegionsRef.current, currentTimeRef.current, {
             connectZooms: connectZoomsRef.current,
