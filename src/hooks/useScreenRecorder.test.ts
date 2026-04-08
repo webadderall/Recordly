@@ -352,7 +352,7 @@ describe("useScreenRecorder state machine", () => {
 
 			expect(result.cancelled).toBe(true);
 			expect(result.wasNative).toBe(false);
-			expect(chunks.current).toEqual([]);
+			expect(chunks.current).toHaveLength(0);
 			expect(recorder.stop).toHaveBeenCalled();
 			expect(recorder.state).toBe("inactive");
 		});
@@ -364,7 +364,7 @@ describe("useScreenRecorder state machine", () => {
 
 			cancelRecording(recorder, false, chunks, webcam, webcamChunks);
 
-			expect(webcamChunks.current).toEqual([]);
+			expect(webcamChunks.current).toHaveLength(0);
 			expect(webcam.stop).toHaveBeenCalled();
 			expect(webcam.state).toBe("inactive");
 		});
@@ -387,7 +387,7 @@ describe("useScreenRecorder state machine", () => {
 			const result = cancelRecording(inactiveRecorder, false, chunks);
 
 			expect(result.cancelled).toBe(true);
-			expect(chunks.current).toEqual([]);
+			expect(chunks.current).toHaveLength(0);
 			expect(inactiveRecorder.stop).not.toHaveBeenCalled();
 		});
 
@@ -474,8 +474,8 @@ describe("useScreenRecorder state machine", () => {
 
 			cancelRecording(recorder, false, chunks, webcam, webcamChunks);
 
-			expect(chunks.current).toEqual([]);
-			expect(webcamChunks.current).toEqual([]);
+			expect(chunks.current).toHaveLength(0);
+			expect(webcamChunks.current).toHaveLength(0);
 			expect(recorder.state).toBe("inactive");
 			expect(webcam.state).toBe("inactive");
 		});

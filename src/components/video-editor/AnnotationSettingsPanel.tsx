@@ -21,6 +21,7 @@ interface AnnotationSettingsPanelProps {
   onTypeChange: (type: AnnotationType) => void;
   onStyleChange: (style: Partial<AnnotationRegion['style']>) => void;
   onFigureDataChange?: (figureData: FigureData) => void;
+  onBlurIntensityChange?: (intensity: number) => void;
   onDelete: () => void;
 }
 
@@ -43,6 +44,7 @@ export function AnnotationSettingsPanel({
   onTypeChange,
   onStyleChange,
   onFigureDataChange,
+  onBlurIntensityChange,
   onDelete,
 }: AnnotationSettingsPanelProps) {
   const t = useScopedT('editor');
@@ -128,7 +130,7 @@ export function AnnotationSettingsPanel({
         
         {/* Type Selector */}
         <Tabs value={annotation.type} onValueChange={(value) => onTypeChange(value as AnnotationType)} className="mb-6">
-          <TabsList className="mb-4 bg-white/5 border border-white/5 p-1 w-full grid grid-cols-3 h-auto rounded-xl">
+          <TabsList className="mb-4 bg-white/5 border border-white/5 p-1 w-full grid grid-cols-4 h-auto rounded-xl">
             <TabsTrigger value="text" className="data-[state=active]:bg-[#2563EB] data-[state=active]:text-white text-slate-400 py-2 rounded-lg transition-all gap-2">
               <Type className="w-4 h-4" />
               {t('annotations.text')}
@@ -142,6 +144,14 @@ export function AnnotationSettingsPanel({
                 <path d="M4 12h16m0 0l-6-6m6 6l-6 6" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
               {t('annotations.arrow')}
+            </TabsTrigger>
+            <TabsTrigger value="blur" className="data-[state=active]:bg-[#2563EB] data-[state=active]:text-white text-slate-400 py-2 rounded-lg transition-all gap-2">
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 2a10 10 0 0 0-10 10c0 5.5 4.5 10 10 10s10-4.5 10-10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16z" opacity=".2"/>
+                <path d="M12 6a6 6 0 0 0-6 6c0 3.3 2.7 6 6 6s6-2.7 6-6a6 6 0 0 0-6-6zm0 10a4 4 0 1 1 0-8 4 4 0 0 1 0 8z" opacity=".4"/>
+              </svg>
+              {t('annotations.blur', 'Blur')}
             </TabsTrigger>
           </TabsList>
 
@@ -497,6 +507,53 @@ export function AnnotationSettingsPanel({
                   />
                 </PopoverContent>
               </Popover>
+            </div>
+
+            {annotation.figureData?.type === "blur" && (
+              <div className="pt-4 border-t border-white/5">
+                <label className="text-xs font-medium text-slate-200 mb-2 block">
+                  Blur Intensity ({Math.round(annotation.figureData.blurIntensity * 100)}%)
+                </label>
+                <Slider
+                  value={[annotation.figureData.blurIntensity]}
+                  onValueChange={([value]) => {
+                    onBlurIntensityChange?.(value);
+                  }}
+                  min={0.1}
+                  max={2.0}
+                  step={0.05}
+                  className="w-full"
+                />
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Blur Settings */}
+          <TabsContent value="blur" className="mt-0 space-y-4">
+            <div className="p-4 bg-white/5 rounded-xl border border-white/5 space-y-4">
+              <div className="flex items-center gap-2 text-slate-300 mb-2">
+                <Info className="w-4 h-4 text-[#2563EB]" />
+                <span className="text-xs font-medium">Blur Annotation Settings</span>
+              </div>
+              <p className="text-[10px] text-slate-400 leading-relaxed mb-4">
+                Drag the box on the video to position the blur. Use the slider below to adjust how much the content is obscured.
+              </p>
+              
+              <div className="space-y-3">
+                <label className="text-xs font-medium text-slate-200 block">
+                  Blur Intensity ({Math.round((annotation.figureData?.blurIntensity || 1.0) * 100)}%)
+                </label>
+                <Slider
+                  value={[annotation.figureData?.blurIntensity || 1.0]}
+                  onValueChange={([value]) => {
+                    onBlurIntensityChange?.(value);
+                  }}
+                  min={0.1}
+                  max={2.0}
+                  step={0.05}
+                  className="w-full"
+                />
+              </div>
             </div>
           </TabsContent>
         </Tabs>

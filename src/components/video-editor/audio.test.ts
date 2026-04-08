@@ -192,17 +192,17 @@ describe("Audio region normalization", () => {
 	describe("empty or missing audioRegions", () => {
 		it("should return empty array when audioRegions is undefined", () => {
 			const result = normalizeProjectEditor({} as any);
-			expect(result.audioRegions).toEqual([]);
+			expect(result.audioRegions).toHaveLength(0);
 		});
 
 		it("should return empty array when audioRegions is not an array", () => {
 			const result = normalizeProjectEditor({ audioRegions: "invalid" } as any);
-			expect(result.audioRegions).toEqual([]);
+			expect(result.audioRegions).toHaveLength(0);
 		});
 
 		it("should return empty array when audioRegions is null", () => {
 			const result = normalizeProjectEditor({ audioRegions: null } as any);
-			expect(result.audioRegions).toEqual([]);
+			expect(result.audioRegions).toHaveLength(0);
 		});
 	});
 });

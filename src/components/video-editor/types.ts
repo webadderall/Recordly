@@ -101,6 +101,7 @@ export const DEFAULT_CONNECTED_ZOOM_EASING: ZoomTransitionEasing = "glide";
 export const DEFAULT_WEBCAM_SIZE = 40;
 export const DEFAULT_WEBCAM_REACT_TO_ZOOM = true;
 export const DEFAULT_WEBCAM_CORNER_RADIUS = 90;
+export const DEFAULT_MP4_EXPORT_FRAME_RATE = 30;
 export const DEFAULT_WEBCAM_SHADOW = 0.67;
 export const DEFAULT_WEBCAM_MARGIN = 24;
 export const DEFAULT_WEBCAM_POSITION_PRESET: WebcamPositionPreset = "bottom-right";
@@ -108,6 +109,7 @@ export const DEFAULT_WEBCAM_POSITION_X = 1;
 export const DEFAULT_WEBCAM_POSITION_Y = 1;
 export const DEFAULT_WEBCAM_TIME_OFFSET_MS = 0;
 
+export const DEFAULT_ZOOM_SMOOTHNESS = 0.5;
 export const DEFAULT_WEBCAM_OVERLAY: WebcamOverlaySettings = {
 	enabled: false,
 	sourcePath: null,
@@ -175,7 +177,7 @@ export function trimsToClips(trims: TrimRegion[], totalDurationMs: number): Clip
 	return clips;
 }
 
-export type AnnotationType = "text" | "image" | "figure";
+export type AnnotationType = "text" | "image" | "figure" | "blur";
 
 export type ArrowDirection =
 	| "up"
@@ -191,6 +193,8 @@ export interface FigureData {
 	arrowDirection: ArrowDirection;
 	color: string;
 	strokeWidth: number;
+	type?: "blur" | "arrow" | "rect" | "circle";
+	blurIntensity: number;
 }
 
 export interface AnnotationPosition {
@@ -243,6 +247,7 @@ export interface AnnotationRegion {
 	style: AnnotationTextStyle;
 	zIndex: number;
 	figureData?: FigureData;
+	blurIntensity?: number;
 }
 
 export const DEFAULT_ANNOTATION_POSITION: AnnotationPosition = {
@@ -270,6 +275,7 @@ export const DEFAULT_FIGURE_DATA: FigureData = {
 	arrowDirection: "right",
 	color: "#2563EB",
 	strokeWidth: 4,
+	blurIntensity: 1.0,
 };
 
 export interface CropRegion {

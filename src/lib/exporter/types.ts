@@ -91,6 +91,7 @@ export interface GifExportConfig {
   sizePreset: GifSizePreset;
   width: number;
   height: number;
+  zoomSmoothness?: number;
 }
 
 export interface ExportSettings {

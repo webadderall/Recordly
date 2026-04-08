@@ -11,6 +11,7 @@ type PersistedEditorControls = Pick<
 	| "wallpaper"
 	| "shadowIntensity"
 	| "backgroundBlur"
+	| "zoomSmoothness"
 	| "zoomMotionBlur"
 	| "connectZooms"
 	| "zoomInDurationMs"
@@ -63,6 +64,7 @@ export const DEFAULT_EDITOR_PREFERENCES: EditorPreferences = {
 	wallpaper: DEFAULT_EDITOR_CONTROLS.wallpaper,
 	shadowIntensity: DEFAULT_EDITOR_CONTROLS.shadowIntensity,
 	backgroundBlur: DEFAULT_EDITOR_CONTROLS.backgroundBlur,
+	zoomSmoothness: DEFAULT_EDITOR_CONTROLS.zoomSmoothness,
 	zoomMotionBlur: DEFAULT_EDITOR_CONTROLS.zoomMotionBlur,
 	connectZooms: DEFAULT_EDITOR_CONTROLS.connectZooms,
 	zoomInDurationMs: DEFAULT_EDITOR_CONTROLS.zoomInDurationMs,
@@ -142,18 +144,17 @@ function normalizeEditorControls(
 		wallpaper: raw.wallpaper ?? fallback.wallpaper,
 		shadowIntensity: raw.shadowIntensity ?? fallback.shadowIntensity,
 		backgroundBlur: raw.backgroundBlur ?? fallback.backgroundBlur,
+		zoomSmoothness: raw.zoomSmoothness ?? fallback.zoomSmoothness,
 		zoomMotionBlur: raw.zoomMotionBlur ?? fallback.zoomMotionBlur,
 		connectZooms: raw.connectZooms ?? fallback.connectZooms,
 		zoomInDurationMs: raw.zoomInDurationMs ?? fallback.zoomInDurationMs,
 		zoomInOverlapMs: raw.zoomInOverlapMs ?? fallback.zoomInOverlapMs,
 		zoomOutDurationMs: raw.zoomOutDurationMs ?? fallback.zoomOutDurationMs,
 		connectedZoomGapMs: raw.connectedZoomGapMs ?? fallback.connectedZoomGapMs,
-		connectedZoomDurationMs:
-			raw.connectedZoomDurationMs ?? fallback.connectedZoomDurationMs,
+		connectedZoomDurationMs: raw.connectedZoomDurationMs ?? fallback.connectedZoomDurationMs,
 		zoomInEasing: raw.zoomInEasing ?? fallback.zoomInEasing,
 		zoomOutEasing: raw.zoomOutEasing ?? fallback.zoomOutEasing,
-		connectedZoomEasing:
-			raw.connectedZoomEasing ?? fallback.connectedZoomEasing,
+		connectedZoomEasing: raw.connectedZoomEasing ?? fallback.connectedZoomEasing,
 		showCursor: raw.showCursor ?? fallback.showCursor,
 		loopCursor: raw.loopCursor ?? fallback.loopCursor,
 		cursorStyle: raw.cursorStyle ?? fallback.cursorStyle,
@@ -161,8 +162,7 @@ function normalizeEditorControls(
 		cursorSmoothing: raw.cursorSmoothing ?? fallback.cursorSmoothing,
 		cursorMotionBlur: raw.cursorMotionBlur ?? fallback.cursorMotionBlur,
 		cursorClickBounce: raw.cursorClickBounce ?? fallback.cursorClickBounce,
-		cursorClickBounceDuration:
-			raw.cursorClickBounceDuration ?? fallback.cursorClickBounceDuration,
+		cursorClickBounceDuration: raw.cursorClickBounceDuration ?? fallback.cursorClickBounceDuration,
 		cursorSway: raw.cursorSway ?? fallback.cursorSway,
 		borderRadius: raw.borderRadius ?? fallback.borderRadius,
 		padding: raw.padding ?? fallback.padding,
@@ -194,6 +194,7 @@ function normalizeEditorControls(
 		wallpaper: normalized.wallpaper,
 		shadowIntensity: normalized.shadowIntensity,
 		backgroundBlur: normalized.backgroundBlur,
+		zoomSmoothness: normalized.zoomSmoothness,
 		zoomMotionBlur: normalized.zoomMotionBlur,
 		connectZooms: normalized.connectZooms,
 		zoomInDurationMs: normalized.zoomInDurationMs,
@@ -249,8 +250,7 @@ export function normalizeEditorPreferences(
 		customWallpapers: normalizeCustomWallpapers(raw.customWallpapers, fallback.customWallpapers),
 		whisperExecutablePath:
 			normalizeNullablePath(raw.whisperExecutablePath) ?? fallback.whisperExecutablePath,
-		whisperModelPath:
-			normalizeNullablePath(raw.whisperModelPath) ?? fallback.whisperModelPath,
+		whisperModelPath: normalizeNullablePath(raw.whisperModelPath) ?? fallback.whisperModelPath,
 	};
 }
 

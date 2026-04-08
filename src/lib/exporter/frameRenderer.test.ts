@@ -235,7 +235,7 @@ describe('FrameRenderer webcam export path', () => {
 
     expect(webcamVideo.currentTime).toBe(4.5);
     expect(renderer.lastSyncedWebcamTime).toBe(4.5);
-    expect(renderer.webcamSeekPromise).toBeNull();
+    expect(renderer.webcamSeekPromise).toBe(null);
   });
 
   it('falls back to animation frame when requestVideoFrameCallback does not fire', async () => {
@@ -254,7 +254,7 @@ describe('FrameRenderer webcam export path', () => {
     expect(renderer.lastSyncedWebcamTime).toBe(1.5);
     expect(webcamVideo.requestVideoFrameCallback).toHaveBeenCalledTimes(1);
     expect(webcamVideo.cancelVideoFrameCallback).not.toHaveBeenCalled();
-    expect(renderer.webcamSeekPromise).toBeNull();
+    expect(renderer.webcamSeekPromise).toBe(null);
   });
 
   it('uses the cached webcam frame when the live video is out of sync', () => {
@@ -280,7 +280,7 @@ describe('FrameRenderer webcam export path', () => {
     renderer.drawWebcamOverlay(outputContext, 1280, 720);
 
     const bubbleCanvas = createdCanvases[0];
-    expect(bubbleCanvas).toBeDefined();
+    expect(bubbleCanvas.getContext).toBeDefined();
     expect((bubbleCanvas.context.drawImage as any).mock.calls[0][0]).toBe(cachedFrameCanvas);
     expect((outputContext.drawImage as any).mock.calls[0][0]).toBe(bubbleCanvas);
   });
@@ -308,7 +308,7 @@ describe('FrameRenderer webcam export path', () => {
     renderer.drawWebcamOverlay(outputContext, 1280, 720);
 
     const bubbleCanvas = createdCanvases[0];
-    expect(bubbleCanvas).toBeDefined();
+    expect(bubbleCanvas.getContext).toBeDefined();
     expect((bubbleCanvas.context.drawImage as any).mock.calls[0][0]).toBe(cachedFrameCanvas);
     expect((outputContext.drawImage as any).mock.calls[0][0]).toBe(bubbleCanvas);
   });
@@ -332,7 +332,7 @@ describe('FrameRenderer webcam export path', () => {
 
     const bubbleCanvas = createdCanvases[0];
     const cacheCanvas = createdCanvases[1];
-    expect(cacheCanvas).toBeDefined();
+    expect(cacheCanvas.getContext).toBeDefined();
     expect((cacheCanvas.context.drawImage as any).mock.calls[0][0]).toBe(webcamVideo);
     expect((bubbleCanvas.context.drawImage as any).mock.calls[0][0]).toBe(cacheCanvas);
     expect((outputContext.drawImage as any).mock.calls[0][0]).toBe(bubbleCanvas);

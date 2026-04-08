@@ -37,6 +37,7 @@ import {
 	DEFAULT_CURSOR_SWAY,
 	DEFAULT_FIGURE_DATA,
 	DEFAULT_PLAYBACK_SPEED,
+	DEFAULT_ZOOM_SMOOTHNESS,
 	DEFAULT_WEBCAM_CORNER_RADIUS,
 	DEFAULT_WEBCAM_MARGIN,
 	DEFAULT_WEBCAM_OVERLAY,
@@ -70,6 +71,7 @@ export interface ProjectEditorState {
 	shadowIntensity: number;
 	backgroundBlur: number;
 	zoomMotionBlur: number;
+	zoomSmoothness: number;
 	connectZooms: boolean;
 	zoomInDurationMs: number;
 	zoomInOverlapMs: number;
@@ -338,8 +340,8 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 				})
 		: [];
 
-	const normalizedClipRegions: ClipRegion[] = Array.isArray((editor as any).clipRegions)
-		? ((editor as any).clipRegions as ClipRegion[])
+	const normalizedClipRegions: ClipRegion[] = Array.isArray(editor.clipRegions)
+		? editor.clipRegions
 				.filter((region): region is ClipRegion => Boolean(region && typeof region.id === "string"))
 				.map((region) => {
 					const rawStart = isFiniteNumber(region.startMs) ? Math.round(region.startMs) : 0;
@@ -350,7 +352,7 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 						id: region.id,
 						startMs,
 						endMs,
-						speed: isFiniteNumber((region as any).speed) ? (region as any).speed : 1,
+						speed: isFiniteNumber(region.speed) ? region.speed : 1,
 					};
 				})
 		: [];
@@ -596,6 +598,7 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 		wallpaper: typeof editor.wallpaper === "string" ? editor.wallpaper : DEFAULT_WALLPAPER_PATH,
 		shadowIntensity: typeof editor.shadowIntensity === "number" ? editor.shadowIntensity : 0.67,
 		backgroundBlur: normalizedBackgroundBlur,
+		zoomSmoothness: DEFAULT_ZOOM_SMOOTHNESS,
 		zoomMotionBlur: normalizedZoomMotionBlur,
 		connectZooms: typeof editor.connectZooms === "boolean" ? editor.connectZooms : true,
 		zoomInDurationMs: normalizedZoomInDurationMs,
