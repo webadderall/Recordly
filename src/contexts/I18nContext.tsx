@@ -28,6 +28,13 @@ import esLaunch from '@/i18n/locales/es/launch.json'
 import esSettings from '@/i18n/locales/es/settings.json'
 import esShortcuts from '@/i18n/locales/es/shortcuts.json'
 import esTimeline from '@/i18n/locales/es/timeline.json'
+import nlCommon from '@/i18n/locales/nl/common.json'
+import nlDialogs from '@/i18n/locales/nl/dialogs.json'
+import nlEditor from '@/i18n/locales/nl/editor.json'
+import nlLaunch from '@/i18n/locales/nl/launch.json'
+import nlSettings from '@/i18n/locales/nl/settings.json'
+import nlShortcuts from '@/i18n/locales/nl/shortcuts.json'
+import nlTimeline from '@/i18n/locales/nl/timeline.json'
 import koCommon from '@/i18n/locales/ko/common.json'
 import koDialogs from '@/i18n/locales/ko/dialogs.json'
 import koEditor from '@/i18n/locales/ko/editor.json'
@@ -65,6 +72,15 @@ const messages: Record<AppLocale, LocaleBundle> = {
     settings: esSettings,
     dialogs: esDialogs,
     shortcuts: esShortcuts,
+  },
+  nl: {
+    common: nlCommon,
+    launch: nlLaunch,
+    editor: nlEditor,
+    timeline: nlTimeline,
+    settings: nlSettings,
+    dialogs: nlDialogs,
+    shortcuts: nlShortcuts,
   },
   ko: {
     common: koCommon,

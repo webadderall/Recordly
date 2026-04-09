@@ -1,0 +1,118 @@
+{
+	"playback": {
+		"play": "Afspelen",
+		"pause": "Pauzeren"
+	},
+	"annotations": {
+		"settings": "Annotatie-instellingen",
+		"active": "Actief",
+		"text": "Tekst",
+		"image": "Afbeelding",
+		"arrow": "Pijl",
+		"textContent": "Tekstinhoud",
+		"textPlaceholder": "Voer je tekst in...",
+		"fontStyle": "Lettertype",
+		"selectStyle": "Selecteer stijl",
+		"size": "Grootte",
+		"toggleBold": "Vet aan/uit",
+		"toggleItalic": "Cursief aan/uit",
+		"toggleUnderline": "Onderstrepen aan/uit",
+		"alignLeft": "Links uitlijnen",
+		"alignCenter": "Centreren",
+		"alignRight": "Rechts uitlijnen",
+		"textColor": "Tekstkleur",
+		"background": "Achtergrond",
+		"none": "Geen",
+		"clearBackground": "Achtergrond wissen",
+		"uploadImage": "Afbeelding uploaden",
+		"supportedFormats": "Ondersteunde formaten: JPG, PNG, GIF, WebP",
+		"arrowDirection": "Pijlrichting",
+		"strokeWidth": "Lijndikte: {{width}}px",
+		"arrowColor": "Pijlkleur",
+		"deleteAnnotation": "Annotatie verwijderen",
+		"shortcutsAndTips": "Sneltoetsen & tips",
+		"tipSelectAnnotation": "Verplaats de afspeelkop naar een overlappend annotatiegedeelte en selecteer een item.",
+		"tipCycleForward": "Gebruik Tab om door overlappende items te bladeren.",
+		"tipCycleBackward": "Gebruik Shift+Tab om terug te bladeren.",
+		"imageUploadSuccess": "Afbeelding succesvol geüpload!",
+		"imageUploadError": "Upload een JPG-, PNG-, GIF- of WebP-afbeelding."
+	},
+	"fontStyles": {
+		"classic": "Klassiek",
+		"editor": "Editor",
+		"strong": "Sterk",
+		"typewriter": "Typemachine",
+		"deco": "Deco",
+		"simple": "Simpel",
+		"modern": "Modern",
+		"clean": "Schoon"
+	},
+	"format": {
+		"mp4Video": "MP4-video",
+		"mp4Description": "Videobestand van hoge kwaliteit",
+		"gifAnimation": "GIF-animatie",
+		"gifDescription": "Geanimeerde afbeelding om te delen"
+	},
+	"gifOptions": {
+		"frameRate": "Framesnelheid",
+		"outputSize": "Uitvoergrootte",
+		"outputDimensions": "Uitvoer: {{width}} × {{height}}px",
+		"loopAnimation": "Animatie herhalen",
+		"loopDescription": "GIF wordt continu afgespeeld"
+	},
+	"tutorial": {
+		"howTrimmingWorks": "Hoe trimmen werkt",
+		"title": "Hoe trimmen werkt",
+		"understanding": "Leer hoe je ongewenste delen uit je video knipt.",
+		"descriptionP1": "Het trimgereedschap werkt door de segmenten te definiëren die je wilt",
+		"descriptionRemove": "verwijderen",
+		"descriptionP2": "uit je video.",
+		"descriptionP3": "Elk deel van de tijdlijn dat bedekt is door een rood trimsegment wordt weggeknipt bij het exporteren.",
+		"visualExample": "Visueel voorbeeld",
+		"removed": "VERWIJDERD",
+		"kept": "Behouden",
+		"finalVideo": "Eindvideo",
+		"part": "Deel {{number}}",
+		"addTrimStep": "1. Trim toevoegen",
+		"addTrimDesc": "Druk op T of klik op het schaarpictogram om een sectie te markeren voor verwijdering.",
+		"adjustStep": "2. Aanpassen",
+		"adjustDesc": "Sleep de randen van het rode gebied om precies te bepalen wat je wilt wegknippen."
+	},
+	"feedback": {
+		"trigger": "Feedback",
+		"title": "Feedback & contact",
+		"description": "Neem rechtstreeks contact op of maak een issue aan als er iets kapot of ontbrekend is.",
+		"emailLabel": "E-mail",
+		"xLabel": "X",
+		"reportIssue": "Issue melden / feedback sturen",
+		"openFailed": "Kan link niet openen."
+	},
+	"keyboardShortcuts": {
+		"trigger": "Sneltoetsen",
+		"title": "Sneltoetsen",
+		"description": "Snelreferentie voor de tijdlijn- en editorbesturing.",
+		"customizeTooltip": "Sneltoetsen aanpassen",
+		"customize": "Aanpassen",
+		"panTimeline": "Tijdlijn verschuiven",
+		"zoomTimeline": "Tijdlijn zoomen",
+		"cycleAnnotations": "Annotaties doorlopen",
+		"tab": "Tab"
+	},
+	"actions": {
+		"saveAgain": "Opnieuw opslaan",
+		"showInFolder": "Tonen in map"
+	},
+	"project": {
+		"untitled": "Naamloos"
+	},
+	"exportStatus": {
+		"exporting": "Exporteren",
+		"renderingFile": "Je bestand wordt gerenderd.",
+		"preparing": "Export voorbereiden...",
+		"completePercent": "{{percent}}% voltooid",
+		"issue": "Exportprobleem",
+		"complete": "Export voltooid",
+		"savedSuccessfully": "Je bestand is succesvol opgeslagen."
+	},
+	"openRecordingsFolder": "Opnamemap openen"
+}

@@ -57,6 +57,7 @@ interface DesktopSource {
 const LOCALE_LABELS: Record<string, string> = {
 	en: "EN",
 	es: "ES",
+	nl: "NL",
 	"zh-CN": "中文",
 	ko: "한국어",
 };

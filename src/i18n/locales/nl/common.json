@@ -1,0 +1,26 @@
+{
+	"app": {
+		"name": "Recordly",
+		"editorTitle": "Recordly Editor",
+		"subtitle": "Schermopname en bewerking",
+		"language": "Taal",
+		"manageRecordings": "Opnamemap openen"
+	},
+	"actions": {
+		"cancel": "Annuleren",
+		"close": "Sluiten",
+		"export": "Exporteren",
+		"load": "Laden",
+		"redo": "Opnieuw",
+		"reset": "Herstellen",
+		"save": "Opslaan",
+		"undo": "Ongedaan maken",
+		"delete": "Verwijderen",
+		"done": "Klaar"
+	},
+	"errors": {
+		"invalidFileType": "Ongeldig bestandstype",
+		"failedToUploadImage": "Afbeelding uploaden mislukt",
+		"fileReadError": "Er is een fout opgetreden bij het lezen van het bestand."
+	}
+}
