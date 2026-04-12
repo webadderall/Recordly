@@ -2,6 +2,7 @@ import { fixWebmDuration } from "@fix-webm-duration/fix";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { getEffectiveRecordingDurationMs } from "@/lib/mediaTiming";
+import { forceDeviceRefresh } from "./useMicrophoneDevices";
 
 const TARGET_FRAME_RATE = 60;
 const TARGET_WIDTH = 3840;
@@ -26,7 +27,7 @@ const RECORDING_FILE_PREFIX = "recording-";
 const VIDEO_FILE_EXTENSION = ".webm";
 const AUDIO_BITRATE_VOICE = 128_000;
 const AUDIO_BITRATE_SYSTEM = 192_000;
-const MIC_GAIN_BOOST = 1.4;
+const MIC_GAIN_BOOST = 3.0;
 const WEBCAM_BITRATE = 8_000_000;
 const WEBCAM_WIDTH = 1280;
 const WEBCAM_HEIGHT = 720;
@@ -581,6 +582,9 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
           finalPath = muxResult?.path ?? result.path;
         }
 
+        // Force device refresh for Windows 10 22H2 audio input detection
+        forceDeviceRefresh();
+
         // Save the browser-captured microphone sidecar if one was recorded.
         const micFallbackBlob = await micFallbackBlobPromise;
         if (micFallbackBlob && finalPath) {
@@ -606,6 +610,8 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
       }
       pendingWebcamPathPromise.current = stopWebcamRecorder();
       cleanupCapturedMedia();
+      // Force device refresh for Windows 10 22H2 audio input detection
+      forceDeviceRefresh();
       recorder.stop();
       setRecording(false);
       window.electronAPI?.setRecordingState(false);
@@ -685,6 +691,8 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
         setRecording(false);
         nativeScreenRecording.current = false;
         cleanupCapturedMedia();
+        // Force device refresh for Windows 10 22H2 audio input detection
+        forceDeviceRefresh();
         await window.electronAPI.setRecordingState(false);
 
         if (state.reason !== "window-unavailable") {
@@ -848,6 +856,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
           } else {
             setRecording(false);
             cleanupCapturedMedia();
+            forceDeviceRefresh();
             await stopWebcamRecorder();
             return;
           }
@@ -991,6 +1000,9 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
         const systemAudioTrack = screenMediaStream.getAudioTracks()[0];
         const micAudioTrack = microphoneStream.current?.getAudioTracks()[0];
 
+        console.log('[Audio Debug] systemAudioTrack:', !!systemAudioTrack, 'micAudioTrack:', !!micAudioTrack);
+
+        // Use AudioContext for mixing when both are present
         if (systemAudioTrack && micAudioTrack) {
           const context = new AudioContext();
           mixingContext.current = context;
@@ -1006,14 +1018,20 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
           const mixedTrack = destination.stream.getAudioTracks()[0];
           if (mixedTrack) {
             stream.current.addTrack(mixedTrack);
+            console.log('[Audio Debug] Mixed audio added');
             systemAudioIncluded = true;
           }
         } else if (systemAudioTrack) {
           stream.current.addTrack(systemAudioTrack);
+          console.log('[Audio Debug] System audio only');
           systemAudioIncluded = true;
         } else if (micAudioTrack) {
+          // For mic-only, add directly without AudioContext for better compatibility
           stream.current.addTrack(micAudioTrack);
+          console.log('[Audio Debug] Mic audio only - direct add');
         }
+        
+        console.log('[Audio Debug] Final stream tracks:', stream.current.getTracks().length, 'audio:', stream.current.getAudioTracks().length);
       } else {
         const mediaStream = await navigator.mediaDevices.getDisplayMedia({
           audio: false,
@@ -1083,6 +1101,9 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
       };
       recorder.onstop = async () => {
         cleanupCapturedMedia();
+        // Force device refresh for Windows 10 22H2 audio input detection
+        forceDeviceRefresh();
+        
         if (chunks.current.length === 0) return;
 
         showRecordingFinalizationToast();
@@ -1135,6 +1156,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
       alert(error instanceof Error ? `Failed to start recording: ${error.message}` : "Failed to start recording");
       setRecording(false);
       cleanupCapturedMedia();
+      forceDeviceRefresh();
       await stopWebcamRecorder();
     } finally {
       startInFlight.current = false;
@@ -1237,6 +1259,8 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
     if (mediaRecorder.current) {
       chunks.current = [];
       cleanupCapturedMedia();
+      // Force device refresh for Windows 10 22H2 audio input detection
+      forceDeviceRefresh();
       if (mediaRecorder.current.state !== "inactive") {
         mediaRecorder.current.stop();
       }

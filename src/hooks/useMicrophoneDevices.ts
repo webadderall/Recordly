@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export interface MicrophoneDevice {
 	deviceId: string;
@@ -7,12 +7,39 @@ export interface MicrophoneDevice {
 }
 
 let hasRequestedMicrophoneLabels = false;
+let deviceRefreshCallback: (() => Promise<void>) | null = null;
+let deviceChangeTimeout: NodeJS.Timeout | null = null;
+
+export function registerDeviceRefresh(callback: () => Promise<void>) {
+	deviceRefreshCallback = callback;
+}
+
+export function unregisterDeviceRefresh() {
+	deviceRefreshCallback = null;
+}
+
+export function forceDeviceRefresh() {
+	if (deviceChangeTimeout) {
+		clearTimeout(deviceChangeTimeout);
+	}
+	// Debounce to avoid multiple refreshes on Windows 10 22H2
+	deviceChangeTimeout = setTimeout(async () => {
+		if (deviceRefreshCallback) {
+			try {
+				await deviceRefreshCallback();
+			} catch (error) {
+				console.warn("Device refresh callback failed:", error);
+			}
+		}
+	}, 100);
+}
 
 export function useMicrophoneDevices(enabled: boolean = true, preferredDeviceId?: string) {
 	const [devices, setDevices] = useState<MicrophoneDevice[]>([]);
 	const [selectedDeviceId, setSelectedDeviceId] = useState<string>("default");
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const loadDevicesRef = useRef<(() => Promise<void>) | null>(null);
 
 	useEffect(() => {
 		if (!enabled) {
@@ -89,17 +116,31 @@ export function useMicrophoneDevices(enabled: boolean = true, preferredDeviceId?
 			}
 		};
 
+		loadDevicesRef.current = loadDevices;
+
 		void loadDevices();
 
+		// Debounced device change handler for Windows 10 22H2 compatibility
+		let debounceTimeout: NodeJS.Timeout | null = null;
 		const handleDeviceChange = () => {
-			void loadDevices();
+			if (debounceTimeout) {
+				clearTimeout(debounceTimeout);
+			}
+			debounceTimeout = setTimeout(() => {
+				void loadDevices();
+			}, 150);
 		};
 
 		navigator.mediaDevices.addEventListener("devicechange", handleDeviceChange);
+		registerDeviceRefresh(loadDevices);
 
 		return () => {
 			mounted = false;
+			if (debounceTimeout) {
+				clearTimeout(debounceTimeout);
+			}
 			navigator.mediaDevices.removeEventListener("devicechange", handleDeviceChange);
+			unregisterDeviceRefresh();
 		};
 	}, [enabled, preferredDeviceId]);
 
