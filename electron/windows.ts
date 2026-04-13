@@ -210,7 +210,25 @@ function applyHudOverlayBounds(expanded: boolean) {
 
 	hudOverlayExpanded = expanded;
 
-	hudOverlayWindow.setBounds(getHudOverlayBounds(expanded), false);
+	const computed = getHudOverlayBounds(expanded);
+
+	if (hudUserPosition) {
+		// Resize in-place at the user's dragged position, clamped so the
+		// window stays fully within the current display's work area.
+		const { workArea } = getHudOverlayDisplay();
+		const x = Math.max(
+			workArea.x,
+			Math.min(hudUserPosition.x, workArea.x + workArea.width - computed.width),
+		);
+		const y = Math.max(
+			workArea.y,
+			Math.min(hudUserPosition.y, workArea.y + workArea.height - computed.height),
+		);
+		hudOverlayWindow.setBounds({ x, y, width: computed.width, height: computed.height }, false);
+	} else {
+		hudOverlayWindow.setBounds(computed, false);
+	}
+
 	positionUpdateToastWindow();
 	if (!hudOverlayWindow.isVisible()) {
 		return;
@@ -272,6 +290,10 @@ ipcMain.on("hud-overlay-set-ignore-mouse", (_event, ignore: boolean) => {
 	}
 });
 
+// When the user drags the HUD, remember their chosen position so that
+// subsequent size changes (e.g. idle → recording UI swap) resize in-place
+// instead of snapping back to the default centered location.
+let hudUserPosition: { x: number; y: number } | null = null;
 let hudDragOffset: { x: number; y: number } | null = null;
 let hudDragLastCursor: { x: number; y: number } | null = null;
 let hudDragFixedSize: { width: number; height: number } | null = null;
@@ -304,6 +326,9 @@ ipcMain.on("hud-overlay-drag", (_event, phase: string, screenX: number, screenY:
 			false,
 		);
 	} else if (phase === "end") {
+		const finalBounds = hudOverlayWindow.getBounds();
+		hudUserPosition = { x: finalBounds.x, y: finalBounds.y };
+
 		hudDragOffset = null;
 		hudDragLastCursor = null;
 		hudDragFixedSize = null;
@@ -471,7 +496,34 @@ export function createHudOverlayWindow(): BrowserWindow {
 
 	hudOverlayWindow = win;
 
+	// Reset the user's saved HUD position when displays change so the bar
+	// doesn't end up stranded off-screen after a monitor is disconnected.
+	const screen = getScreen();
+	const handleDisplayRemoved = () => {
+		hudUserPosition = null;
+	};
+	const handleDisplayMetricsChanged = () => {
+		if (hudUserPosition) {
+			const displays = screen.getAllDisplays();
+			const onScreen = displays.some(
+				(d) =>
+					hudUserPosition!.x >= d.workArea.x &&
+					hudUserPosition!.x < d.workArea.x + d.workArea.width &&
+					hudUserPosition!.y >= d.workArea.y &&
+					hudUserPosition!.y < d.workArea.y + d.workArea.height,
+			);
+			if (!onScreen) {
+				hudUserPosition = null;
+			}
+		}
+		applyHudOverlayBounds(hudOverlayExpanded);
+	};
+	screen.on("display-removed", handleDisplayRemoved);
+	screen.on("display-metrics-changed", handleDisplayMetricsChanged);
+
 	win.on("closed", () => {
+		screen.removeListener("display-removed", handleDisplayRemoved);
+		screen.removeListener("display-metrics-changed", handleDisplayMetricsChanged);
 		if (hudOverlayWindow === win) {
 			hudOverlayWindow = null;
 		}
