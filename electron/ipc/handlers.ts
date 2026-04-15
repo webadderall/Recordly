@@ -1199,16 +1199,32 @@ function resolveSystemFfmpegBinaryPath() {
     windowsHide: true,
   })
 
-  if (result.status !== 0) {
-    return null
+  if (result.status === 0) {
+    const candidate = result.stdout
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .find((line) => line.length > 0)
+
+    if (candidate) {
+      return candidate
+    }
   }
 
-  const candidate = result.stdout
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .find((line) => line.length > 0)
+  // Fallback: check common install paths directly (Electron's shell may lack full PATH)
+  if (process.platform !== 'win32') {
+    const commonPaths = [
+      '/opt/homebrew/bin/ffmpeg',
+      '/usr/local/bin/ffmpeg',
+      '/usr/bin/ffmpeg',
+    ]
+    for (const p of commonPaths) {
+      if (existsSync(p)) {
+        return p
+      }
+    }
+  }
 
-  return candidate || null
+  return null
 }
 
 function loadUiohookModule() {
