@@ -162,6 +162,7 @@ export function LaunchWindow() {
 		pauseRecording,
 		resumeRecording,
 		cancelRecording,
+		toggleMicrophoneDuringRecording,
 		microphoneEnabled,
 		setMicrophoneEnabled,
 		microphoneDeviceId,
@@ -1046,6 +1047,7 @@ export function LaunchWindow() {
 			<Separator />
 
 			<IconButton
+				onClick={toggleMicrophoneDuringRecording}
 				title={
 					microphoneEnabled
 						? t("recording.disableMicrophone")

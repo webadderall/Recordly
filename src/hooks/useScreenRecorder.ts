@@ -51,6 +51,7 @@ type UseScreenRecorderReturn = {
 	pauseRecording: () => void;
 	resumeRecording: () => void;
 	cancelRecording: () => void;
+	toggleMicrophoneDuringRecording: () => void;
 	preparePermissions: (options?: { startup?: boolean }) => Promise<boolean>;
 	isMacOS: boolean;
 	microphoneEnabled: boolean;
@@ -738,6 +739,15 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 		void window.electronAPI.setRecordingPreferences({ microphoneEnabled: enabled });
 	}, []);
 
+	const toggleMicrophoneDuringRecording = useCallback(() => {
+		const nextEnabled = !microphoneEnabled;
+		const micTrack = microphoneStream.current?.getAudioTracks()[0] ?? null;
+		if (micTrack) {
+			micTrack.enabled = nextEnabled;
+		}
+		persistMicrophoneEnabled(nextEnabled);
+	}, [microphoneEnabled, persistMicrophoneEnabled]);
+
 	const persistMicrophoneDeviceId = useCallback((deviceId: string | undefined) => {
 		setMicrophoneDeviceId(deviceId);
 		void window.electronAPI.setRecordingPreferences({ microphoneDeviceId: deviceId });
@@ -1403,6 +1413,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 		pauseRecording,
 		resumeRecording,
 		cancelRecording,
+		toggleMicrophoneDuringRecording,
 		preparePermissions,
 		isMacOS,
 		microphoneEnabled,
