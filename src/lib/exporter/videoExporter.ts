@@ -885,10 +885,10 @@ export class VideoExporter {
 		const estimatedTimeRemaining =
 			averageRenderFps > 0 ? remainingFrames / averageRenderFps : 0;
 		const safeRenderProgress =
-			phase === "finalizing" ? Math.max(0, Math.min(renderProgress ?? 99, 99)) : undefined;
+			phase === "finalizing" ? Math.max(0, Math.min(renderProgress ?? 100, 100)) : undefined;
 		const percentage =
 			phase === "finalizing"
-				? (safeRenderProgress ?? 99)
+				? (safeRenderProgress ?? 100)
 				: totalFrames > 0
 					? (currentFrame / totalFrames) * 100
 					: 100;

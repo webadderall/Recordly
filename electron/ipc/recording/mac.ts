@@ -158,7 +158,10 @@ export async function muxNativeMacRecordingWithAudio(
 	}
 
 	if (availableAudioInputs.length === 0) {
-		console.warn("[mux] No valid audio files to mux");
+		console.warn(
+			"[mux] No valid audio files to mux — video will have no audio. " +
+				`system=${systemAudioPath ?? "none"} mic=${microphonePath ?? "none"}`,
+		);
 		return;
 	}
 

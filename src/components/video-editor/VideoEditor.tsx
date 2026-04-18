@@ -4177,8 +4177,8 @@ export default function VideoEditor() {
 		? Math.min(
 				typeof exportProgress?.renderProgress === "number"
 					? exportProgress.renderProgress
-					: (exportProgress?.percentage ?? 99),
-				99,
+					: (exportProgress?.percentage ?? 100),
+				100,
 			)
 		: null;
 	const isLightningExportInProgress =
@@ -4454,8 +4454,7 @@ export default function VideoEditor() {
 									</p>
 									{isRenderingAudio ? (
 										<p className="mt-1 text-[11px] text-muted-foreground/70">
-											Audio requires real-time playback for speed/overlay
-											edits
+											Processing audio with speed/overlay edits
 										</p>
 									) : exportRenderSpeedLabel ? (
 										<p className="mt-1 text-[11px] text-muted-foreground/70">

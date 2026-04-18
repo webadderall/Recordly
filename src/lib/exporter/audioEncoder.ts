@@ -6,9 +6,7 @@ import type {
 	TrimRegion,
 } from "@/components/video-editor/types";
 import {
-	clampMediaTimeToDuration,
 	estimateCompanionAudioStartDelaySeconds,
-	getMediaSyncPlaybackRate,
 } from "@/lib/mediaTiming";
 import { resolveMediaElementSource } from "./localMediaSource";
 import type { VideoMuxer } from "./muxer";
@@ -18,12 +16,24 @@ const DECODE_BACKPRESSURE_LIMIT = 20;
 const ENCODE_BACKPRESSURE_LIMIT = 20;
 const MIN_SPEED_REGION_DELTA_MS = 0.0001;
 const MP4_AUDIO_CODEC = "mp4a.40.2";
-const SYNC_SEEK_THRESHOLD_SEC = 0.15;
-const SYNC_PLAYBACK_RATE_OPTIONS = {
-	toleranceSeconds: 0.008,
-	correctionWindowSeconds: 0.5,
-	maxAdjustment: 0.12,
-} as const;
+const OFFLINE_AUDIO_SAMPLE_RATE = 48_000;
+const OFFLINE_ENCODE_CHUNK_FRAMES = 1024;
+const OFFLINE_CHUNK_DURATION_SEC = 30;
+
+interface TimelineSlice {
+	sourceStartMs: number;
+	sourceEndMs: number;
+	speed: number;
+}
+
+interface PreparedOfflineRender {
+	mainBuffer: AudioBuffer | null;
+	companionEntries: Array<{ buffer: AudioBuffer; startDelaySec: number }>;
+	regionEntries: Array<{ buffer: AudioBuffer; region: AudioRegion }>;
+	slices: TimelineSlice[];
+	outputDurationMs: number;
+	numChannels: number;
+}
 
 export async function isAacAudioEncodingSupported(
 		sampleRate = 48_000,
@@ -152,23 +162,20 @@ export class AudioProcessor {
 				)
 			: [];
 
-		// When speed edits, audio regions, or multiple audio sources need mixing, use AudioContext mixing path.
-		// Note: real-time rendering is required here; it plays audio at 1x speed via HTMLMediaElement.
+		// When speed edits, audio regions, or multiple audio sources need mixing, use offline AudioContext pipeline.
 		if (
 			sortedSpeedRegions.length > 0 ||
 			sortedAudioRegions.length > 0 ||
 			sortedSourceAudioFallbackPaths.length > 1
 		) {
-			const renderedAudioBlob = await this.renderMixedTimelineAudio(
+			await this.renderAndMuxOfflineAudio(
 				videoUrl,
 				sortedTrims,
 				sortedSpeedRegions,
 				sortedAudioRegions,
 				sortedSourceAudioFallbackPaths,
+				muxer,
 			);
-			if (!this.cancelled) {
-				await this.muxRenderedAudioBlob(renderedAudioBlob, muxer);
-			}
 			return;
 		}
 
@@ -189,20 +196,18 @@ export class AudioProcessor {
 				}
 				return;
 			}
-			// Fallback to real-time rendering if demuxer creation failed
+			// Fallback to offline rendering if demuxer creation failed
 			console.warn(
-				"[AudioProcessor] Fast sidecar demux failed, falling back to real-time rendering",
+				"[AudioProcessor] Fast sidecar demux failed, falling back to offline rendering",
 			);
-			const renderedAudioBlob = await this.renderMixedTimelineAudio(
+			await this.renderAndMuxOfflineAudio(
 				videoUrl,
 				sortedTrims,
-				sortedSpeedRegions,
-				sortedAudioRegions,
+				[],
+				[],
 				sortedSourceAudioFallbackPaths,
+				muxer,
 			);
-			if (!this.cancelled) {
-				await this.muxRenderedAudioBlob(renderedAudioBlob, muxer);
-			}
 			return;
 		}
 
@@ -264,13 +269,14 @@ export class AudioProcessor {
 				)
 			: [];
 
-		return this.renderMixedTimelineAudio(
+		const prepared = await this.prepareOfflineRender(
 			videoUrl,
 			sortedTrims,
 			sortedSpeedRegions,
 			sortedAudioRegions,
 			sortedSourceAudioFallbackPaths,
 		);
+		return this.renderToWavBlobChunked(prepared);
 	}
 
 	// Legacy trim-only path used when no speed regions are configured.
@@ -507,372 +513,916 @@ export class AudioProcessor {
 		}
 	}
 
-	// Renders mixed audio: original video audio (with speed/trim) + external audio regions.
-	// Uses AudioContext to mix all sources into a single recorded stream.
-	private async renderMixedTimelineAudio(
+	// ---------- Offline audio rendering pipeline ----------
+	// Replaces the old real-time MediaElement+MediaRecorder approach with
+	// OfflineAudioContext, which renders as fast as the CPU allows instead of
+	// waiting for 1× real-time playback.
+
+	private async renderAndMuxOfflineAudio(
 		videoUrl: string,
 		trimRegions: TrimLikeRegion[],
 		speedRegions: SpeedRegion[],
 		audioRegions: AudioRegion[],
-		sourceAudioFallbackPaths: string[] = [],
-	): Promise<Blob> {
-		const timelineMediaSource = await resolveMediaElementSource(videoUrl);
-		const timelineMedia = document.createElement("video");
-		timelineMedia.src = timelineMediaSource.src;
-		timelineMedia.preload = "auto";
-		timelineMedia.playsInline = true;
-
-		const pitchMedia = timelineMedia as HTMLMediaElement & {
-			preservesPitch?: boolean;
-			mozPreservesPitch?: boolean;
-			webkitPreservesPitch?: boolean;
-		};
-		pitchMedia.preservesPitch = true;
-		pitchMedia.mozPreservesPitch = true;
-		pitchMedia.webkitPreservesPitch = true;
-
-		let audioContext: AudioContext | null = null;
-		let destinationNode: MediaStreamAudioDestinationNode | null = null;
-		let timelineAudioSourceNode: MediaElementAudioSourceNode | null = null;
-
-		const sourceAudioElements: {
-			media: HTMLAudioElement;
-			sourceNode: MediaElementAudioSourceNode;
-			startDelaySeconds: number;
-			cleanup: () => void;
-		}[] = [];
-
-		// Prepare external audio region elements
-		const audioRegionElements: {
-			media: HTMLAudioElement;
-			sourceNode: MediaElementAudioSourceNode;
-			gainNode: GainNode;
-			region: AudioRegion;
-			cleanup: () => void;
-		}[] = [];
-
-		let recorder: MediaRecorder | null = null;
-		let recordedBlobPromise: Promise<Blob> | null = null;
-		let tickTimerId: ReturnType<typeof setTimeout> | null = null;
-
-		try {
-			await this.waitForLoadedMetadata(timelineMedia);
-			if (this.cancelled) {
-				throw new Error("Export cancelled");
-			}
-
-			audioContext = new AudioContext({ sampleRate: 48000 });
-			const currentDestinationNode = audioContext.createMediaStreamDestination();
-			destinationNode = currentDestinationNode;
-
-			if (sourceAudioFallbackPaths.length === 0) {
-				timelineAudioSourceNode = audioContext.createMediaElementSource(timelineMedia);
-				timelineAudioSourceNode.connect(currentDestinationNode);
-			}
-
-			for (const sourceAudioPath of sourceAudioFallbackPaths) {
-				const sourceFileSource = await resolveMediaElementSource(sourceAudioPath);
-				const audioEl = document.createElement("audio");
-				audioEl.src = sourceFileSource.src;
-				audioEl.preload = "auto";
-				try {
-					await this.waitForLoadedMetadata(audioEl);
-				} catch {
-					sourceFileSource.revoke();
-					console.warn(
-						"[AudioProcessor] Failed to load source audio fallback:",
-						sourceAudioPath,
-					);
-					continue;
-				}
-				if (this.cancelled) throw new Error("Export cancelled");
-
-				const sourceNode = audioContext.createMediaElementSource(audioEl);
-				sourceNode.connect(currentDestinationNode);
-
-				sourceAudioElements.push({
-					media: audioEl,
-					sourceNode,
-					startDelaySeconds: estimateCompanionAudioStartDelaySeconds(
-						timelineMedia.duration,
-						audioEl.duration,
-					),
-					cleanup: sourceFileSource.revoke,
-				});
-			}
-
-			for (const region of audioRegions) {
-				const regionFileSource = await resolveMediaElementSource(region.audioPath);
-				const audioEl = document.createElement("audio");
-				audioEl.src = regionFileSource.src;
-				audioEl.preload = "auto";
-				try {
-					await this.waitForLoadedMetadata(audioEl);
-				} catch {
-					regionFileSource.revoke();
-					console.warn("[AudioProcessor] Failed to load audio region:", region.audioPath);
-					continue;
-				}
-				if (this.cancelled) throw new Error("Export cancelled");
-
-				const regionSourceNode = audioContext.createMediaElementSource(audioEl);
-				const gainNode = audioContext.createGain();
-				gainNode.gain.value = Math.max(0, Math.min(1, region.volume));
-				regionSourceNode.connect(gainNode);
-				gainNode.connect(currentDestinationNode);
-
-				audioRegionElements.push({
-					media: audioEl,
-					sourceNode: regionSourceNode,
-					gainNode,
-					region,
-					cleanup: regionFileSource.revoke,
-				});
-			}
-
-			const recording = this.startAudioRecording(currentDestinationNode.stream);
-			recorder = recording.recorder;
-			recordedBlobPromise = recording.recordedBlobPromise;
-
-			if (audioContext.state === "suspended") {
-				await audioContext.resume();
-			}
-
-			await this.seekTo(timelineMedia, 0);
-			await timelineMedia.play();
-
-			const totalDurationMs = (timelineMedia.duration || 0) * 1000;
-			let lastProgressReport = 0;
-
-			await new Promise<void>((resolve, reject) => {
-				const cleanup = () => {
-					if (tickTimerId !== null) {
-						clearTimeout(tickTimerId);
-						tickTimerId = null;
-					}
-					timelineMedia.removeEventListener("error", onError);
-					timelineMedia.removeEventListener("ended", onEnded);
-				};
-
-				const onError = () => {
-					cleanup();
-					reject(new Error("Failed while rendering mixed audio timeline"));
-				};
-
-				const onEnded = () => {
-					cleanup();
-					resolve();
-				};
-
-				const tick = () => {
-					if (this.cancelled) {
-						cleanup();
-						resolve();
-						return;
-					}
-
-					// Report audio rendering progress
-					if (this.onProgress && totalDurationMs > 0) {
-						const now = performance.now();
-						if (now - lastProgressReport > 250) {
-							lastProgressReport = now;
-							const progress = Math.min(
-								(timelineMedia.currentTime * 1000) / totalDurationMs,
-								1,
-							);
-							this.onProgress(progress);
-						}
-					}
-
-					let currentTimeMs = timelineMedia.currentTime * 1000;
-					const activeTrimRegion = this.findActiveTrimRegion(currentTimeMs, trimRegions);
-
-					if (activeTrimRegion && !timelineMedia.paused && !timelineMedia.ended) {
-						const skipToTime = activeTrimRegion.endMs / 1000;
-						if (skipToTime >= timelineMedia.duration) {
-							timelineMedia.pause();
-							cleanup();
-							resolve();
-							return;
-						}
-						timelineMedia.currentTime = skipToTime;
-						currentTimeMs = skipToTime * 1000;
-					}
-
-					const activeSpeedRegion = this.findActiveSpeedRegion(
-						currentTimeMs,
-						speedRegions,
-					);
-					const playbackRate = activeSpeedRegion ? activeSpeedRegion.speed : 1;
-					if (Math.abs(timelineMedia.playbackRate - playbackRate) > 0.0001) {
-						timelineMedia.playbackRate = playbackRate;
-					}
-
-					for (const entry of sourceAudioElements) {
-						const audioEl = entry.media;
-						const audioDuration = Number.isFinite(audioEl.duration)
-							? audioEl.duration
-							: null;
-						const beforeAudioStart = currentTimeMs + 1 < entry.startDelaySeconds * 1000;
-						const targetTimeSec = clampMediaTimeToDuration(
-							currentTimeMs / 1000 - entry.startDelaySeconds,
-							audioDuration,
-						);
-
-						const atEnd = audioDuration !== null && targetTimeSec >= audioDuration;
-						if (beforeAudioStart || atEnd) {
-							if (!audioEl.paused) {
-								audioEl.pause();
-							}
-							continue;
-						}
-
-						if (Math.abs(audioEl.currentTime - targetTimeSec) > SYNC_SEEK_THRESHOLD_SEC) {
-							audioEl.currentTime = targetTimeSec;
-						}
-
-						const syncedPlaybackRate = getMediaSyncPlaybackRate({
-							basePlaybackRate: playbackRate,
-							currentTime: audioEl.currentTime,
-							targetTime: targetTimeSec,
-							...SYNC_PLAYBACK_RATE_OPTIONS,
-						});
-						if (Math.abs(audioEl.playbackRate - syncedPlaybackRate) > 0.0001) {
-							audioEl.playbackRate = syncedPlaybackRate;
-						}
-
-						if (audioEl.paused) {
-							audioEl.currentTime = targetTimeSec;
-							audioEl.play().catch(() => undefined);
-						}
-					}
-
-					// Sync external audio regions with the video timeline position
-					for (const entry of audioRegionElements) {
-						const { media: audioEl, region } = entry;
-						const isInRegion =
-							currentTimeMs >= region.startMs && currentTimeMs < region.endMs;
-
-						if (isInRegion) {
-							const audioOffset = (currentTimeMs - region.startMs) / 1000;
-							if (Math.abs(audioEl.currentTime - audioOffset) > SYNC_SEEK_THRESHOLD_SEC) {
-								audioEl.currentTime = audioOffset;
-							}
-
-							const syncedPlaybackRate = getMediaSyncPlaybackRate({
-								basePlaybackRate: playbackRate,
-								currentTime: audioEl.currentTime,
-								targetTime: audioOffset,
-								...SYNC_PLAYBACK_RATE_OPTIONS,
-							});
-							if (Math.abs(audioEl.playbackRate - syncedPlaybackRate) > 0.0001) {
-								audioEl.playbackRate = syncedPlaybackRate;
-							}
-
-							if (audioEl.paused) {
-								audioEl.currentTime = audioOffset;
-								audioEl.play().catch(() => undefined);
-							}
-						} else {
-							if (!audioEl.paused) {
-								audioEl.pause();
-							}
-						}
-					}
-
-					if (!timelineMedia.paused && !timelineMedia.ended) {
-						tickTimerId = setTimeout(tick, 16);
-					} else {
-						cleanup();
-						resolve();
-					}
-				};
-
-				timelineMedia.addEventListener("error", onError, { once: true });
-				timelineMedia.addEventListener("ended", onEnded, { once: true });
-				tickTimerId = setTimeout(tick, 16);
-			});
-		} finally {
-			if (tickTimerId !== null) {
-				clearTimeout(tickTimerId);
-			}
-			timelineMedia.pause();
-			timelineAudioSourceNode?.disconnect();
-			timelineMedia.src = "";
-			timelineMedia.load();
-			timelineMediaSource.revoke();
-			for (const entry of sourceAudioElements) {
-				entry.media.pause();
-				entry.sourceNode.disconnect();
-				entry.media.src = "";
-				entry.media.load();
-				entry.cleanup();
-			}
-			for (const entry of audioRegionElements) {
-				entry.media.pause();
-				entry.sourceNode.disconnect();
-				entry.gainNode.disconnect();
-				entry.media.src = "";
-				entry.media.load();
-				entry.cleanup();
-			}
-			if (recorder && recorder.state !== "inactive") {
-				recorder.stop();
-			}
-			destinationNode?.stream.getTracks().forEach((track) => track.stop());
-			destinationNode?.disconnect();
-			if (audioContext && audioContext.state !== "closed") {
-				try {
-					await audioContext.close();
-				} catch {
-					// Ignore teardown failures during export cleanup.
-				}
-			}
-		}
-
-		if (!recordedBlobPromise) {
-			throw new Error("Failed to record mixed timeline audio");
-		}
-
-		const recordedBlob = await recordedBlobPromise;
-		if (this.cancelled) {
-			throw new Error("Export cancelled");
-		}
-		return recordedBlob;
+		sourceAudioFallbackPaths: string[],
+		muxer: VideoMuxer,
+	): Promise<void> {
+		const prepared = await this.prepareOfflineRender(
+			videoUrl,
+			trimRegions,
+			speedRegions,
+			audioRegions,
+			sourceAudioFallbackPaths,
+		);
+		if (this.cancelled) return;
+		await this.renderAndEncodeChunked(prepared, muxer);
 	}
 
-	// Demuxes the rendered speed-adjusted blob, decodes it, and re-encodes it to AAC for MP4 output.
-	private async muxRenderedAudioBlob(blob: Blob, muxer: VideoMuxer): Promise<void> {
-		if (this.cancelled) return;
+	private async prepareOfflineRender(
+		videoUrl: string,
+		trimRegions: TrimLikeRegion[],
+		speedRegions: SpeedRegion[],
+		audioRegions: AudioRegion[],
+		sourceAudioFallbackPaths: string[],
+	): Promise<PreparedOfflineRender> {
+		if (this.cancelled) throw new Error("Export cancelled");
+		this.onProgress?.(0);
 
-		const file = new File([blob], "speed-audio.webm", { type: blob.type || "audio/webm" });
-		const wasmUrl = new URL("./wasm/web-demuxer.wasm", window.location.href).href;
-		const demuxer = new WebDemuxer({ wasmFilePath: wasmUrl });
+		const hasExternalSources = sourceAudioFallbackPaths.length > 0;
 
-		try {
-			await demuxer.load(file);
-			const audioConfig = (await demuxer.getDecoderConfig("audio")) as AudioDecoderConfig;
-			const codecCheck = await AudioDecoder.isConfigSupported(audioConfig);
-			if (!codecCheck.supported) {
-				console.warn(
-					"[AudioProcessor] Rendered audio codec not supported:",
-					audioConfig.codec,
-				);
-				return;
-			}
+		// Decode primary audio source (streaming decode with bulk fallback)
+		const mainBuffer = !hasExternalSources
+			? await this.decodeAudioFromUrl(videoUrl)
+			: null;
+		if (this.cancelled) throw new Error("Export cancelled");
 
-			await this.transcodeAudioStream(
-				demuxer.read("audio") as ReadableStream<EncodedAudioChunk>,
-				audioConfig,
-				muxer,
-			);
-		} finally {
-			try {
-				demuxer.destroy();
-			} catch {
-				// ignore
+		// Decode companion / sidecar audio files
+		const companionEntries: Array<{ buffer: AudioBuffer; startDelaySec: number }> = [];
+		for (const audioPath of sourceAudioFallbackPaths) {
+			if (this.cancelled) throw new Error("Export cancelled");
+			const buffer = await this.decodeAudioFromUrl(audioPath);
+			if (!buffer) continue;
+
+			const refDuration =
+				mainBuffer?.duration ?? (await this.getMediaDurationSec(videoUrl));
+			companionEntries.push({
+				buffer,
+				startDelaySec: estimateCompanionAudioStartDelaySeconds(
+					refDuration,
+					buffer.duration,
+				),
+			});
+		}
+		if (this.cancelled) throw new Error("Export cancelled");
+
+		// Decode audio region overlay files
+		const regionEntries: Array<{ buffer: AudioBuffer; region: AudioRegion }> = [];
+		for (const region of audioRegions) {
+			if (this.cancelled) throw new Error("Export cancelled");
+			const buffer = await this.decodeAudioFromUrl(region.audioPath);
+			if (buffer) regionEntries.push({ buffer, region });
+		}
+
+		this.onProgress?.(0.2);
+
+		// Determine source duration for timeline calculation
+		const primaryBuffer = mainBuffer ?? companionEntries[0]?.buffer ?? null;
+		if (!primaryBuffer && regionEntries.length === 0) {
+			throw new Error("No decodable audio sources found");
+		}
+
+		let sourceDurationSec: number;
+		if (mainBuffer) {
+			sourceDurationSec = mainBuffer.duration;
+		} else if (hasExternalSources) {
+			sourceDurationSec = await this.getMediaDurationSec(videoUrl);
+		} else {
+			sourceDurationSec = primaryBuffer?.duration ?? 0;
+		}
+		const sourceDurationMs = sourceDurationSec * 1000;
+
+		// Build timeline slices (non-trimmed segments with speed info)
+		const slices = this.buildTimelineSlices(sourceDurationMs, trimRegions, speedRegions);
+
+		let outputDurationMs = 0;
+		for (const slice of slices) {
+			outputDurationMs += (slice.sourceEndMs - slice.sourceStartMs) / slice.speed;
+		}
+
+		// Extend for audio regions that might exceed the video timeline
+		for (const { region } of regionEntries) {
+			const regionEndOutput = this.sourceTimeToOutputTime(region.endMs, slices);
+			if (regionEndOutput !== null) {
+				outputDurationMs = Math.max(outputDurationMs, regionEndOutput);
 			}
 		}
+
+		const numChannels = Math.min(primaryBuffer?.numberOfChannels ?? 2, 2);
+
+		return {
+			mainBuffer,
+			companionEntries,
+			regionEntries,
+			slices,
+			outputDurationMs,
+			numChannels,
+		};
+	}
+
+	// Render timeline in chunks and encode each chunk to the muxer immediately.
+	// Memory is bounded to ~OFFLINE_CHUNK_DURATION_SEC of PCM per chunk
+	// instead of holding the entire output buffer in memory.
+	private async renderAndEncodeChunked(
+		prepared: PreparedOfflineRender,
+		muxer: VideoMuxer,
+	): Promise<void> {
+		const { numChannels } = prepared;
+		const totalOutputSec = Math.max(prepared.outputDurationMs / 1000, 0.01);
+
+		let encodeError: Error | null = null;
+		let muxError: Error | null = null;
+		let pendingMuxing = Promise.resolve();
+		let wroteFirstChunk = false;
+
+		const encodeConfig: AudioEncoderConfig = {
+			codec: MP4_AUDIO_CODEC,
+			sampleRate: OFFLINE_AUDIO_SAMPLE_RATE,
+			numberOfChannels: numChannels,
+			bitrate: AUDIO_BITRATE,
+		};
+
+		const supported = await AudioEncoder.isConfigSupported(encodeConfig);
+		if (!supported.supported) {
+			console.warn("[AudioProcessor] AAC encoding not supported for offline audio");
+			return;
+		}
+
+		const encoder = new AudioEncoder({
+			output: (chunk: EncodedAudioChunk, meta?: EncodedAudioChunkMetadata) => {
+				pendingMuxing = pendingMuxing
+					.then(async () => {
+						if (this.cancelled) return;
+						await muxer.addAudioChunk(
+							chunk,
+							!wroteFirstChunk ? meta : undefined,
+						);
+						wroteFirstChunk = true;
+					})
+					.catch((error) => {
+						muxError = error instanceof Error ? error : new Error(String(error));
+					});
+			},
+			error: (error: DOMException) => {
+				encodeError = new Error(`Audio encode error: ${error.message}`);
+			},
+		});
+		encoder.configure(encodeConfig);
+
+		try {
+			await this.renderChunked(
+				prepared,
+				totalOutputSec,
+				async (rendered, outputOffsetSec) => {
+					if (encodeError) throw encodeError;
+					if (muxError) throw muxError;
+					await this.feedBufferToEncoder(encoder, rendered, outputOffsetSec);
+				},
+			);
+
+			if (encodeError) throw encodeError;
+			if (muxError) throw muxError;
+
+			if (encoder.state === "configured") {
+				await encoder.flush();
+			}
+
+			await pendingMuxing;
+
+			if (encodeError) throw encodeError;
+			if (muxError) throw muxError;
+		} finally {
+			if (encoder.state === "configured") {
+				encoder.close();
+			}
+		}
+	}
+
+	// Render timeline to a WAV blob for the native/FFmpeg export path.
+	// Processes in chunks to avoid holding the entire output in memory.
+	private async renderToWavBlobChunked(
+		prepared: PreparedOfflineRender,
+	): Promise<Blob> {
+		const totalOutputSec = Math.max(prepared.outputDurationMs / 1000, 0.01);
+		const totalFrames = Math.ceil(totalOutputSec * OFFLINE_AUDIO_SAMPLE_RATE);
+		const numChannels = prepared.numChannels;
+
+		const header = this.createWavHeader(
+			OFFLINE_AUDIO_SAMPLE_RATE,
+			numChannels,
+			totalFrames,
+		);
+		const pcmParts: ArrayBuffer[] = [header];
+
+		await this.renderChunked(
+			prepared,
+			totalOutputSec,
+			async (rendered) => {
+				pcmParts.push(...this.audioBufferToPcmParts(rendered));
+			},
+		);
+
+		return new Blob(pcmParts, { type: "audio/wav" });
+	}
+
+	// Shared chunked rendering loop. Processes the timeline in
+	// OFFLINE_CHUNK_DURATION_SEC segments, calling onChunk for each rendered buffer.
+	private async renderChunked(
+		prepared: PreparedOfflineRender,
+		totalOutputSec: number,
+		onChunk: (
+			rendered: AudioBuffer,
+			outputOffsetSec: number,
+			chunkIndex: number,
+		) => Promise<void>,
+	): Promise<void> {
+		const { slices, outputDurationMs, numChannels } = prepared;
+		let outputOffsetSec = 0;
+		const chunkCount = Math.ceil(totalOutputSec / OFFLINE_CHUNK_DURATION_SEC);
+
+		for (let i = 0; i < chunkCount && !this.cancelled; i++) {
+			const chunkSec = Math.min(
+				OFFLINE_CHUNK_DURATION_SEC,
+				totalOutputSec - outputOffsetSec,
+			);
+			const chunkFrames = Math.ceil(chunkSec * OFFLINE_AUDIO_SAMPLE_RATE);
+
+			const offlineCtx = new OfflineAudioContext(
+				numChannels,
+				chunkFrames,
+				OFFLINE_AUDIO_SAMPLE_RATE,
+			);
+
+			// Schedule main audio
+			if (prepared.mainBuffer) {
+				this.scheduleBufferThroughTimeline(
+					offlineCtx,
+					prepared.mainBuffer,
+					slices,
+					0,
+					outputOffsetSec,
+					chunkSec,
+				);
+			}
+
+			// Schedule companion/sidecar audio
+			for (const entry of prepared.companionEntries) {
+				this.scheduleBufferThroughTimeline(
+					offlineCtx,
+					entry.buffer,
+					slices,
+					entry.startDelaySec,
+					outputOffsetSec,
+					chunkSec,
+				);
+			}
+
+			// Schedule audio region overlays
+			for (const { buffer, region } of prepared.regionEntries) {
+				this.scheduleRegionForChunk(
+					offlineCtx,
+					buffer,
+					region,
+					slices,
+					outputDurationMs,
+					outputOffsetSec,
+					chunkSec,
+				);
+			}
+
+			const rendered = await offlineCtx.startRendering();
+			if (this.cancelled) break;
+
+			await onChunk(rendered, outputOffsetSec, i);
+
+			outputOffsetSec += chunkSec;
+			this.onProgress?.(0.3 + (outputOffsetSec / totalOutputSec) * 0.7);
+		}
+	}
+
+	// Schedule an audio region overlay clipped to a specific chunk window.
+	private scheduleRegionForChunk(
+		ctx: OfflineAudioContext,
+		buffer: AudioBuffer,
+		region: AudioRegion,
+		slices: TimelineSlice[],
+		totalOutputDurationMs: number,
+		chunkOutputStartSec: number,
+		chunkDurationSec: number,
+	): void {
+		const outputStartMs = this.sourceTimeToOutputTime(region.startMs, slices) ?? 0;
+		const outputEndMs =
+			this.sourceTimeToOutputTime(region.endMs, slices) ?? totalOutputDurationMs;
+
+		let localStartSec = outputStartMs / 1000 - chunkOutputStartSec;
+		let localEndSec = outputEndMs / 1000 - chunkOutputStartSec;
+
+		// Skip if region doesn't overlap with this chunk
+		if (localEndSec <= 0 || localStartSec >= chunkDurationSec) return;
+
+		// Clip to chunk bounds
+		let bufferOffsetSec = 0;
+		if (localStartSec < 0) {
+			bufferOffsetSec = -localStartSec;
+			localStartSec = 0;
+		}
+		if (localEndSec > chunkDurationSec) {
+			localEndSec = chunkDurationSec;
+		}
+
+		const duration = Math.min(
+			localEndSec - localStartSec,
+			buffer.duration - bufferOffsetSec,
+		);
+		if (duration <= 0.001) return;
+
+		const gainNode = ctx.createGain();
+		gainNode.gain.value = Math.max(0, Math.min(1, region.volume));
+		gainNode.connect(ctx.destination);
+
+		const source = ctx.createBufferSource();
+		source.buffer = buffer;
+		source.connect(gainNode);
+		source.start(localStartSec, bufferOffsetSec, duration);
+	}
+
+	// Feed a rendered AudioBuffer chunk to an AudioEncoder with a timestamp offset.
+	private async feedBufferToEncoder(
+		encoder: AudioEncoder,
+		buffer: AudioBuffer,
+		timestampOffsetSec: number,
+	): Promise<void> {
+		const sampleRate = buffer.sampleRate;
+		const numChannels = buffer.numberOfChannels;
+		const totalFrames = buffer.length;
+
+		for (
+			let offset = 0;
+			offset < totalFrames && !this.cancelled;
+			offset += OFFLINE_ENCODE_CHUNK_FRAMES
+		) {
+			const frameCount = Math.min(OFFLINE_ENCODE_CHUNK_FRAMES, totalFrames - offset);
+
+			const planarData = new Float32Array(frameCount * numChannels);
+			for (let ch = 0; ch < numChannels; ch++) {
+				const channelData = buffer.getChannelData(ch);
+				planarData.set(
+					channelData.subarray(offset, offset + frameCount),
+					ch * frameCount,
+				);
+			}
+
+			const audioData = new AudioData({
+				format: "f32-planar",
+				sampleRate,
+				numberOfFrames: frameCount,
+				numberOfChannels: numChannels,
+				timestamp: Math.round(
+					(offset / sampleRate + timestampOffsetSec) * 1_000_000,
+				),
+				data: planarData,
+			});
+
+			encoder.encode(audioData);
+			audioData.close();
+
+			while (
+				encoder.encodeQueueSize >= ENCODE_BACKPRESSURE_LIMIT &&
+				!this.cancelled
+			) {
+				await new Promise((r) => setTimeout(r, 1));
+			}
+		}
+	}
+
+	// Decode audio from a URL using streaming WebCodecs decode with bulk fallback.
+	// Streaming decode avoids holding the full compressed file in memory alongside
+	// the decoded AudioBuffer, reducing peak memory for large recordings.
+	private async decodeAudioFromUrl(url: string): Promise<AudioBuffer | null> {
+		try {
+			const buffer = await this.streamDecodeFromUrl(url);
+			if (buffer) return buffer;
+		} catch (error) {
+			console.warn(
+				"[AudioProcessor] Streaming decode failed, falling back to bulk decode:",
+				url,
+				error,
+			);
+		}
+		return this.bulkDecodeFromUrl(url, OFFLINE_AUDIO_SAMPLE_RATE);
+	}
+
+	// Streaming decode via WebDemuxer + AudioDecoder. Decodes audio chunk-by-chunk
+	// without loading the entire compressed file into a contiguous ArrayBuffer.
+	private async streamDecodeFromUrl(url: string): Promise<AudioBuffer | null> {
+		const source = await resolveMediaElementSource(url);
+		let demuxer: WebDemuxer | null = null;
+
+		try {
+			const response = await fetch(source.src);
+			const blob = await response.blob();
+			const filename = url.split("/").pop() || "audio";
+			const file = new File([blob], filename, {
+				type: blob.type || "video/mp4",
+			});
+
+			const wasmUrl = new URL(
+				"./wasm/web-demuxer.wasm",
+				window.location.href,
+			).href;
+			demuxer = new WebDemuxer({ wasmFilePath: wasmUrl });
+			await demuxer.load(file);
+
+			let audioConfig: AudioDecoderConfig;
+			try {
+				audioConfig = (await demuxer.getDecoderConfig(
+					"audio",
+				)) as AudioDecoderConfig;
+			} catch {
+				return null; // No audio track
+			}
+
+			const sampleRate = audioConfig.sampleRate || 48_000;
+			const numChannels = Math.min(audioConfig.numberOfChannels || 2, 2);
+
+			// Accumulate decoded PCM per channel
+			const channelChunks: Float32Array[][] = Array.from(
+				{ length: numChannels },
+				() => [],
+			);
+			let totalFrames = 0;
+			let decodeError: Error | null = null;
+
+			const decoder = new AudioDecoder({
+				output: (data: AudioData) => {
+					try {
+						const frames = data.numberOfFrames;
+						const dataChannels = Math.min(
+							data.numberOfChannels,
+							numChannels,
+						);
+						const format = data.format;
+
+						if (format?.includes("planar")) {
+							for (let ch = 0; ch < dataChannels; ch++) {
+								const size = data.allocationSize({
+									planeIndex: ch,
+								});
+								const bytes = new ArrayBuffer(size);
+								data.copyTo(bytes, { planeIndex: ch });
+								channelChunks[ch].push(
+									this.rawToFloat32(bytes, format, frames),
+								);
+							}
+						} else if (format) {
+							// Interleaved format — deinterleave into per-channel arrays
+							const size = data.allocationSize({ planeIndex: 0 });
+							const bytes = new ArrayBuffer(size);
+							data.copyTo(bytes, { planeIndex: 0 });
+							const interleaved = this.rawToFloat32(
+								bytes,
+								format,
+								frames * dataChannels,
+							);
+							for (let ch = 0; ch < dataChannels; ch++) {
+								const chData = new Float32Array(frames);
+								for (let i = 0; i < frames; i++) {
+									chData[i] =
+										interleaved[i * dataChannels + ch];
+								}
+								channelChunks[ch].push(chData);
+							}
+						}
+
+						// Fill missing channels with silence
+						for (let ch = dataChannels; ch < numChannels; ch++) {
+							channelChunks[ch].push(new Float32Array(frames));
+						}
+
+						totalFrames += frames;
+					} finally {
+						data.close();
+					}
+				},
+				error: (err: DOMException) => {
+					decodeError = new Error(
+						`Streaming audio decode error: ${err.message}`,
+					);
+				},
+			});
+
+			decoder.configure(audioConfig);
+
+			const audioStream = demuxer.read("audio");
+			const reader = (
+				audioStream as ReadableStream<EncodedAudioChunk>
+			).getReader();
+
+			try {
+				while (!this.cancelled) {
+					if (decodeError) throw decodeError;
+					const { done, value: chunk } = await reader.read();
+					if (done || !chunk) break;
+
+					decoder.decode(chunk);
+
+					while (
+						decoder.decodeQueueSize > DECODE_BACKPRESSURE_LIMIT &&
+						!this.cancelled
+					) {
+						if (decodeError) throw decodeError;
+						await new Promise((r) => setTimeout(r, 1));
+					}
+				}
+
+				if (decoder.state === "configured") {
+					await decoder.flush();
+				}
+				if (decodeError) throw decodeError;
+			} finally {
+				try {
+					await reader.cancel();
+				} catch {
+					/* reader already closed */
+				}
+				if (decoder.state === "configured") {
+					decoder.close();
+				}
+			}
+
+			if (totalFrames === 0) return null;
+
+			// Build AudioBuffer from accumulated chunks
+			const audioBuffer = new AudioBuffer({
+				length: totalFrames,
+				numberOfChannels: numChannels,
+				sampleRate,
+			});
+			for (let ch = 0; ch < numChannels; ch++) {
+				const channelData = audioBuffer.getChannelData(ch);
+				let writeOffset = 0;
+				for (const chunk of channelChunks[ch]) {
+					channelData.set(chunk, writeOffset);
+					writeOffset += chunk.length;
+				}
+			}
+
+			return audioBuffer;
+		} finally {
+			source.revoke();
+			try {
+				demuxer?.destroy();
+			} catch {
+				/* cleanup */
+			}
+		}
+	}
+
+	// Convert raw bytes from AudioData to Float32Array based on the sample format.
+	private rawToFloat32(
+		bytes: ArrayBuffer,
+		format: string,
+		sampleCount: number,
+	): Float32Array {
+		if (format.startsWith("f32")) {
+			return new Float32Array(bytes);
+		}
+		if (format.startsWith("s16")) {
+			const int16 = new Int16Array(bytes);
+			const f32 = new Float32Array(sampleCount);
+			for (let i = 0; i < sampleCount; i++) {
+				f32[i] = int16[i] / 0x8000;
+			}
+			return f32;
+		}
+		if (format.startsWith("s32")) {
+			const int32 = new Int32Array(bytes);
+			const f32 = new Float32Array(sampleCount);
+			for (let i = 0; i < sampleCount; i++) {
+				f32[i] = int32[i] / 0x80000000;
+			}
+			return f32;
+		}
+		if (format.startsWith("u8")) {
+			const uint8 = new Uint8Array(bytes);
+			const f32 = new Float32Array(sampleCount);
+			for (let i = 0; i < sampleCount; i++) {
+				f32[i] = (uint8[i] - 128) / 128;
+			}
+			return f32;
+		}
+		// Unknown format — attempt float32 interpretation
+		return new Float32Array(bytes);
+	}
+
+	// Bulk decode fallback: loads entire file into memory and uses decodeAudioData.
+	private async bulkDecodeFromUrl(
+		url: string,
+		sampleRate: number,
+	): Promise<AudioBuffer | null> {
+		try {
+			const source = await resolveMediaElementSource(url);
+			try {
+				const response = await fetch(source.src);
+				const arrayBuffer = await response.arrayBuffer();
+				const tempCtx = new OfflineAudioContext(2, 1, sampleRate);
+				return await tempCtx.decodeAudioData(arrayBuffer);
+			} finally {
+				source.revoke();
+			}
+		} catch (error) {
+			console.warn("[AudioProcessor] Failed to decode audio from URL:", url, error);
+			return null;
+		}
+	}
+
+	// Get the duration of a media file by loading only its metadata.
+	private async getMediaDurationSec(url: string): Promise<number> {
+		const source = await resolveMediaElementSource(url);
+		try {
+			const media = document.createElement("video");
+			media.src = source.src;
+			media.preload = "metadata";
+
+			if (
+				Number.isFinite(media.duration) &&
+				media.readyState >= HTMLMediaElement.HAVE_METADATA
+			) {
+				const duration = media.duration;
+				media.src = "";
+				return duration;
+			}
+
+			return await new Promise<number>((resolve, reject) => {
+				const timeout = setTimeout(() => {
+					cleanup();
+					reject(new Error("Timed out getting media duration (30s)"));
+				}, 30_000);
+
+				const onLoaded = () => {
+					cleanup();
+					const duration = media.duration;
+					media.src = "";
+					media.load();
+					resolve(Number.isFinite(duration) ? duration : 0);
+				};
+				const onError = () => {
+					cleanup();
+					media.src = "";
+					media.load();
+					reject(new Error("Failed to get media duration"));
+				};
+				const cleanup = () => {
+					clearTimeout(timeout);
+					media.removeEventListener("loadedmetadata", onLoaded);
+					media.removeEventListener("error", onError);
+				};
+
+				media.addEventListener("loadedmetadata", onLoaded);
+				media.addEventListener("error", onError, { once: true });
+			});
+		} finally {
+			source.revoke();
+		}
+	}
+
+	// Build non-overlapping timeline slices from the source timeline, excluding
+	// trimmed regions and tagging each slice with its playback speed.
+	private buildTimelineSlices(
+		sourceDurationMs: number,
+		trimRegions: TrimLikeRegion[],
+		speedRegions: SpeedRegion[],
+	): TimelineSlice[] {
+		const boundaries = new Set<number>();
+		boundaries.add(0);
+		boundaries.add(sourceDurationMs);
+
+		for (const trim of trimRegions) {
+			if (trim.startMs >= 0 && trim.startMs <= sourceDurationMs)
+				boundaries.add(trim.startMs);
+			if (trim.endMs >= 0 && trim.endMs <= sourceDurationMs) boundaries.add(trim.endMs);
+		}
+		for (const speed of speedRegions) {
+			if (speed.startMs >= 0 && speed.startMs <= sourceDurationMs)
+				boundaries.add(speed.startMs);
+			if (speed.endMs >= 0 && speed.endMs <= sourceDurationMs) boundaries.add(speed.endMs);
+		}
+
+		const sorted = [...boundaries].sort((a, b) => a - b);
+		const slices: TimelineSlice[] = [];
+
+		for (let i = 0; i < sorted.length - 1; i++) {
+			const start = sorted[i];
+			const end = sorted[i + 1];
+			if (end - start < 0.001) continue;
+
+			// Skip segments entirely inside a trim region
+			const midpoint = (start + end) / 2;
+			if (this.isInTrimRegion(midpoint, trimRegions)) continue;
+
+			const speedRegion = speedRegions.find(
+				(s) => midpoint >= s.startMs && midpoint < s.endMs,
+			);
+
+			slices.push({
+				sourceStartMs: start,
+				sourceEndMs: end,
+				speed: speedRegion?.speed ?? 1,
+			});
+		}
+
+		return slices;
+	}
+
+	// Map a source-timeline timestamp to the corresponding output-timeline timestamp.
+	private sourceTimeToOutputTime(
+		sourceMs: number,
+		slices: TimelineSlice[],
+	): number | null {
+		let outputMs = 0;
+
+		for (const slice of slices) {
+			if (sourceMs <= slice.sourceStartMs) {
+				return outputMs;
+			}
+			const sliceDurationMs = slice.sourceEndMs - slice.sourceStartMs;
+			if (sourceMs >= slice.sourceEndMs) {
+				outputMs += sliceDurationMs / slice.speed;
+				continue;
+			}
+			// Source time falls within this slice
+			outputMs += (sourceMs - slice.sourceStartMs) / slice.speed;
+			return outputMs;
+		}
+
+		return outputMs;
+	}
+
+	// Schedule an AudioBuffer through the timeline slices in an OfflineAudioContext.
+	// Each non-trimmed segment creates an AudioBufferSourceNode with the appropriate
+	// playbackRate for speed regions. When chunkOutputStartSec/chunkDurationSec are
+	// provided, only sources overlapping the chunk window are scheduled.
+	private scheduleBufferThroughTimeline(
+		ctx: OfflineAudioContext,
+		buffer: AudioBuffer,
+		slices: TimelineSlice[],
+		sourceStartDelaySec: number,
+		chunkOutputStartSec = 0,
+		chunkDurationSec = Number.POSITIVE_INFINITY,
+	): void {
+		let outputOffsetSec = 0;
+
+		for (const slice of slices) {
+			const sliceSourceDurationSec = (slice.sourceEndMs - slice.sourceStartMs) / 1000;
+			const sliceOutputDurationSec = sliceSourceDurationSec / slice.speed;
+
+			// Where in the buffer does this slice read from?
+			const bufferOffsetSec = slice.sourceStartMs / 1000 - sourceStartDelaySec;
+
+			// Skip if slice doesn't overlap with the buffer at all
+			if (
+				bufferOffsetSec + sliceSourceDurationSec <= 0 ||
+				bufferOffsetSec >= buffer.duration
+			) {
+				outputOffsetSec += sliceOutputDurationSec;
+				continue;
+			}
+
+			// Clamp to buffer bounds
+			let effectiveBufferStartSec = Math.max(0, bufferOffsetSec);
+			const trimmedFromStartSec = effectiveBufferStartSec - bufferOffsetSec;
+			let effectiveSourceDurationSec = Math.min(
+				sliceSourceDurationSec - trimmedFromStartSec,
+				buffer.duration - effectiveBufferStartSec,
+			);
+
+			if (effectiveSourceDurationSec <= 0.001) {
+				outputOffsetSec += sliceOutputDurationSec;
+				continue;
+			}
+
+			// Calculate output position (global then chunk-local)
+			let localOutputStartSec =
+				outputOffsetSec + trimmedFromStartSec / slice.speed - chunkOutputStartSec;
+			let localOutputEndSec =
+				localOutputStartSec + effectiveSourceDurationSec / slice.speed;
+
+			// Skip if entirely outside chunk window
+			if (localOutputEndSec <= 0 || localOutputStartSec >= chunkDurationSec) {
+				outputOffsetSec += sliceOutputDurationSec;
+				continue;
+			}
+
+			// Clip to chunk start
+			if (localOutputStartSec < 0) {
+				const skipOutputSec = -localOutputStartSec;
+				const skipSourceSec = skipOutputSec * slice.speed;
+				effectiveBufferStartSec += skipSourceSec;
+				effectiveSourceDurationSec -= skipSourceSec;
+				localOutputStartSec = 0;
+			}
+
+			// Clip to chunk end
+			if (localOutputEndSec > chunkDurationSec) {
+				const excessOutputSec = localOutputEndSec - chunkDurationSec;
+				effectiveSourceDurationSec -= excessOutputSec * slice.speed;
+			}
+
+			if (effectiveSourceDurationSec <= 0.001) {
+				outputOffsetSec += sliceOutputDurationSec;
+				continue;
+			}
+
+			const source = ctx.createBufferSource();
+			source.buffer = buffer;
+			source.playbackRate.value = slice.speed;
+			source.connect(ctx.destination);
+
+			source.start(localOutputStartSec, effectiveBufferStartSec, effectiveSourceDurationSec);
+
+			outputOffsetSec += sliceOutputDurationSec;
+		}
+	}
+
+	// Create a WAV file header for the given audio parameters.
+	private createWavHeader(
+		sampleRate: number,
+		numChannels: number,
+		totalFrames: number,
+	): ArrayBuffer {
+		const bytesPerSample = 2; // 16-bit PCM
+		const dataSize = totalFrames * numChannels * bytesPerSample;
+		const headerSize = 44;
+		const header = new ArrayBuffer(headerSize);
+		const view = new DataView(header);
+
+		const writeString = (offset: number, str: string) => {
+			for (let i = 0; i < str.length; i++) {
+				view.setUint8(offset + i, str.charCodeAt(i));
+			}
+		};
+
+		writeString(0, "RIFF");
+		view.setUint32(4, headerSize - 8 + dataSize, true);
+		writeString(8, "WAVE");
+		writeString(12, "fmt ");
+		view.setUint32(16, 16, true);
+		view.setUint16(20, 1, true); // PCM format
+		view.setUint16(22, numChannels, true);
+		view.setUint32(24, sampleRate, true);
+		view.setUint32(28, sampleRate * numChannels * bytesPerSample, true);
+		view.setUint16(32, numChannels * bytesPerSample, true);
+		view.setUint16(34, bytesPerSample * 8, true);
+		writeString(36, "data");
+		view.setUint32(40, dataSize, true);
+
+		return header;
+	}
+
+	// Convert an AudioBuffer to chunked 16-bit PCM ArrayBuffers.
+	// Returns small (~256KB) pieces instead of one massive allocation.
+	private audioBufferToPcmParts(buffer: AudioBuffer): ArrayBuffer[] {
+		const PCM_CHUNK_FRAMES = 65536;
+		const numChannels = buffer.numberOfChannels;
+		const numFrames = buffer.length;
+		const bytesPerSample = 2;
+		const parts: ArrayBuffer[] = [];
+
+		const channels: Float32Array[] = [];
+		for (let ch = 0; ch < numChannels; ch++) {
+			channels.push(buffer.getChannelData(ch));
+		}
+
+		for (let frameOffset = 0; frameOffset < numFrames; frameOffset += PCM_CHUNK_FRAMES) {
+			const chunkFrames = Math.min(PCM_CHUNK_FRAMES, numFrames - frameOffset);
+			const chunkBuffer = new ArrayBuffer(chunkFrames * numChannels * bytesPerSample);
+			const view = new DataView(chunkBuffer);
+
+			let byteOffset = 0;
+			for (let i = 0; i < chunkFrames; i++) {
+				for (let ch = 0; ch < numChannels; ch++) {
+					const sample = Math.max(-1, Math.min(1, channels[ch][frameOffset + i]));
+					view.setInt16(
+						byteOffset,
+						sample < 0 ? sample * 0x8000 : sample * 0x7fff,
+						true,
+					);
+					byteOffset += 2;
+				}
+			}
+
+			parts.push(chunkBuffer);
+		}
+
+		return parts;
 	}
 
 	// Loads a sidecar audio file into a WebDemuxer for direct transcoding (avoiding real-time rendering).
@@ -895,141 +1445,6 @@ export class AudioProcessor {
 			console.warn("[AudioProcessor] Failed to create demuxer for sidecar audio:", error);
 			return null;
 		}
-	}
-
-	private startAudioRecording(stream: MediaStream): {
-		recorder: MediaRecorder;
-		recordedBlobPromise: Promise<Blob>;
-	} {
-		const mimeType = this.getSupportedAudioMimeType();
-		const options: MediaRecorderOptions = {
-			audioBitsPerSecond: AUDIO_BITRATE,
-			...(mimeType ? { mimeType } : {}),
-		};
-
-		const recorder = new MediaRecorder(stream, options);
-		const chunks: Blob[] = [];
-
-		const recordedBlobPromise = new Promise<Blob>((resolve, reject) => {
-			recorder.ondataavailable = (event: BlobEvent) => {
-				if (event.data && event.data.size > 0) {
-					chunks.push(event.data);
-				}
-			};
-			recorder.onerror = () => {
-				reject(new Error("MediaRecorder failed while capturing speed-adjusted audio"));
-			};
-			recorder.onstop = () => {
-				const type = mimeType || chunks[0]?.type || "audio/webm";
-				resolve(new Blob(chunks, { type }));
-			};
-		});
-
-		recorder.start();
-		return { recorder, recordedBlobPromise };
-	}
-
-	private getSupportedAudioMimeType(): string | undefined {
-		const candidates = ["audio/webm;codecs=opus", "audio/webm"];
-		for (const candidate of candidates) {
-			if (MediaRecorder.isTypeSupported(candidate)) {
-				return candidate;
-			}
-		}
-		return undefined;
-	}
-
-	private waitForLoadedMetadata(media: HTMLMediaElement): Promise<void> {
-		if (Number.isFinite(media.duration) && media.readyState >= HTMLMediaElement.HAVE_METADATA) {
-			return Promise.resolve();
-		}
-
-		return new Promise<void>((resolve, reject) => {
-			let timeoutId: ReturnType<typeof setTimeout> | null = null;
-
-			const onLoaded = () => {
-				cleanup();
-				resolve();
-			};
-			const onError = () => {
-				cleanup();
-				reject(new Error("Failed to load media metadata for speed-adjusted audio"));
-			};
-			const onTimeout = () => {
-				cleanup();
-				reject(new Error("Timed out waiting for media metadata (30s)"));
-			};
-			const cleanup = () => {
-				if (timeoutId !== null) {
-					clearTimeout(timeoutId);
-					timeoutId = null;
-				}
-				media.removeEventListener("loadedmetadata", onLoaded);
-				media.removeEventListener("error", onError);
-			};
-
-			timeoutId = setTimeout(onTimeout, 30_000);
-			media.addEventListener("loadedmetadata", onLoaded);
-			media.addEventListener("error", onError, { once: true });
-		});
-	}
-
-	private seekTo(media: HTMLMediaElement, targetSec: number): Promise<void> {
-		if (Math.abs(media.currentTime - targetSec) < 0.0001) {
-			return Promise.resolve();
-		}
-
-		return new Promise<void>((resolve, reject) => {
-			let timeoutId: ReturnType<typeof setTimeout> | null = null;
-
-			const onSeeked = () => {
-				cleanup();
-				resolve();
-			};
-			const onError = () => {
-				cleanup();
-				reject(new Error("Failed to seek media for speed-adjusted audio"));
-			};
-			const onTimeout = () => {
-				cleanup();
-				reject(new Error("Timed out waiting for media seek (30s)"));
-			};
-			const cleanup = () => {
-				if (timeoutId !== null) {
-					clearTimeout(timeoutId);
-					timeoutId = null;
-				}
-				media.removeEventListener("seeked", onSeeked);
-				media.removeEventListener("error", onError);
-			};
-
-			timeoutId = setTimeout(onTimeout, 30_000);
-			media.addEventListener("seeked", onSeeked, { once: true });
-			media.addEventListener("error", onError, { once: true });
-			media.currentTime = targetSec;
-		});
-	}
-
-	private findActiveTrimRegion(
-		currentTimeMs: number,
-		trimRegions: TrimLikeRegion[],
-	): TrimLikeRegion | null {
-		return (
-			trimRegions.find(
-				(region) => currentTimeMs >= region.startMs && currentTimeMs < region.endMs,
-			) || null
-		);
-	}
-
-	private findActiveSpeedRegion(
-		currentTimeMs: number,
-		speedRegions: SpeedRegion[],
-	): SpeedRegion | null {
-		return (
-			speedRegions.find(
-				(region) => currentTimeMs >= region.startMs && currentTimeMs < region.endMs,
-			) || null
-		);
 	}
 
 	private cloneWithTimestamp(src: AudioData, newTimestamp: number): AudioData {
