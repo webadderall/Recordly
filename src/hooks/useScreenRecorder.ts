@@ -846,6 +846,16 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 				alert("Please select a source to record");
 				return;
 			}
+			// Persist the synthetic Linux portal sentinel to main so that the
+			// setDisplayMediaRequestHandler can short-circuit getSources() and
+			// avoid triggering an extra portal dialog.
+			if (!existingSource && selectedSource.id === "screen:linux-portal") {
+				try {
+					await window.electronAPI.selectSource(selectedSource);
+				} catch (err) {
+					console.warn("Failed to persist Linux portal sentinel source:", err);
+				}
+			}
 
 			const permissionsReady = await preparePermissions();
 			if (!permissionsReady) {
@@ -1031,22 +1041,24 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 			if (wantsAudioCapture) {
 				let screenMediaStream: MediaStream;
 				const useLinuxPortal = selectedSource.id === "screen:linux-portal";
+				const acquireLinuxPortalStream = (withAudio: boolean) =>
+					mediaDevices.getDisplayMedia({
+						audio: withAudio,
+						video: {
+							displaySurface: "monitor",
+							width: { ideal: TARGET_WIDTH, max: TARGET_WIDTH },
+							height: { ideal: TARGET_HEIGHT, max: TARGET_HEIGHT },
+							frameRate: { ideal: TARGET_FRAME_RATE, max: TARGET_FRAME_RATE },
+							cursor: "never",
+						},
+						selfBrowserSurface: "exclude",
+						surfaceSwitching: "exclude",
+					});
 
 				if (systemAudioEnabled) {
 					try {
 						screenMediaStream = useLinuxPortal
-							? await mediaDevices.getDisplayMedia({
-									audio: true,
-									video: {
-										displaySurface: "monitor",
-										width: { ideal: TARGET_WIDTH, max: TARGET_WIDTH },
-										height: { ideal: TARGET_HEIGHT, max: TARGET_HEIGHT },
-										frameRate: { ideal: TARGET_FRAME_RATE, max: TARGET_FRAME_RATE },
-										cursor: "never",
-									},
-									selfBrowserSurface: "exclude",
-									surfaceSwitching: "exclude",
-								})
+							? await acquireLinuxPortalStream(true)
 							: await mediaDevices.getUserMedia({
 									audio: {
 										mandatory: {
@@ -1065,18 +1077,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 							"System audio is not available for this source. Recording will continue without system audio.",
 						);
 						screenMediaStream = useLinuxPortal
-							? await mediaDevices.getDisplayMedia({
-									audio: false,
-									video: {
-										displaySurface: "monitor",
-										width: { ideal: TARGET_WIDTH, max: TARGET_WIDTH },
-										height: { ideal: TARGET_HEIGHT, max: TARGET_HEIGHT },
-										frameRate: { ideal: TARGET_FRAME_RATE, max: TARGET_FRAME_RATE },
-										cursor: "never",
-									},
-									selfBrowserSurface: "exclude",
-									surfaceSwitching: "exclude",
-								})
+							? await acquireLinuxPortalStream(false)
 							: await mediaDevices.getUserMedia({
 									audio: false,
 									video: browserScreenVideoConstraints,
@@ -1084,18 +1085,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 					}
 				} else {
 					screenMediaStream = useLinuxPortal
-						? await mediaDevices.getDisplayMedia({
-								audio: false,
-								video: {
-									displaySurface: "monitor",
-									width: { ideal: TARGET_WIDTH, max: TARGET_WIDTH },
-									height: { ideal: TARGET_HEIGHT, max: TARGET_HEIGHT },
-									frameRate: { ideal: TARGET_FRAME_RATE, max: TARGET_FRAME_RATE },
-									cursor: "never",
-								},
-								selfBrowserSurface: "exclude",
-								surfaceSwitching: "exclude",
-							})
+						? await acquireLinuxPortalStream(false)
 						: await mediaDevices.getUserMedia({
 								audio: false,
 								video: browserScreenVideoConstraints,

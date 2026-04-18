@@ -900,8 +900,13 @@ app.whenReady().then(async () => {
 			// is set we skip getSources entirely and hand back a synthetic
 			// source id; Chromium then opens the portal once to actually
 			// resolve the capture.
+			// Default to the sentinel on Linux when no source has been
+			// pre-selected (e.g. fresh session where the renderer skipped the
+			// source picker entirely). This avoids calling getSources() which
+			// would itself trigger an extra portal dialog.
 			const isLinuxPortalSentinel =
-				process.platform === "linux" && sourceId === "screen:linux-portal";
+				process.platform === "linux" &&
+				(sourceId === "screen:linux-portal" || !sourceId);
 			if (isLinuxPortalSentinel) {
 				callback({ video: { id: "screen:0:0", name: "Entire screen" } });
 				return;

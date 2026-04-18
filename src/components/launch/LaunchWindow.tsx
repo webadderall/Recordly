@@ -1093,23 +1093,27 @@ export function LaunchWindow() {
 
 	const idleControls = (
 		<>
-			<button
-				type="button"
-				className={`${styles.screenSel} ${styles.electronNoDrag}`}
-				onClick={() => toggleDropdown("sources")}
-				title={selectedSource}
-			>
-				<Monitor size={16} />
-				<ContentClamp className={styles.sourceLabel} truncateLength={36}>
-					{selectedSource}
-				</ContentClamp>
-				<ChevronUp
-					size={10}
-					className={`text-[#6b6b78] ml-0.5 transition-transform duration-200 ${activeDropdown === "sources" ? "" : "rotate-180"}`}
-				/>
-			</button>
+			{platform !== "linux" && (
+				<>
+					<button
+						type="button"
+						className={`${styles.screenSel} ${styles.electronNoDrag}`}
+						onClick={() => toggleDropdown("sources")}
+						title={selectedSource}
+					>
+						<Monitor size={16} />
+						<ContentClamp className={styles.sourceLabel} truncateLength={36}>
+							{selectedSource}
+						</ContentClamp>
+						<ChevronUp
+							size={10}
+							className={`text-[#6b6b78] ml-0.5 transition-transform duration-200 ${activeDropdown === "sources" ? "" : "rotate-180"}`}
+						/>
+					</button>
 
-			<Separator />
+					<Separator />
+				</>
+			)}
 
 			<IconButton
 				onClick={toggleMicrophone}
