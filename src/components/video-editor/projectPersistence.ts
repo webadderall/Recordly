@@ -405,6 +405,9 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 						endMs,
 						speed: isFiniteNumber(region.speed) ? region.speed : 1,
 						muted: typeof region.muted === "boolean" ? region.muted : false,
+						...(isFiniteNumber(region.sourceStartMs)
+							? { sourceStartMs: Math.round(region.sourceStartMs) }
+							: {}),
 					};
 				})
 		: [];

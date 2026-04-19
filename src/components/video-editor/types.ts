@@ -147,24 +147,33 @@ export interface ClipRegion {
 	endMs: number;
 	speed: number;
 	muted?: boolean;
+	/** Source video start position. Defaults to startMs when omitted (speed=1 clips). */
+	sourceStartMs?: number;
+}
+
+/** Get the source-coordinate start position of a clip. */
+export function getClipSourceStartMs(clip: ClipRegion): number {
+	return clip.sourceStartMs ?? clip.startMs;
 }
 
 export function getClipSourceEndMs(clip: ClipRegion): number {
+	const sourceStart = clip.sourceStartMs ?? clip.startMs;
 	const displayDurationMs = Math.max(0, clip.endMs - clip.startMs);
 	const speed = Number.isFinite(clip.speed) && clip.speed > 0 ? clip.speed : 1;
-	return Math.round(clip.startMs + displayDurationMs * speed);
+	return Math.round(sourceStart + displayDurationMs * speed);
 }
 
 /** Convert clip regions (kept segments) to trim regions (gaps to remove). */
 export function clipsToTrims(clips: ClipRegion[], totalDurationMs: number): TrimRegion[] {
 	if (clips.length === 0) return [];
-	const sorted = [...clips].sort((a, b) => a.startMs - b.startMs);
+	const sorted = [...clips].sort((a, b) => getClipSourceStartMs(a) - getClipSourceStartMs(b));
 	const trims: TrimRegion[] = [];
 	let cursor = 0;
 	let trimId = 1;
 	for (const clip of sorted) {
-		if (clip.startMs > cursor) {
-			trims.push({ id: `trim-gap-${trimId++}`, startMs: cursor, endMs: clip.startMs });
+		const sourceStart = getClipSourceStartMs(clip);
+		if (sourceStart > cursor) {
+			trims.push({ id: `trim-gap-${trimId++}`, startMs: cursor, endMs: sourceStart });
 		}
 		cursor = getClipSourceEndMs(clip);
 	}

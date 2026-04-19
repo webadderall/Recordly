@@ -146,7 +146,6 @@ import {
 	DEFAULT_CROP_REGION,
 	DEFAULT_CURSOR_STYLE,
 	DEFAULT_FIGURE_DATA,
-	DEFAULT_PLAYBACK_SPEED,
 	DEFAULT_WEBCAM_OVERLAY,
 	DEFAULT_ZOOM_DEPTH,
 	DEFAULT_ZOOM_IN_DURATION_MS,
@@ -157,7 +156,7 @@ import {
 	type EditorEffectSection,
 	type FigureData,
 	getClipSourceEndMs,
-	type PlaybackSpeed,
+	getClipSourceStartMs,
 	type SpeedRegion,
 	type TrimRegion,
 	type WebcamOverlaySettings,
@@ -176,14 +175,11 @@ import {
 type EditorHistorySnapshot = {
 	zoomRegions: ZoomRegion[];
 	clipRegions: ClipRegion[];
-	speedRegions: SpeedRegion[];
 	annotationRegions: AnnotationRegion[];
 	audioRegions: AudioRegion[];
 	autoCaptions: CaptionCue[];
 	selectedZoomId: string | null;
-	selectedTrimId: string | null;
 	selectedClipId: string | null;
-	selectedSpeedId: string | null;
 	selectedAnnotationId: string | null;
 	selectedAudioId: string | null;
 };
@@ -556,16 +552,35 @@ export default function VideoEditor() {
 	const [zoomRegions, setZoomRegions] = useState<ZoomRegion[]>([]);
 	const [cursorTelemetry, setCursorTelemetry] = useState<CursorTelemetryPoint[]>([]);
 	const [selectedZoomId, setSelectedZoomId] = useState<string | null>(null);
-	const [trimRegions, setTrimRegions] = useState<TrimRegion[]>([]);
-	const [selectedTrimId, setSelectedTrimId] = useState<string | null>(null);
 	const [clipRegions, setClipRegions] = useState<ClipRegion[]>([]);
 	const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
-	const [speedRegions, setSpeedRegions] = useState<SpeedRegion[]>([]);
-	const [selectedSpeedId, setSelectedSpeedId] = useState<string | null>(null);
 	const [annotationRegions, setAnnotationRegions] = useState<AnnotationRegion[]>([]);
 	const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
 	const [audioRegions, setAudioRegions] = useState<AudioRegion[]>([]);
 	const [selectedAudioId, setSelectedAudioId] = useState<string | null>(null);
+
+	// Trim regions derived from clips (gaps = sections to skip in export)
+	const trimRegions = useMemo<TrimRegion[]>(() => {
+		const totalMs = Math.round(duration * 1000);
+		if (totalMs <= 0 || clipRegions.length === 0) return [];
+		return clipsToTrims(clipRegions, totalMs);
+	}, [clipRegions, duration]);
+
+	// Speed regions derived purely from clip speeds (no standalone speed regions)
+	const effectiveSpeedRegions = useMemo<SpeedRegion[]>(
+		() =>
+			clipRegions
+				.filter((clip) => clip.speed !== 1)
+				.map((clip) => ({
+					id: `clip-speed-${clip.id}`,
+					startMs: getClipSourceStartMs(clip),
+					endMs: getClipSourceEndMs(clip),
+					speed: clip.speed as SpeedRegion["speed"],
+				})),
+		[clipRegions],
+	);
+	const speedRegions = effectiveSpeedRegions;
+
 	const [autoCaptions, setAutoCaptions] = useState<CaptionCue[]>([]);
 	const [autoCaptionSettings, setAutoCaptionSettings] = useState<AutoCaptionSettings>(
 		DEFAULT_AUTO_CAPTION_SETTINGS,
@@ -632,9 +647,7 @@ export default function VideoEditor() {
 	const projectBrowserTriggerRef = useRef<HTMLButtonElement | null>(null);
 	const projectBrowserFallbackTriggerRef = useRef<HTMLButtonElement | null>(null);
 	const nextZoomIdRef = useRef(1);
-	const nextTrimIdRef = useRef(1);
 	const nextClipIdRef = useRef(1);
-	const nextSpeedIdRef = useRef(1);
 	const nextAudioIdRef = useRef(1);
 
 	const { shortcuts, isMac } = useShortcuts();
@@ -786,27 +799,14 @@ export default function VideoEditor() {
 					annotationRegions,
 					autoCaptions,
 					autoCaptionSettings,
-					speedRegions: (() => {
-						const clipDerived: SpeedRegion[] = clipRegions
-							.filter((clip) => clip.speed !== 1)
-							.map((clip) => ({
-								id: `clip-speed-${clip.id}`,
-								startMs: clip.startMs,
-								endMs: getClipSourceEndMs(clip),
-								speed: clip.speed as SpeedRegion["speed"],
-							}));
-						if (clipDerived.length === 0) return speedRegions;
-						const result = [...speedRegions];
-						for (const cs of clipDerived) {
-							const overlaps = speedRegions.some(
-								(sr) => sr.endMs > cs.startMs && sr.startMs < cs.endMs,
-							);
-							if (!overlaps) {
-								result.push(cs);
-							}
-						}
-						return result;
-					})(),
+					speedRegions: clipRegions
+						.filter((clip) => clip.speed !== 1)
+						.map((clip) => ({
+							id: `clip-speed-${clip.id}`,
+							startMs: getClipSourceStartMs(clip),
+							endMs: getClipSourceEndMs(clip),
+							speed: clip.speed as SpeedRegion["speed"],
+						})),
 					previewWidth,
 					previewHeight,
 					cursorTelemetry,
@@ -897,7 +897,6 @@ export default function VideoEditor() {
 		padding,
 		shadowIntensity,
 		showCursor,
-		speedRegions,
 		wallpaper,
 		webcam,
 		zoomInDurationMs,
@@ -1344,28 +1343,22 @@ export default function VideoEditor() {
 		return {
 			zoomRegions,
 			clipRegions,
-			speedRegions,
 			annotationRegions,
 			audioRegions,
 			autoCaptions,
 			selectedZoomId,
-			selectedTrimId,
 			selectedClipId,
-			selectedSpeedId,
 			selectedAnnotationId,
 			selectedAudioId,
 		};
 	}, [
 		zoomRegions,
 		clipRegions,
-		speedRegions,
 		annotationRegions,
 		audioRegions,
 		autoCaptions,
 		selectedZoomId,
-		selectedTrimId,
 		selectedClipId,
-		selectedSpeedId,
 		selectedAnnotationId,
 		selectedAudioId,
 	]);
@@ -1376,14 +1369,11 @@ export default function VideoEditor() {
 			const cloned = cloneSnapshot(snapshot);
 			setZoomRegions(cloned.zoomRegions);
 			setClipRegions(cloned.clipRegions);
-			setSpeedRegions(cloned.speedRegions);
 			setAnnotationRegions(cloned.annotationRegions);
 			setAudioRegions(cloned.audioRegions);
 			setAutoCaptions(cloned.autoCaptions);
 			setSelectedZoomId(cloned.selectedZoomId);
-			setSelectedTrimId(cloned.selectedTrimId);
 			setSelectedClipId(cloned.selectedClipId);
-			setSelectedSpeedId(cloned.selectedSpeedId);
 			setSelectedAnnotationId(cloned.selectedAnnotationId);
 			setSelectedAudioId(cloned.selectedAudioId);
 
@@ -1394,10 +1384,6 @@ export default function VideoEditor() {
 			nextClipIdRef.current = deriveNextId(
 				"clip",
 				cloned.clipRegions.map((region) => region.id),
-			);
-			nextSpeedIdRef.current = deriveNextId(
-				"speed",
-				cloned.speedRegions.map((region) => region.id),
 			);
 			nextAnnotationIdRef.current = deriveNextId(
 				"annotation",
@@ -1503,10 +1489,8 @@ export default function VideoEditor() {
 			setCropRegion(DEFAULT_CROP_REGION);
 			setWebcam(normalizedEditor.webcam);
 			setZoomRegions(normalizedEditor.zoomRegions);
-			setTrimRegions(normalizedEditor.trimRegions);
 			setClipRegions(normalizedEditor.clipRegions);
 			clipInitializedRef.current = normalizedEditor.clipRegions.length > 0;
-			setSpeedRegions(normalizedEditor.speedRegions);
 			setAnnotationRegions(normalizedEditor.annotationRegions);
 			setAudioRegions(normalizedEditor.audioRegions);
 			setAutoCaptions(normalizedEditor.autoCaptions);
@@ -1523,9 +1507,7 @@ export default function VideoEditor() {
 			setGifSizePreset(normalizedEditor.gifSizePreset);
 
 			setSelectedZoomId(null);
-			setSelectedTrimId(null);
 			setSelectedClipId(null);
-			setSelectedSpeedId(null);
 			setSelectedAnnotationId(null);
 			setSelectedAudioId(null);
 
@@ -1533,17 +1515,9 @@ export default function VideoEditor() {
 				"zoom",
 				normalizedEditor.zoomRegions.map((region) => region.id),
 			);
-			nextTrimIdRef.current = deriveNextId(
-				"trim",
-				normalizedEditor.trimRegions.map((region) => region.id),
-			);
 			nextClipIdRef.current = deriveNextId(
 				"clip",
 				normalizedEditor.clipRegions.map((region: ClipRegion) => region.id),
-			);
-			nextSpeedIdRef.current = deriveNextId(
-				"speed",
-				normalizedEditor.speedRegions.map((region) => region.id),
 			);
 			nextAudioIdRef.current = deriveNextId(
 				"audio",
@@ -2346,19 +2320,13 @@ export default function VideoEditor() {
 		clipInitializedRef.current = true;
 	}, [duration, clipRegions.length]);
 
-	// Derive trimRegions from clipRegions so export/playback pipelines stay unchanged
-	useEffect(() => {
-		const totalMs = Math.round(duration * 1000);
-		if (totalMs <= 0 || clipRegions.length === 0) return;
-		setTrimRegions(clipsToTrims(clipRegions, totalMs));
-	}, [clipRegions, duration]);
-
 	const mapTimelineTimeToSourceTime = useCallback(
 		(timeMs: number) => {
 			for (const clip of clipRegions) {
 				if (timeMs < clip.startMs || timeMs > clip.endMs) continue;
+				const sourceStart = getClipSourceStartMs(clip);
 				const speed = Number.isFinite(clip.speed) && clip.speed > 0 ? clip.speed : 1;
-				return Math.round(clip.startMs + (timeMs - clip.startMs) * speed);
+				return Math.round(sourceStart + (timeMs - clip.startMs) * speed);
 			}
 			return Math.round(timeMs);
 		},
@@ -2368,10 +2336,11 @@ export default function VideoEditor() {
 	const mapSourceTimeToTimelineTime = useCallback(
 		(timeMs: number) => {
 			for (const clip of clipRegions) {
+				const sourceStart = getClipSourceStartMs(clip);
 				const sourceEndMs = getClipSourceEndMs(clip);
-				if (timeMs < clip.startMs || timeMs > sourceEndMs) continue;
+				if (timeMs < sourceStart || timeMs > sourceEndMs) continue;
 				const speed = Number.isFinite(clip.speed) && clip.speed > 0 ? clip.speed : 1;
-				return Math.round(clip.startMs + (timeMs - clip.startMs) / speed);
+				return Math.round(clip.startMs + (timeMs - sourceStart) / speed);
 			}
 			return Math.round(timeMs);
 		},
@@ -2392,29 +2361,6 @@ export default function VideoEditor() {
 		() => mapSourceTimeToTimelineTime(currentTime * 1000) / 1000,
 		[currentTime, mapSourceTimeToTimelineTime],
 	);
-
-	// Merge clip speeds into speed regions so playback + export respect per-clip speed
-	const effectiveSpeedRegions = useMemo<SpeedRegion[]>(() => {
-		const clipDerived: SpeedRegion[] = clipRegions
-			.filter((clip) => clip.speed !== 1)
-			.map((clip) => ({
-				id: `clip-speed-${clip.id}`,
-				startMs: clip.startMs,
-				endMs: getClipSourceEndMs(clip),
-				speed: clip.speed as SpeedRegion["speed"],
-			}));
-		if (clipDerived.length === 0) return speedRegions;
-		const result = [...speedRegions];
-		for (const cs of clipDerived) {
-			const overlaps = speedRegions.some(
-				(sr) => sr.endMs > cs.startMs && sr.startMs < cs.endMs,
-			);
-			if (!overlaps) {
-				result.push(cs);
-			}
-		}
-		return result;
-	}, [clipRegions, speedRegions]);
 
 	function togglePlayPause() {
 		const playback = videoPlaybackRef.current;
@@ -2442,7 +2388,6 @@ export default function VideoEditor() {
 		setSelectedZoomId(id);
 		if (id) {
 			setActiveEffectSection("zoom");
-			setSelectedTrimId(null);
 			setSelectedAnnotationId(null);
 			setSelectedAudioId(null);
 		} else {
@@ -2450,20 +2395,10 @@ export default function VideoEditor() {
 		}
 	}, []);
 
-	const handleSelectTrim = useCallback((id: string | null) => {
-		setSelectedTrimId(id);
-		if (id) {
-			setSelectedZoomId(null);
-			setSelectedAnnotationId(null);
-			setSelectedAudioId(null);
-		}
-	}, []);
-
 	const handleSelectAnnotation = useCallback((id: string | null) => {
 		setSelectedAnnotationId(id);
 		if (id) {
 			setSelectedZoomId(null);
-			setSelectedTrimId(null);
 			setSelectedAudioId(null);
 		}
 	}, []);
@@ -2485,7 +2420,6 @@ export default function VideoEditor() {
 			}
 			setZoomRegions((prev) => [...prev, newRegion]);
 			setSelectedZoomId(id);
-			setSelectedTrimId(null);
 			setSelectedAnnotationId(null);
 			extensionHost.emitEvent({
 				type: "timeline:region-added",
@@ -2579,35 +2513,8 @@ export default function VideoEditor() {
 		zoomRegions,
 	]);
 
-	const handleTrimAdded = useCallback((span: Span) => {
-		const id = `trim-${nextTrimIdRef.current++}`;
-		const newRegion: TrimRegion = {
-			id,
-			startMs: Math.round(span.start),
-			endMs: Math.round(span.end),
-		};
-		setTrimRegions((prev) => [...prev, newRegion]);
-		setSelectedTrimId(id);
-		setSelectedZoomId(null);
-		setSelectedAnnotationId(null);
-	}, []);
-
 	const handleZoomSpanChange = useCallback((id: string, span: Span) => {
 		setZoomRegions((prev) =>
-			prev.map((region) =>
-				region.id === id
-					? {
-							...region,
-							startMs: Math.round(span.start),
-							endMs: Math.round(span.end),
-						}
-					: region,
-			),
-		);
-	}, []);
-
-	const handleTrimSpanChange = useCallback((id: string, span: Span) => {
-		setTrimRegions((prev) =>
 			prev.map((region) =>
 				region.id === id
 					? {
@@ -2672,16 +2579,6 @@ export default function VideoEditor() {
 		[selectedZoomId],
 	);
 
-	const handleTrimDelete = useCallback(
-		(id: string) => {
-			setTrimRegions((prev) => prev.filter((region) => region.id !== id));
-			if (selectedTrimId === id) {
-				setSelectedTrimId(null);
-			}
-		},
-		[selectedTrimId],
-	);
-
 	const handleSelectClip = useCallback((id: string | null) => {
 		setSelectedClipId(id);
 		if (id) {
@@ -2701,12 +2598,17 @@ export default function VideoEditor() {
 				if (!target) return prev;
 				const leftId = `clip-${nextClipIdRef.current++}`;
 				const rightId = `clip-${nextClipIdRef.current++}`;
+				const speed = Number.isFinite(target.speed) && target.speed > 0 ? target.speed : 1;
+				const targetSourceStart = target.sourceStartMs ?? target.startMs;
+				const splitOffset = Math.round(splitMs) - target.startMs;
+				const rightSourceStart = Math.round(targetSourceStart + splitOffset * speed);
 				const left: ClipRegion = {
 					id: leftId,
 					startMs: target.startMs,
 					endMs: Math.round(splitMs),
 					speed: target.speed,
 					muted: target.muted,
+					sourceStartMs: target.sourceStartMs,
 				};
 				const right: ClipRegion = {
 					id: rightId,
@@ -2714,6 +2616,7 @@ export default function VideoEditor() {
 					endMs: target.endMs,
 					speed: target.speed,
 					muted: target.muted,
+					sourceStartMs: rightSourceStart,
 				};
 				if (selectedClipId === target.id) {
 					setSelectedClipId(leftId);
@@ -2737,20 +2640,17 @@ export default function VideoEditor() {
 
 				if (isMove) {
 					const delta = startDelta;
-					setZoomRegions((prev) =>
-						prev.map((zoom) => {
-							const overlaps =
-								zoom.startMs < oldClip.endMs && zoom.endMs > oldClip.startMs;
-							if (overlaps) {
-								return {
-									...zoom,
-									startMs: zoom.startMs + delta,
-									endMs: zoom.endMs + delta,
-								};
-							}
-							return zoom;
-						}),
-					);
+					const moveContained = <T extends { startMs: number; endMs: number }>(
+						regions: T[],
+					): T[] =>
+						regions.map((r) =>
+							r.startMs >= oldClip.startMs && r.endMs <= oldClip.endMs
+								? { ...r, startMs: r.startMs + delta, endMs: r.endMs + delta }
+								: r,
+						);
+					setZoomRegions((prev) => moveContained(prev));
+					setAnnotationRegions((prev) => moveContained(prev));
+					setAudioRegions((prev) => moveContained(prev));
 				}
 			}
 
@@ -2779,19 +2679,21 @@ export default function VideoEditor() {
 			setClipRegions((prev) =>
 				prev.map((c) => (c.id === selectedClipId ? { ...c, speed, endMs: newEndMs } : c)),
 			);
-			// Scale zoom regions that lie within this clip proportionally
-			setZoomRegions((prev) =>
-				prev.map((zoom) => {
-					if (zoom.startMs < clip.startMs || zoom.startMs >= clip.endMs) return zoom;
+			// Scale all child regions within this clip proportionally
+			const scaleInClip = <T extends { startMs: number; endMs: number }>(regions: T[]): T[] =>
+				regions.map((r) => {
+					if (r.startMs < clip.startMs || r.startMs >= clip.endMs) return r;
 					return {
-						...zoom,
+						...r,
 						startMs: Math.round(
-							clip.startMs + (zoom.startMs - clip.startMs) * scaleFactor,
+							clip.startMs + (r.startMs - clip.startMs) * scaleFactor,
 						),
-						endMs: Math.round(clip.startMs + (zoom.endMs - clip.startMs) * scaleFactor),
+						endMs: Math.round(clip.startMs + (r.endMs - clip.startMs) * scaleFactor),
 					};
-				}),
-			);
+				});
+			setZoomRegions((prev) => scaleInClip(prev));
+			setAnnotationRegions((prev) => scaleInClip(prev));
+			setAudioRegions((prev) => scaleInClip(prev));
 		},
 		[selectedClipId, clipRegions],
 	);
@@ -2813,11 +2715,15 @@ export default function VideoEditor() {
 			if (deletedClip) {
 				const { startMs, endMs } = deletedClip;
 				// Cascade: remove all timeline items fully within the deleted clip's span
-				setZoomRegions((prev) => prev.filter((r) => r.startMs < startMs || r.endMs > endMs));
-				setAnnotationRegions((prev) => prev.filter((r) => r.startMs < startMs || r.endMs > endMs));
-				setTrimRegions((prev) => prev.filter((r) => r.startMs < startMs || r.endMs > endMs));
-				setSpeedRegions((prev) => prev.filter((r) => r.startMs < startMs || r.endMs > endMs));
-				setAudioRegions((prev) => prev.filter((r) => r.startMs < startMs || r.endMs > endMs));
+				setZoomRegions((prev) =>
+					prev.filter((r) => r.startMs < startMs || r.endMs > endMs),
+				);
+				setAnnotationRegions((prev) =>
+					prev.filter((r) => r.startMs < startMs || r.endMs > endMs),
+				);
+				setAudioRegions((prev) =>
+					prev.filter((r) => r.startMs < startMs || r.endMs > endMs),
+				);
 			}
 			if (selectedClipId === id) {
 				setSelectedClipId(null);
@@ -2826,62 +2732,11 @@ export default function VideoEditor() {
 		[clipRegions, selectedClipId],
 	);
 
-	const handleSelectSpeed = useCallback((id: string | null) => {
-		setSelectedSpeedId(id);
-		if (id) {
-			setSelectedZoomId(null);
-			setSelectedTrimId(null);
-			setSelectedAnnotationId(null);
-			setSelectedAudioId(null);
-		}
-	}, []);
-
-	const handleSpeedAdded = useCallback((span: Span) => {
-		const id = `speed-${nextSpeedIdRef.current++}`;
-		const newRegion: SpeedRegion = {
-			id,
-			startMs: Math.round(span.start),
-			endMs: Math.round(span.end),
-			speed: DEFAULT_PLAYBACK_SPEED,
-		};
-		setSpeedRegions((prev) => [...prev, newRegion]);
-		setSelectedSpeedId(id);
-		setSelectedZoomId(null);
-		setSelectedTrimId(null);
-		setSelectedAnnotationId(null);
-	}, []);
-
-	const handleSpeedSpanChange = useCallback((id: string, span: Span) => {
-		setSpeedRegions((prev) =>
-			prev.map((region) =>
-				region.id === id
-					? {
-							...region,
-							startMs: Math.round(span.start),
-							endMs: Math.round(span.end),
-						}
-					: region,
-			),
-		);
-	}, []);
-
-	const handleSpeedDelete = useCallback(
-		(id: string) => {
-			setSpeedRegions((prev) => prev.filter((region) => region.id !== id));
-			if (selectedSpeedId === id) {
-				setSelectedSpeedId(null);
-			}
-		},
-		[selectedSpeedId],
-	);
-
 	const handleSelectAudio = useCallback((id: string | null) => {
 		setSelectedAudioId(id);
 		if (id) {
 			setSelectedZoomId(null);
-			setSelectedTrimId(null);
 			setSelectedAnnotationId(null);
-			setSelectedSpeedId(null);
 		}
 	}, []);
 
@@ -2898,9 +2753,7 @@ export default function VideoEditor() {
 		setAudioRegions((prev) => [...prev, newRegion]);
 		setSelectedAudioId(id);
 		setSelectedZoomId(null);
-		setSelectedTrimId(null);
 		setSelectedAnnotationId(null);
-		setSelectedSpeedId(null);
 	}, []);
 
 	const handleAudioSpanChange = useCallback((id: string, span: Span) => {
@@ -2927,18 +2780,6 @@ export default function VideoEditor() {
 		[selectedAudioId],
 	);
 
-	const handleSpeedChange = useCallback(
-		(speed: PlaybackSpeed) => {
-			if (!selectedSpeedId) return;
-			setSpeedRegions((prev) =>
-				prev.map((region) =>
-					region.id === selectedSpeedId ? { ...region, speed } : region,
-				),
-			);
-		},
-		[selectedSpeedId],
-	);
-
 	const handleAnnotationAdded = useCallback((span: Span, trackIndex = 0) => {
 		const id = `annotation-${nextAnnotationIdRef.current++}`;
 		const zIndex = nextAnnotationZIndexRef.current++; // Assign z-index based on creation order
@@ -2957,7 +2798,6 @@ export default function VideoEditor() {
 		setAnnotationRegions((prev) => [...prev, newRegion]);
 		setSelectedAnnotationId(id);
 		setSelectedZoomId(null);
-		setSelectedTrimId(null);
 	}, []);
 
 	const handleAnnotationSpanChange = useCallback((id: string, span: Span) => {
@@ -3148,12 +2988,6 @@ export default function VideoEditor() {
 	}, [selectedZoomId, zoomRegions]);
 
 	useEffect(() => {
-		if (selectedTrimId && !trimRegions.some((region) => region.id === selectedTrimId)) {
-			setSelectedTrimId(null);
-		}
-	}, [selectedTrimId, trimRegions]);
-
-	useEffect(() => {
 		if (
 			selectedAnnotationId &&
 			!annotationRegions.some((region) => region.id === selectedAnnotationId)
@@ -3161,12 +2995,6 @@ export default function VideoEditor() {
 			setSelectedAnnotationId(null);
 		}
 	}, [selectedAnnotationId, annotationRegions]);
-
-	useEffect(() => {
-		if (selectedSpeedId && !speedRegions.some((region) => region.id === selectedSpeedId)) {
-			setSelectedSpeedId(null);
-		}
-	}, [selectedSpeedId, speedRegions]);
 
 	useEffect(() => {
 		if (selectedAudioId && !audioRegions.some((region) => region.id === selectedAudioId)) {
@@ -3330,8 +3158,10 @@ export default function VideoEditor() {
 	}, []);
 
 	// Sync audio playback with video currentTime and isPlaying state
+	// currentTime is SOURCE time (from video element); audioRegions use TIMELINE coordinates
 	useEffect(() => {
 		const currentTimeMs = currentTime * 1000;
+		const timelineMs = mapSourceTimeToTimelineTime(currentTimeMs);
 		const activeSpeedRegion = speedRegions.find(
 			(region) => currentTimeMs >= region.startMs && currentTimeMs < region.endMs,
 		);
@@ -3341,10 +3171,10 @@ export default function VideoEditor() {
 			const audio = audioElementsRef.current.get(region.id);
 			if (!audio) continue;
 
-			const isInRegion = currentTimeMs >= region.startMs && currentTimeMs < region.endMs;
+			const isInRegion = timelineMs >= region.startMs && timelineMs < region.endMs;
 
 			if (isPlaying && isInRegion) {
-				const audioOffset = (currentTimeMs - region.startMs) / 1000;
+				const audioOffset = (timelineMs - region.startMs) / 1000;
 				// Only seek if significantly out of sync (> 200ms)
 				if (Math.abs(audio.currentTime - audioOffset) > 0.2) {
 					audio.currentTime = audioOffset;
@@ -3366,7 +3196,7 @@ export default function VideoEditor() {
 				}
 			}
 		}
-	}, [isPlaying, currentTime, audioRegions, speedRegions]);
+	}, [isPlaying, currentTime, audioRegions, speedRegions, mapSourceTimeToTimelineTime]);
 
 	useEffect(() => {
 		if (sourceAudioFallbackPaths.length === 0) {
@@ -4689,8 +4519,6 @@ export default function VideoEditor() {
 									selectedZoomId && handleZoomModeChange(mode)
 								}
 								onZoomDelete={handleZoomDelete}
-								selectedTrimId={selectedTrimId}
-								onTrimDelete={handleTrimDelete}
 								selectedClipId={selectedClipId}
 								selectedClipSpeed={
 									selectedClipId
@@ -4800,15 +4628,6 @@ export default function VideoEditor() {
 								}
 								onAnnotationBlurColorChange={handleAnnotationBlurColorChange}
 								onAnnotationDelete={handleAnnotationDelete}
-								selectedSpeedId={selectedSpeedId}
-								selectedSpeedValue={
-									selectedSpeedId
-										? (speedRegions.find((r) => r.id === selectedSpeedId)
-												?.speed ?? null)
-										: null
-								}
-								onSpeedChange={handleSpeedChange}
-								onSpeedDelete={handleSpeedDelete}
 							/>
 						)}
 					</div>
@@ -5205,22 +5024,11 @@ export default function VideoEditor() {
 						selectedZoomId={selectedZoomId}
 						onSelectZoom={handleSelectZoom}
 						trimRegions={trimRegions}
-						onTrimAdded={handleTrimAdded}
-						onTrimSpanChange={handleTrimSpanChange}
-						onTrimDelete={handleTrimDelete}
-						selectedTrimId={selectedTrimId}
-						onSelectTrim={handleSelectTrim}
 						clipRegions={clipRegions}
 						onClipSplit={handleClipSplit}
 						onClipSpanChange={handleClipSpanChange}
 						selectedClipId={selectedClipId}
 						onSelectClip={handleSelectClip}
-						speedRegions={speedRegions}
-						onSpeedAdded={handleSpeedAdded}
-						onSpeedSpanChange={handleSpeedSpanChange}
-						onSpeedDelete={handleSpeedDelete}
-						selectedSpeedId={selectedSpeedId}
-						onSelectSpeed={handleSelectSpeed}
 						audioRegions={audioRegions}
 						onAudioAdded={handleAudioAdded}
 						onAudioSpanChange={handleAudioSpanChange}

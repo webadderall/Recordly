@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { useTheme } from "@/contexts/ThemeContext";
 import { getAssetPath, getRenderableAssetUrl, getWallpaperThumbnailUrl } from "@/lib/assetPath";
 import type { ExtensionSettingField } from "@/lib/extensions";
 import { extensionHost, type FrameInstance } from "@/lib/extensions";
@@ -28,7 +29,6 @@ import tahoeCursorUrl from "../../assets/cursors/Cursor=Default.svg";
 import { useI18n, useScopedT } from "../../contexts/I18nContext";
 import type { AppLocale } from "../../i18n/config";
 import { SUPPORTED_LOCALES } from "../../i18n/config";
-import { useTheme } from "@/contexts/ThemeContext";
 import { AnnotationSettingsPanel } from "./AnnotationSettingsPanel";
 import { loadEditorPreferences, saveEditorPreferences } from "./editorPreferences";
 import { SliderControl } from "./SliderControl";
@@ -43,7 +43,6 @@ import type {
 	CursorStyle,
 	EditorEffectSection,
 	FigureData,
-	PlaybackSpeed,
 	WebcamOverlaySettings,
 	WebcamPositionPreset,
 	ZoomDepth,
@@ -69,7 +68,6 @@ import {
 	DEFAULT_WEBCAM_SHADOW,
 	DEFAULT_WEBCAM_SIZE,
 	DEFAULT_ZOOM_MOTION_BLUR,
-	SPEED_OPTIONS,
 } from "./types";
 import { fromCursorSwaySliderValue, toCursorSwaySliderValue } from "./videoPlayback/cursorSway";
 import {
@@ -332,8 +330,6 @@ interface SettingsPanelProps {
 	selectedZoomMode?: ZoomMode | null;
 	onZoomModeChange?: (mode: ZoomMode) => void;
 	onZoomDelete?: (id: string) => void;
-	selectedTrimId?: string | null;
-	onTrimDelete?: (id: string) => void;
 	selectedClipId?: string | null;
 	selectedClipSpeed?: number | null;
 	selectedClipMuted?: boolean | null;
@@ -425,10 +421,6 @@ interface SettingsPanelProps {
 	onClearAutoCaptions?: () => void;
 	onDownloadWhisperSmallModel?: () => void;
 	onDeleteWhisperSmallModel?: () => void;
-	selectedSpeedId?: string | null;
-	selectedSpeedValue?: PlaybackSpeed | null;
-	onSpeedChange?: (speed: PlaybackSpeed) => void;
-	onSpeedDelete?: (id: string) => void;
 }
 
 const ZOOM_DEPTH_OPTIONS: Array<{ depth: ZoomDepth; label: string }> = [
@@ -687,8 +679,6 @@ export function SettingsPanel({
 	selectedZoomMode,
 	onZoomModeChange,
 	onZoomDelete,
-	selectedTrimId,
-	onTrimDelete,
 	selectedClipId,
 	selectedClipSpeed,
 	selectedClipMuted,
@@ -762,10 +752,6 @@ export function SettingsPanel({
 	onClearAutoCaptions,
 	onDownloadWhisperSmallModel,
 	onDeleteWhisperSmallModel,
-	selectedSpeedId,
-	selectedSpeedValue,
-	onSpeedChange,
-	onSpeedDelete,
 }: SettingsPanelProps) {
 	const tSettings = useScopedT("settings");
 	const { locale, setLocale, t } = useI18n();
@@ -1215,12 +1201,6 @@ export function SettingsPanel({
 			{props?.children}
 		</div>
 	);
-
-	const handleTrimDeleteClick = () => {
-		if (selectedTrimId && onTrimDelete) {
-			onTrimDelete(selectedTrimId);
-		}
-	};
 
 	const crop = cropRegion ?? {
 		x: 0,
@@ -2890,74 +2870,6 @@ export function SettingsPanel({
 						{effectSectionContent}
 					</motion.div>
 				</AnimatePresence>
-			</div>
-
-			<div
-				className={cn(
-					"flex-shrink-0 border-t border-foreground/10 bg-editor-header p-4 pt-3",
-					!selectedTrimId && !selectedSpeedId && "hidden",
-				)}
-			>
-				{selectedTrimId && (
-					<div className="mb-4">
-						<Button
-							onClick={handleTrimDeleteClick}
-							variant="destructive"
-							size="sm"
-							className="mt-2 h-8 w-full gap-2 border border-red-500/20 bg-red-500/10 text-xs text-red-400 transition-all hover:border-red-500/30 hover:bg-red-500/20"
-						>
-							<Trash2 className="h-3 w-3" />
-							{tSettings("trim.deleteRegion")}
-						</Button>
-					</div>
-				)}
-
-				{selectedSpeedId && (
-					<div>
-						<div className="mb-3 flex items-center justify-between">
-							<span className="text-sm font-medium text-foreground">
-								{tSettings("speed.playbackSpeed")}
-							</span>
-							{selectedSpeedValue && (
-								<span className="rounded-full bg-[#d97706]/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-[#d97706]">
-									{SPEED_OPTIONS.find((o) => o.speed === selectedSpeedValue)
-										?.label ?? `${selectedSpeedValue}×`}
-								</span>
-							)}
-						</div>
-						<div className="grid grid-cols-7 gap-1.5">
-							{SPEED_OPTIONS.map((option) => {
-								const isActive = selectedSpeedValue === option.speed;
-								return (
-									<Button
-										key={option.speed}
-										type="button"
-										onClick={() => onSpeedChange?.(option.speed)}
-										className={cn(
-											"h-auto w-full rounded-lg border px-1 py-2 text-center shadow-sm transition-all duration-200 ease-out cursor-pointer",
-											isActive
-												? "border-[#d97706] bg-[#d97706] text-white"
-												: "border-foreground/5 bg-foreground/5 text-muted-foreground hover:bg-foreground/10 hover:border-foreground/10 hover:text-foreground",
-										)}
-									>
-										<span className="text-xs font-semibold">
-											{option.label}
-										</span>
-									</Button>
-								);
-							})}
-						</div>
-						<Button
-							onClick={() => selectedSpeedId && onSpeedDelete?.(selectedSpeedId)}
-							variant="destructive"
-							size="sm"
-							className="mt-2 h-8 w-full gap-2 border border-red-500/20 bg-red-500/10 text-xs text-red-400 transition-all hover:border-red-500/30 hover:bg-red-500/20"
-						>
-							<Trash2 className="h-3 w-3" />
-							{tSettings("speed.deleteRegion")}
-						</Button>
-					</div>
-				)}
 			</div>
 		</div>
 	);
