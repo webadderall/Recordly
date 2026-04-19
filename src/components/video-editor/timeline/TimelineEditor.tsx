@@ -54,6 +54,7 @@ import type {
 	ZoomMode,
 	ZoomRegion,
 } from "../types";
+import { getClipSourceStartMs, getClipSourceEndMs } from "../types";
 import AudioWaveform from "./AudioWaveform";
 import Item from "./Item";
 import KeyframeMarkers from "./KeyframeMarkers";
@@ -171,6 +172,8 @@ interface TimelineRenderItem {
 	zoomDepth?: number;
 	zoomMode?: ZoomMode;
 	speedValue?: number;
+	sourceStartMs?: number;
+	sourceEndMs?: number;
 	variant: "zoom" | "trim" | "clip" | "annotation" | "speed" | "audio";
 }
 
@@ -705,11 +708,13 @@ function Timeline({
 							onSelect={() => onSelectClip?.(item.id)}
 							variant="clip"
 							backgroundLayer={
-								audioPeaks ? (
+								audioPeaks &&
+								item.sourceStartMs !== undefined &&
+								item.sourceEndMs !== undefined ? (
 									<AudioWaveform
 										peaks={audioPeaks}
-										timeStartMs={item.span.start}
-										timeEndMs={item.span.end}
+										timeStartMs={item.sourceStartMs}
+										timeEndMs={item.sourceEndMs}
 									/>
 								) : undefined
 							}
@@ -1518,6 +1523,8 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 				rowId: CLIP_ROW_ID,
 				span: { start: region.startMs, end: region.endMs },
 				label: `Clip ${index + 1}`,
+				sourceStartMs: getClipSourceStartMs(region),
+				sourceEndMs: getClipSourceEndMs(region),
 				variant: "clip",
 			}));
 

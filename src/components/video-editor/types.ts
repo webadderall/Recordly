@@ -387,7 +387,7 @@ export interface SpeedRegion {
 	id: string;
 	startMs: number;
 	endMs: number;
-	speed: PlaybackSpeed;
+	speed: number;
 }
 
 export const SPEED_OPTIONS: Array<{ speed: PlaybackSpeed; label: string }> = [

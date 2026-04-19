@@ -87,7 +87,10 @@ export function useEditorRegions({
 
 	// Trim regions are derived from clips (gaps = sections to remove in export)
 	const trimRegions = useMemo<TrimRegion[]>(() => {
-		if (totalMs <= 0 || clipRegions.length === 0) return [];
+		if (totalMs <= 0) return [];
+		if (clipRegions.length === 0) {
+			return [{ id: "trim-all", startMs: 0, endMs: totalMs }];
+		}
 		return clipsToTrims(clipRegions, totalMs);
 	}, [clipRegions, totalMs]);
 
@@ -153,7 +156,7 @@ export function useEditorRegions({
 					id: `clip-speed-${c.id}`,
 					startMs: getClipSourceStartMs(c),
 					endMs: getClipSourceEndMs(c),
-					speed: c.speed as SpeedRegion["speed"],
+					speed: c.speed,
 				})),
 		[clipRegions],
 	);
@@ -356,32 +359,39 @@ export function useEditorRegions({
 						const endDelta = newEnd - oldClip.endMs;
 						const isMove =
 							Math.abs(startDelta - endDelta) < 1 && Math.abs(startDelta) > 0;
-						if (!isMove && Math.abs(startDelta) > 0) {
-							// Left-edge resize: shift sourceStartMs by startDelta * speed
-							const speed =
-								Number.isFinite(oldClip.speed) && oldClip.speed > 0
-									? oldClip.speed
-									: 1;
-							updated.sourceStartMs = Math.max(
-								0,
-								Math.round(getClipSourceStartMs(oldClip) + startDelta * speed),
-							);
-						}
-						// Move: sourceStartMs stays the same (explicit or fallback unchanged since we set it)
+					const sourceStart = getClipSourceStartMs(oldClip);
+					const speed =
+						Number.isFinite(oldClip.speed) && oldClip.speed > 0
+							? oldClip.speed
+							: 1;
+					if (isMove) {
+						// Move: freeze the resolved source start
+						updated.sourceStartMs = sourceStart;
+					} else if (Math.abs(startDelta) > 0) {
+						// Left-edge resize: shift sourceStartMs by startDelta * speed
+						updated.sourceStartMs = Math.max(
+							0,
+							Math.round(sourceStart + startDelta * speed),
+						);
+					}
 					}
 					return updated;
 				}),
 			);
 
-			// Remove zooms that no longer overlap any clip after the change
+			// Remove regions that no longer overlap any clip after the change
 			const updatedClips = clipRegions.map((c) =>
 				c.id === id ? { ...c, startMs: newStart, endMs: newEnd } : c,
 			);
-			setZoomRegions((prev) =>
-				prev.filter((z) =>
-					updatedClips.some((c) => z.startMs < c.endMs && z.endMs > c.startMs),
-				),
-			);
+			const keepOverlapping = <T extends { startMs: number; endMs: number }>(
+				regions: T[],
+			): T[] =>
+				regions.filter((r) =>
+					updatedClips.some((c) => r.startMs < c.endMs && r.endMs > c.startMs),
+				);
+			setZoomRegions((prev) => keepOverlapping(prev));
+			setAnnotationRegions((prev) => keepOverlapping(prev));
+			setAudioRegions((prev) => keepOverlapping(prev));
 		},
 		[clipRegions],
 	);
