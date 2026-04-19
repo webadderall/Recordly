@@ -1453,7 +1453,11 @@ export function LaunchWindow() {
 
 															void startTest();
 														}}
-														disabled={!canRunMicrophoneTest}
+														disabled={
+															microphoneTestBusy
+																? false
+																: !canRunMicrophoneTest
+														}
 													>
 														{microphoneTestBusy
 															? t("recording.stopMicrophoneTest")
