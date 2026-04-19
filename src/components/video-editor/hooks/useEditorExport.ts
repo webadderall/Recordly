@@ -559,12 +559,12 @@ export function useEditorExport({
 							return;
 						}
 					}
+				}
 
-					if (wasPlaying) {
-						videoPlaybackRef.current?.play();
-					} else {
-						video.currentTime = restoreTime;
-					}
+				if (wasPlaying) {
+					videoPlaybackRef.current?.play();
+				} else {
+					video.currentTime = restoreTime;
 				}
 			} catch (error) {
 				console.error("Export error:", error);

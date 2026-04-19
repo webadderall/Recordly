@@ -21,7 +21,7 @@ import type {
 	ZoomRegion,
 	ZoomTransitionEasing,
 } from "./types";
-import { getClipSourceEndMs } from "./types";
+import { getClipSourceEndMs, getClipSourceStartMs } from "./types";
 import type { VideoPlaybackRef } from "./VideoPlayback";
 
 export const DEFAULT_MP4_EXPORT_FRAME_RATE: ExportMp4FrameRate = 30;
@@ -248,7 +248,7 @@ export async function captureVideoThumbnail(config: ThumbnailRenderConfig): Prom
 		.filter((clip) => clip.speed !== 1)
 		.map((clip) => ({
 			id: `clip-speed-${clip.id}`,
-			startMs: clip.startMs,
+			startMs: getClipSourceStartMs(clip),
 			endMs: getClipSourceEndMs(clip),
 			speed: clip.speed as SpeedRegion["speed"],
 		}));

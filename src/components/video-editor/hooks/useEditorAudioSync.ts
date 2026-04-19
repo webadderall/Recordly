@@ -189,10 +189,6 @@ export function useEditorAudioSync({
 	useEffect(() => {
 		const currentTimeMs = currentTime * 1000;
 		const timelineMs = mapSourceTimeToTimelineTime(currentTimeMs);
-		const activeSpeedRegion = speedRegions.find(
-			(r) => currentTimeMs >= r.startMs && currentTimeMs < r.endMs,
-		);
-		const targetPlaybackRate = activeSpeedRegion ? activeSpeedRegion.speed : 1;
 
 		for (const region of audioRegions) {
 			const audio = audioElementsRef.current.get(region.id);
@@ -203,7 +199,7 @@ export function useEditorAudioSync({
 				if (Math.abs(audio.currentTime - audioOffset) > 0.2)
 					audio.currentTime = audioOffset;
 				const syncedRate = getMediaSyncPlaybackRate({
-					basePlaybackRate: targetPlaybackRate,
+					basePlaybackRate: 1,
 					currentTime: audio.currentTime,
 					targetTime: audioOffset,
 				});
@@ -214,7 +210,7 @@ export function useEditorAudioSync({
 				if (!audio.paused) audio.pause();
 			}
 		}
-	}, [isPlaying, currentTime, audioRegions, speedRegions, mapSourceTimeToTimelineTime]);
+	}, [isPlaying, currentTime, audioRegions, mapSourceTimeToTimelineTime]);
 
 	// Sync source-audio fallback elements with video playback
 	useEffect(() => {

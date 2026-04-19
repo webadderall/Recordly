@@ -633,7 +633,7 @@ export function useEditorRegions({
 		}) => {
 			setZoomRegions(editor.zoomRegions);
 			setClipRegions(editor.clipRegions);
-			clipInitializedRef.current = editor.clipRegions.length > 0;
+			clipInitializedRef.current = true;
 			setAnnotationRegions(editor.annotationRegions);
 			setAudioRegions(editor.audioRegions);
 			setSelectedZoomId(null);

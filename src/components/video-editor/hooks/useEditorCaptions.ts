@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { resolveAutoCaptionSourcePath } from "../autoCaptionSource";
-import { loadEditorPreferences } from "../editorPreferences";
+import { loadEditorPreferences, saveEditorPreferences } from "../editorPreferences";
 import { resolveVideoUrl } from "../projectPersistence";
 import { type AutoCaptionSettings, type CaptionCue, DEFAULT_AUTO_CAPTION_SETTINGS } from "../types";
 
@@ -48,9 +48,12 @@ export function useEditorCaptions({
 
 	// Persist whisper paths to preferences
 	useEffect(() => {
-		// whisperExecutablePath and whisperModelPath are already persisted via
-		// useEditorPreferences effect if they were passed to it. Here we only need
-		// to persist after they change within this hook.
+		const current = loadEditorPreferences();
+		saveEditorPreferences({
+			...current,
+			whisperExecutablePath,
+			whisperModelPath,
+		});
 	}, [whisperExecutablePath, whisperModelPath]);
 
 	// Load whisper model status on mount
@@ -118,8 +121,6 @@ export function useEditorCaptions({
 		const result = await window.electronAPI.deleteWhisperSmallModel();
 		if (!result.success) {
 			toast.error(result.error || "Failed to delete Whisper small model");
-			setWhisperModelDownloadStatus("idle");
-			setWhisperModelDownloadProgress(0);
 			return;
 		}
 		setWhisperModelPath((cur) => (cur === downloadedWhisperModelPath ? null : cur));
@@ -202,6 +203,7 @@ export function useEditorCaptions({
 
 	const handleClearAutoCaptions = useCallback(() => {
 		setAutoCaptions([]);
+		setAutoCaptionSettings((prev) => ({ ...prev, enabled: false }));
 	}, []);
 
 	/** Reset captions from a freshly loaded project. */
