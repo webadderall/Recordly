@@ -34,7 +34,7 @@
 		"microphoneTestRecording": "正在录制麦克风测试...",
 		"microphoneTestPlaying": "正在回放麦克风测试...",
 		"microphoneTestReady": "上一次麦克风测试已准备就绪。",
-		"microphoneTestUnsupported": "此设备不支持麦克风测试。",
+		"microphoneTestUnsupported": "当前环境不支持麦克风测试。",
 		"microphoneTestPermissionDenied": "麦克风测试被拒绝访问麦克风。",
 		"microphoneTestPlaybackFailed": "回放失败。请重新录制测试。",
 		"microphoneTestCaptureFailed": "麦克风测试失败。请检查所选设备后重试。",

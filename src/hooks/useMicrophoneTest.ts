@@ -13,6 +13,29 @@ type UseMicrophoneTestOptions = {
 	deviceId?: string;
 };
 
+type MicrophonePlaybackEndedHandlerOptions = {
+	currentPlaybackAudio: HTMLAudioElement | null;
+	playbackAudio: HTMLAudioElement;
+	clearPlaybackAudio: () => void;
+	setStatus: (status: MicrophoneTestStatus) => void;
+};
+
+type MicrophonePlaybackErrorHandlerOptions = {
+	currentPlaybackAudio: HTMLAudioElement | null;
+	playbackAudio: HTMLAudioElement;
+	clearPlaybackAudio: () => void;
+	setError: (error: MicrophoneTestError | null) => void;
+	setStatus: (status: MicrophoneTestStatus) => void;
+};
+
+type MicrophoneTestSessionOptions = {
+	currentSession: number;
+	session: number;
+	currentRecorder: MediaRecorder | null;
+	recorder: MediaRecorder;
+	stream: MediaStream;
+};
+
 function getMicrophoneConstraints(deviceId?: string): MediaTrackConstraints {
 	if (deviceId) {
 		return {
@@ -28,6 +51,53 @@ function getMicrophoneConstraints(deviceId?: string): MediaTrackConstraints {
 		noiseSuppression: true,
 		autoGainControl: true,
 	};
+}
+
+export function handleMicrophonePlaybackEnded({
+	currentPlaybackAudio,
+	playbackAudio,
+	clearPlaybackAudio,
+	setStatus,
+}: MicrophonePlaybackEndedHandlerOptions): boolean {
+	if (currentPlaybackAudio !== playbackAudio) {
+		return false;
+	}
+
+	clearPlaybackAudio();
+	setStatus("idle");
+	return true;
+}
+
+export function handleMicrophonePlaybackError({
+	currentPlaybackAudio,
+	playbackAudio,
+	clearPlaybackAudio,
+	setError,
+	setStatus,
+}: MicrophonePlaybackErrorHandlerOptions): boolean {
+	if (currentPlaybackAudio !== playbackAudio) {
+		return false;
+	}
+
+	clearPlaybackAudio();
+	setError("playback-failed");
+	setStatus("error");
+	return true;
+}
+
+export function shouldAbortMicrophoneTestSession({
+	currentSession,
+	session,
+	currentRecorder,
+	recorder,
+	stream,
+}: MicrophoneTestSessionOptions): boolean {
+	if (currentSession === session && currentRecorder === recorder) {
+		return false;
+	}
+
+	stream.getTracks().forEach((track) => track.stop());
+	return true;
 }
 
 export function useMicrophoneTest({ enabled, deviceId }: UseMicrophoneTestOptions) {
@@ -184,17 +254,21 @@ export function useMicrophoneTest({ enabled, deviceId }: UseMicrophoneTestOption
 		const playbackAudio = new Audio(playbackUrl);
 		playbackAudioRef.current = playbackAudio;
 		playbackAudio.onended = () => {
-			if (playbackAudioRef.current === playbackAudio) {
-				playbackAudioRef.current = null;
-			}
-			setStatus("idle");
+			handleMicrophonePlaybackEnded({
+				currentPlaybackAudio: playbackAudioRef.current,
+				playbackAudio,
+				clearPlaybackAudio,
+				setStatus,
+			});
 		};
 		playbackAudio.onerror = () => {
-			if (playbackAudioRef.current === playbackAudio) {
-				playbackAudioRef.current = null;
-			}
-			setError("playback-failed");
-			setStatus("error");
+			handleMicrophonePlaybackError({
+				currentPlaybackAudio: playbackAudioRef.current,
+				playbackAudio,
+				clearPlaybackAudio,
+				setError,
+				setStatus,
+			});
 		};
 
 		try {
@@ -202,11 +276,13 @@ export function useMicrophoneTest({ enabled, deviceId }: UseMicrophoneTestOption
 			setStatus("playing");
 			await playbackAudio.play();
 		} catch {
-			if (playbackAudioRef.current === playbackAudio) {
-				playbackAudioRef.current = null;
-			}
-			setError("playback-failed");
-			setStatus("error");
+			handleMicrophonePlaybackError({
+				currentPlaybackAudio: playbackAudioRef.current,
+				playbackAudio,
+				clearPlaybackAudio,
+				setError,
+				setStatus,
+			});
 		}
 	}, [clearPlaybackAudio]);
 
@@ -277,11 +353,26 @@ export function useMicrophoneTest({ enabled, deviceId }: UseMicrophoneTestOption
 			};
 
 			await beginMetering(stream, session);
+			if (
+				shouldAbortMicrophoneTestSession({
+					currentSession: sessionRef.current,
+					session,
+					currentRecorder: recorderRef.current,
+					recorder,
+					stream,
+				})
+			) {
+				return;
+			}
 			setHasPlayback(false);
 			setError(null);
 			setStatus("recording");
 			recorder.start();
 		} catch (captureError) {
+			if (sessionRef.current !== session) {
+				return;
+			}
+
 			stopInputStream();
 			const isPermissionError =
 				captureError instanceof DOMException &&

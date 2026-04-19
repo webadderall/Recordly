@@ -1474,9 +1474,13 @@ export function LaunchWindow() {
 														{t("recording.microphoneTest")}
 													</div>
 													<div className={styles.micTestPreviewSubtitle}>
-														{microphoneTestHasPlayback
-															? t("recording.microphoneTestReady")
-															: t("recording.microphoneTestIdle")}
+														{!microphoneTestSupported
+															? t(
+																	"recording.microphoneTestUnsupported",
+																)
+															: microphoneTestHasPlayback
+																? t("recording.microphoneTestReady")
+																: t("recording.microphoneTestIdle")}
 													</div>
 												</div>
 												<button
