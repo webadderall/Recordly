@@ -97,6 +97,7 @@ interface RecordingControlsProps {
 	elapsed: number;
 	formatTime: (s: number) => string;
 	microphoneEnabled: boolean;
+	toggleMicrophone: () => void;
 	resumeRecording: () => void;
 	pauseRecording: () => void;
 	toggleRecording: () => void;
@@ -108,6 +109,7 @@ export function RecordingControls({
 	elapsed,
 	formatTime,
 	microphoneEnabled,
+	toggleMicrophone,
 	resumeRecording,
 	pauseRecording,
 	toggleRecording,
@@ -137,6 +139,7 @@ export function RecordingControls({
 			<Separator />
 
 			<IconButton
+				onClick={toggleMicrophone}
 				title={
 					microphoneEnabled
 						? t("recording.disableMicrophone")

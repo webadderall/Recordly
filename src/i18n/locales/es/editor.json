@@ -135,5 +135,9 @@
 		"expand": "Expandir línea de tiempo",
 		"collapse": "Contraer línea de tiempo"
 	},
-	"openRecordingsFolder": "Abrir carpeta de grabaciones"
+	"openRecordingsFolder": "Abrir carpeta de grabaciones",
+	"sidebar": {
+		"account": "Cuenta",
+		"accountComingSoon": "Cuenta próximamente"
+	}
 }

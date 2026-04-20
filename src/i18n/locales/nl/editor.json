@@ -136,5 +136,9 @@
 		"expand": "Tijdlijn uitvouwen",
 		"collapse": "Tijdlijn samenvouwen"
 	},
-	"openRecordingsFolder": "Opnamemap openen"
+	"openRecordingsFolder": "Opnamemap openen",
+	"sidebar": {
+		"account": "Account",
+		"accountComingSoon": "Account binnenkort beschikbaar"
+	}
 }

@@ -135,5 +135,9 @@
 		"expand": "展开时间轴",
 		"collapse": "折叠时间轴"
 	},
-	"openRecordingsFolder": "打开录制文件夹"
+	"openRecordingsFolder": "打开录制文件夹",
+	"sidebar": {
+		"account": "账户",
+		"accountComingSoon": "账户功能即将推出"
+	}
 }

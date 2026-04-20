@@ -136,8 +136,8 @@ export function EditorSidebar({
 				<div className="mt-auto pt-3">
 					<motion.button
 						type="button"
-						onClick={() => toast.info("Account coming soon")}
-						title="Account"
+						onClick={() => toast.info(t("sidebar.accountComingSoon", "Account coming soon"))}
+						title={t("sidebar.account", "Account")}
 						className="group relative flex h-9 w-9 items-center justify-center rounded-lg text-foreground/55 outline-none transition hover:text-foreground focus:outline-none focus-visible:outline-none"
 						whileHover={{ opacity: 1 }}
 						initial={{ opacity: 0.55 }}

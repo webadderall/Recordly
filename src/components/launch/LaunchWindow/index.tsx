@@ -328,8 +328,7 @@ export function LaunchWindow() {
 												paused={paused}
 												elapsed={elapsed}
 												formatTime={formatTime}
-												microphoneEnabled={microphoneEnabled}
-												resumeRecording={resumeRecording}
+												microphoneEnabled={microphoneEnabled}											toggleMicrophone={toggleMicrophone}												resumeRecording={resumeRecording}
 												pauseRecording={pauseRecording}
 												toggleRecording={toggleRecording}
 												cancelRecording={cancelRecording}

@@ -135,5 +135,9 @@
 		"expand": "Expand Timeline",
 		"collapse": "Collapse Timeline"
 	},
-	"openRecordingsFolder": "Open recordings folder"
+	"openRecordingsFolder": "Open recordings folder",
+	"sidebar": {
+		"account": "Account",
+		"accountComingSoon": "Account coming soon"
+	}
 }

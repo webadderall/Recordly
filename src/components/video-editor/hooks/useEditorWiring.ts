@@ -92,6 +92,21 @@ export function useEditorWiring({
 	);
 
 	// ── Dimension calculations ───────────────────────────────────────
+	const [videoDimensions, setVideoDimensions] = useState({ width: 1920, height: 1080 });
+
+	useEffect(() => {
+		const video = videoPlaybackRef.current?.video;
+		if (!video) return;
+		const update = () => {
+			if (video.videoWidth > 0 && video.videoHeight > 0) {
+				setVideoDimensions({ width: video.videoWidth, height: video.videoHeight });
+			}
+		};
+		update();
+		video.addEventListener("loadedmetadata", update);
+		return () => video.removeEventListener("loadedmetadata", update);
+	}, [videoPlaybackRef]);
+
 	const [supportedMp4SourceDimensions, setSupportedMp4SourceDimensions] =
 		useState<SupportedMp4Dimensions>({
 			width: 1920,
@@ -103,22 +118,22 @@ export function useEditorWiring({
 	const gifOutputDimensions = useMemo(
 		() =>
 			calculateOutputDimensions(
-				videoPlaybackRef.current?.video?.videoWidth || 1920,
-				videoPlaybackRef.current?.video?.videoHeight || 1080,
+				videoDimensions.width,
+				videoDimensions.height,
 				prefs.gifSizePreset,
 				GIF_SIZE_PRESETS,
 			),
-		[prefs.gifSizePreset],
+		[videoDimensions.width, videoDimensions.height, prefs.gifSizePreset],
 	);
 
 	const desiredMp4SourceDimensions = useMemo(
 		() =>
 			calculateMp4SourceDimensions(
-				videoPlaybackRef.current?.video?.videoWidth || 1920,
-				videoPlaybackRef.current?.video?.videoHeight || 1080,
+				videoDimensions.width,
+				videoDimensions.height,
 				prefs.aspectRatio,
 			),
-		[prefs.aspectRatio],
+		[videoDimensions.width, videoDimensions.height, prefs.aspectRatio],
 	);
 
 	const mp4OutputDimensions = useMemo(() => {

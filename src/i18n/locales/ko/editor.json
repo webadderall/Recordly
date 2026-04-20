@@ -136,5 +136,9 @@
 		"expand": "타임라인 펼치기",
 		"collapse": "타임라인 접기"
 	},
-	"openRecordingsFolder": "녹화 폴더 열기"
+	"openRecordingsFolder": "녹화 폴더 열기",
+	"sidebar": {
+		"account": "계정",
+		"accountComingSoon": "계정 기능이 곧 추가됩니다"
+	}
 }
