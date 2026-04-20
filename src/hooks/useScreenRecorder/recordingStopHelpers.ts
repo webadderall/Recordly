@@ -26,7 +26,10 @@ export async function stopNativeRecordingSession(options: StopRecordingOptions) 
 	options.showRecordingFinalizationToast();
 
 	const micFallbackBlobPromise = stopMicFallbackRecorder(options.refs);
-	const webcamPath = await stopWebcamRecorder(options.refs);
+	const webcamPathPromise = stopWebcamRecorder(options.refs).catch((error) => {
+		console.warn("Failed to stop webcam recorder:", error);
+		return null;
+	});
 	const isNativeWindows = options.refs.nativeWindowsRecording.current;
 	options.markRecordingResumed(Date.now());
 	const pauseSegments = options.refs.pauseSegmentsRef.current.slice();
@@ -82,6 +85,7 @@ export async function stopNativeRecordingSession(options: StopRecordingOptions) 
 		finalPath = muxResult?.path ?? result.path;
 	}
 
+	const webcamPath = await webcamPathPromise;
 	await options.storeMicrophoneSidecar(micFallbackBlobPromise, finalPath);
 	await options.finalizeRecordingSession(finalPath, webcamPath);
 	return true;
