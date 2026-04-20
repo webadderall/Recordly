@@ -1499,147 +1499,159 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
     }
   }, [cleanupCapturedMedia, markRecordingResumed, recording]);
 
-  const toggleRecording = async () => {
-    if (starting || countdownActive) {
-      return;
-    }
-
-    if (recording) {
-      stopRecording.current();
-      return;
-    }
-
-    // We need to request permissions BEFORE the countdown because:
-    // 1. the screen permission dialog would interrupt/delay the countdown.
-    // 2. if the user cancels or denies the permission, we shouldn't have started the countdown.
-    const permissionsReady = await preparePermissions();
-    if (!permissionsReady) {
-      return;
-    }
-
-    let preAcquiredLinuxStream: MediaStream | undefined;
-
-    const platform = await window.electronAPI.getPlatform();
-    const existingSource = await window.electronAPI.getSelectedSource();
-    const selectedSource =
-      existingSource ?? (platform === "linux" ? LINUX_PORTAL_SOURCE : null);
-
-    if (selectedSource?.id === "screen:linux-portal") {
-      try {
-        const mediaDevices =
-          navigator.mediaDevices as DesktopCaptureMediaDevices;
-        const acquireLinuxPortalStream = (withAudio: boolean) =>
-          mediaDevices.getDisplayMedia({
-            audio: withAudio,
-            video: {
-              displaySurface: "monitor",
-              width: { ideal: TARGET_WIDTH, max: TARGET_WIDTH },
-              height: { ideal: TARGET_HEIGHT, max: TARGET_HEIGHT },
-              frameRate: { ideal: TARGET_FRAME_RATE, max: TARGET_FRAME_RATE },
-              cursor: "never",
-            },
-            selfBrowserSurface: "exclude",
-            surfaceSwitching: "exclude",
-          });
-
-        if (systemAudioEnabled) {
-          try {
-            preAcquiredLinuxStream = await acquireLinuxPortalStream(true);
-          } catch (audioError) {
-            console.warn(
-              "System audio capture failed, falling back to video-only:",
-              audioError,
-            );
-            alert(
-              "System audio is not available for this source. Recording will continue without system audio.",
-            );
-            preAcquiredLinuxStream = await acquireLinuxPortalStream(false);
-          }
-				} else {
-					preAcquiredLinuxStream = await acquireLinuxPortalStream(false);
-				}
-
-				// Wait for the OS Wayland Portal dialog to actually close.
-				// On Linux, the stream is returned instantly but no frames are emitted
-				// until the user clicks Share. The most robust way to detect this is to
-				// wait for the first frame to flow into a video element.
-				if (preAcquiredLinuxStream) {
-					const videoTrack = preAcquiredLinuxStream.getVideoTracks()[0];
-					if (videoTrack) {
-						await new Promise<void>((resolve, reject) => {
-							const video = document.createElement("video");
-							video.muted = true;
-							video.srcObject = preAcquiredLinuxStream;
-							
-							const onPlaying = () => {
-								cleanup();
-								resolve();
-							};
-							
-							const onEnded = () => {
-								cleanup();
-								reject(new Error("Stream ended before becoming live"));
-							};
-							
-							const cleanup = () => {
-								video.removeEventListener("playing", onPlaying);
-								videoTrack.removeEventListener("ended", onEnded);
-								video.srcObject = null;
-							};
-
-							video.addEventListener("playing", onPlaying);
-							videoTrack.addEventListener("ended", onEnded);
-
-							video.play().catch(() => {
-								// Ignore play errors, we are just using it to trigger 'playing' event
-							});
-
-							// Add a timeout as a fallback
-							setTimeout(() => {
-								cleanup();
-								reject(new Error("Timeout waiting for track to become live"));
-							}, 60000);
-						});
-					}
-				}
-
-				// Double check if it's inactive (meaning it was cancelled)
-				if (preAcquiredLinuxStream && !preAcquiredLinuxStream.active) {
-					console.warn("Linux portal stream is inactive (user cancelled dialog). Aborting.");
-					return;
-				}
-
-				// Give the Wayland Portal dialog a brief moment to fully close visually
-				// so the UI can draw the countdown correctly.
-				await new Promise((resolve) => setTimeout(resolve, 300));
-			} catch (error) {
-				console.warn("Failed to pre-acquire Linux portal stream (likely cancelled):", error);
-				if (preAcquiredLinuxStream) {
-					preAcquiredLinuxStream.getTracks().forEach(t => t.stop());
-				}
-				return;
-			}
+	const toggleRecording = async () => {
+		if (starting || countdownActive) {
+			return;
 		}
 
-    // Start recording with optional countdown
-    if (countdownDelay > 0) {
-      setCountdownActive(true);
-      try {
-        const result = await window.electronAPI.startCountdown(countdownDelay);
-        if (!result.success || result.cancelled) {
-          // Stop the pre-acquired stream if countdown is cancelled
-          if (preAcquiredLinuxStream) {
-            preAcquiredLinuxStream.getTracks().forEach((t) => t.stop());
-          }
-          return;
-        }
-      } finally {
-        setCountdownActive(false);
-      }
-    }
+		if (recording) {
+			stopRecording.current();
+			return;
+		}
 
-    startRecording(preAcquiredLinuxStream);
-  };
+		// Prevent re-entrancy while we wait for permissions or Wayland dialogs
+		setStarting(true);
+		
+		try {
+			// We need to request permissions BEFORE the countdown because:
+			// 1. the screen permission dialog would interrupt/delay the countdown.
+			// 2. if the user cancels or denies the permission, we shouldn't have started the countdown.
+			const permissionsReady = await preparePermissions();
+			if (!permissionsReady) {
+				return;
+			}
+
+			let preAcquiredLinuxStream: MediaStream | undefined;
+
+			const platform = await window.electronAPI.getPlatform();
+			const existingSource = await window.electronAPI.getSelectedSource();
+			const selectedSource =
+				existingSource ?? (platform === "linux" ? LINUX_PORTAL_SOURCE : null);
+
+			if (selectedSource?.id === "screen:linux-portal") {
+				try {
+					const mediaDevices =
+						navigator.mediaDevices as DesktopCaptureMediaDevices;
+					const acquireLinuxPortalStream = (withAudio: boolean) =>
+						mediaDevices.getDisplayMedia({
+							audio: withAudio,
+							video: {
+								displaySurface: "monitor",
+								width: { ideal: TARGET_WIDTH, max: TARGET_WIDTH },
+								height: { ideal: TARGET_HEIGHT, max: TARGET_HEIGHT },
+								frameRate: { ideal: TARGET_FRAME_RATE, max: TARGET_FRAME_RATE },
+								cursor: "never",
+							},
+							selfBrowserSurface: "exclude",
+							surfaceSwitching: "exclude",
+						});
+
+					if (systemAudioEnabled) {
+						try {
+							preAcquiredLinuxStream = await acquireLinuxPortalStream(true);
+						} catch (audioError) {
+							console.warn(
+								"System audio capture failed, falling back to video-only:",
+								audioError,
+							);
+							alert(
+								"System audio is not available for this source. Recording will continue without system audio.",
+							);
+							preAcquiredLinuxStream = await acquireLinuxPortalStream(false);
+						}
+					} else {
+						preAcquiredLinuxStream = await acquireLinuxPortalStream(false);
+					}
+
+					// Wait for the OS Wayland Portal dialog to actually close.
+					// On Linux, the stream is returned instantly but no frames are emitted
+					// until the user clicks Share. The most robust way to detect this is to
+					// wait for the first frame to flow into a video element.
+					if (preAcquiredLinuxStream) {
+						const videoTrack = preAcquiredLinuxStream.getVideoTracks()[0];
+						if (videoTrack) {
+							await new Promise<void>((resolve, reject) => {
+								const video = document.createElement("video");
+								video.muted = true;
+								video.srcObject = preAcquiredLinuxStream;
+								
+								const onPlaying = () => {
+									cleanup();
+									resolve();
+								};
+								
+								const onEnded = () => {
+									cleanup();
+									reject(new Error("Stream ended before becoming live"));
+								};
+								
+								const cleanup = () => {
+									video.removeEventListener("playing", onPlaying);
+									videoTrack.removeEventListener("ended", onEnded);
+									video.srcObject = null;
+								};
+
+								video.addEventListener("playing", onPlaying);
+								videoTrack.addEventListener("ended", onEnded);
+
+								video.play().catch(() => {
+									// Ignore play errors, we are just using it to trigger 'playing' event
+								});
+
+								// Add a timeout as a fallback
+								setTimeout(() => {
+									cleanup();
+									reject(new Error("Timeout waiting for track to become live"));
+								}, 60000);
+							});
+						}
+					}
+
+					// Double check if it's inactive (meaning it was cancelled)
+					if (preAcquiredLinuxStream && !preAcquiredLinuxStream.active) {
+						console.warn("Linux portal stream is inactive (user cancelled dialog). Aborting.");
+						return;
+					}
+
+					// Give the Wayland Portal dialog a brief moment to fully close visually
+					// so the UI can draw the countdown correctly.
+					await new Promise((resolve) => setTimeout(resolve, 300));
+				} catch (error) {
+					console.warn("Failed to pre-acquire Linux portal stream (likely cancelled):", error);
+					if (preAcquiredLinuxStream) {
+						preAcquiredLinuxStream.getTracks().forEach(t => t.stop());
+					}
+					return;
+				}
+			}
+
+			// Start recording with optional countdown
+			if (countdownDelay > 0) {
+				setCountdownActive(true);
+				try {
+					const result = await window.electronAPI.startCountdown(countdownDelay);
+					if (!result.success || result.cancelled) {
+						// Stop the pre-acquired stream if countdown is cancelled
+						if (preAcquiredLinuxStream) {
+							preAcquiredLinuxStream.getTracks().forEach((t) => t.stop());
+						}
+						return;
+					}
+				} finally {
+					setCountdownActive(false);
+				}
+			}
+
+			startRecording(preAcquiredLinuxStream);
+		} finally {
+			// Clear starting flag if we aborted before calling startRecording,
+			// or if countdown was cancelled. startRecording manages the flag itself
+			// but if startInFlight is false, it means startRecording didn't spin up.
+			if (!startInFlight.current) {
+				setStarting(false);
+			}
+		}
+	};
 
   return {
     recording,
