@@ -1578,8 +1578,17 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 							};
 							videoTrack.addEventListener("unmute", onUnmute);
 							videoTrack.addEventListener("ended", onEnded);
+							
+							// Add a timeout as a fallback in case events don't fire
+							setTimeout(() => reject(new Error("Timeout waiting for track to become live")), 30000);
 						});
 					}
+				}
+
+				// Double check if it's inactive (meaning it was cancelled)
+				if (preAcquiredLinuxStream && !preAcquiredLinuxStream.active) {
+					console.warn("Linux portal stream is inactive (user cancelled dialog). Aborting.");
+					return;
 				}
 
 				// Give the Wayland Portal dialog a brief moment to fully close visually
