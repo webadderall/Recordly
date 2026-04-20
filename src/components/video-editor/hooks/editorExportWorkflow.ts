@@ -236,6 +236,7 @@ export async function runEditorExport({
 						window.close();
 						return;
 					}
+					keepExportDialogOpen = true;
 				}
 			} else {
 				setExportError(result.error || "GIF export failed");
@@ -456,6 +457,7 @@ export async function runEditorExport({
 						window.close();
 						return;
 					}
+					keepExportDialogOpen = true;
 				}
 			} else {
 				if (smokeExportConfig.enabled) {
