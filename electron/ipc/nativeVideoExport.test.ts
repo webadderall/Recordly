@@ -36,6 +36,18 @@ describe("buildEditedTrackSourceAudioFilter", () => {
 		);
 	});
 
+	it("builds a filtergraph for slowdown segments by lowering then resampling the source rate", () => {
+		const filter = buildEditedTrackSourceAudioFilter(
+			[{ startMs: 0, endMs: 2_000, speed: 0.5 }],
+			44_100,
+		);
+
+		expect(filter).toBe(
+			"[1:a]atrim=start=0.000:end=2.000,asetpts=PTS-STARTPTS,asetrate=22050,aresample=44100[edited_audio_0];" +
+				"[edited_audio_0]anull[aout]",
+		);
+	});
+
 	it("returns null when the edited-track filtergraph inputs are incomplete", () => {
 		expect(buildEditedTrackSourceAudioFilter([], 44_100)).toBeNull();
 		expect(
@@ -55,6 +67,15 @@ describe("buildEditedTrackSourceAudioFilter", () => {
 		).toBeNull();
 		expect(
 			buildEditedTrackSourceAudioFilter([{ startMs: 0, endMs: 2_000, speed: 0 }], 44_100),
+		).toBeNull();
+		expect(
+			buildEditedTrackSourceAudioFilter([{ startMs: 0, endMs: 2_000, speed: -1 }], 44_100),
+		).toBeNull();
+		expect(
+			buildEditedTrackSourceAudioFilter(
+				[{ startMs: 0, endMs: 2_000, speed: Number.NaN }],
+				44_100,
+			),
 		).toBeNull();
 		expect(
 			buildEditedTrackSourceAudioFilter([{ startMs: 0, endMs: 2_000, speed: 1 }], 0.4),
