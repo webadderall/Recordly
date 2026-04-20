@@ -240,6 +240,12 @@ jobs:
       - build-macos-arm64
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout workflow actions
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/actions
+          ref: ${{ needs.prepare-release.outputs.source_sha }}
+
       - name: Download macOS x64 artifacts
         uses: actions/download-artifact@v4
         with:
