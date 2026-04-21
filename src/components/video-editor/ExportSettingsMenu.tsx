@@ -160,7 +160,7 @@ export function ExportSettingsMenu({
 									{mp4OutputDimensions ? (
 										<span
 											className={cn(
-												"mt-0.5 text-[9px]",
+												"mt-0.5 text-[9px] rtl:[direction:ltr]",
 												isActive ? "text-white/75 dark:text-black/75" : "text-muted-foreground/70",
 												)}
 											>
@@ -427,7 +427,7 @@ export function ExportSettingsMenu({
 						</LayoutGroup>
 					</div>
 					<div className="flex items-center justify-between px-1">
-						<span className="text-[10px] text-muted-foreground/70">
+						<span className="text-[10px] text-muted-foreground/70 rtl:[direction:ltr]">
 							{gifOutputDimensions.width} × {gifOutputDimensions.height}px
 						</span>
 						<div className="flex items-center gap-2">

@@ -95,7 +95,7 @@ export function GifOptionsPanel({
 						))}
 					</SelectContent>
 				</Select>
-				<div className="text-xs text-muted-foreground/70">
+				<div className="text-xs text-muted-foreground/70 rtl:[direction:ltr]">
 					{t("gifOptions.outputDimensions", undefined, {
 						width: String(outputDimensions.width),
 						height: String(outputDimensions.height),

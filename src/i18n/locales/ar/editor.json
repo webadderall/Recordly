@@ -31,7 +31,7 @@
 		"uploadImage": "رفع صورة",
 		"supportedFormats": "التنسيقات المدعومة: JPG، PNG، GIF، WebP",
 		"arrowDirection": "اتجاه السهم",
-		"strokeWidth": "عرض الخط: {{width}}px",
+		"strokeWidth": "سمك الخط: {{width}}px",
 		"arrowColor": "لون السهم",
 		"deleteAnnotation": "حذف التعليق التوضيحي",
 		"shortcutsAndTips": "اختصارات ونصائح",
@@ -42,7 +42,7 @@
 		"imageUploadError": "يرجى رفع ملف صورة بصيغة JPG أو PNG أو GIF أو WebP.",
 		"blurStrength": "قوة التمويه: {{strength}}",
 		"solidColor": "لون ثابت (تعتيم)",
-		"borderRadius": "نصف قطر الحدود"
+		"borderRadius": "تقويس الزوايا"
 	},
 	"fontStyles": {
 		"classic": "كلاسيكي",
