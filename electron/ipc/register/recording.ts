@@ -94,6 +94,7 @@ import {
 	attachWindowsCaptureLifecycle,
 	muxNativeWindowsVideoWithAudio,
 } from "../recording/windows";
+import { shouldUseWindowsBrowserMicrophoneFallback } from "../recording/windowsFallbacks";
 import {
 	waitForNativeCaptureStart,
 	waitForNativeCaptureStop,
@@ -189,6 +190,9 @@ export function registerRecordingHandlers(
         const recordingsDir = await getRecordingsDir()
         const timestamp = Date.now()
         const outputPath = path.join(recordingsDir, `recording-${timestamp}.mp4`)
+        let captureOutput = ''
+        let systemAudioPath: string | null = null
+        let microphonePath: string | null = null
         const resolvedDisplay = resolveWindowsCaptureDisplay(
           source,
           getScreen().getAllDisplays(),
@@ -207,20 +211,20 @@ export function registerRecordingHandlers(
         }
 
         if (options?.capturesSystemAudio) {
-          const audioPath = path.join(recordingsDir, `recording-${timestamp}.system.wav`)
+          systemAudioPath = path.join(recordingsDir, `recording-${timestamp}.system.wav`)
           config.captureSystemAudio = true
-          config.audioOutputPath = audioPath
-          setWindowsSystemAudioPath(audioPath)
+          config.audioOutputPath = systemAudioPath
+          setWindowsSystemAudioPath(systemAudioPath)
         }
 
         if (options?.capturesMicrophone) {
-          const micPath = path.join(recordingsDir, `recording-${timestamp}.mic.wav`)
+          microphonePath = path.join(recordingsDir, `recording-${timestamp}.mic.wav`)
           config.captureMic = true
-          config.micOutputPath = micPath
+          config.micOutputPath = microphonePath
           if (options.microphoneLabel) {
             config.micDeviceName = options.microphoneLabel
           }
-          setWindowsMicAudioPath(micPath)
+          setWindowsMicAudioPath(microphonePath)
         }
 
         recordNativeCaptureDiagnostics({
@@ -233,8 +237,8 @@ export function registerRecordingHandlers(
           windowHandle: typeof config.windowHandle === 'number' ? config.windowHandle : null,
           helperPath: exePath,
           outputPath,
-          systemAudioPath: windowsSystemAudioPath,
-          microphonePath: windowsMicAudioPath,
+          systemAudioPath,
+          microphonePath,
         })
 
         setWindowsCaptureOutputBuffer('')
@@ -249,13 +253,23 @@ export function registerRecordingHandlers(
         attachWindowsCaptureLifecycle(wcProc)
 
         wcProc.stdout.on('data', (chunk: Buffer) => {
-          setWindowsCaptureOutputBuffer(windowsCaptureOutputBuffer + chunk.toString())
+          captureOutput += chunk.toString()
+          setWindowsCaptureOutputBuffer(captureOutput)
         })
         wcProc.stderr.on('data', (chunk: Buffer) => {
-          setWindowsCaptureOutputBuffer(windowsCaptureOutputBuffer + chunk.toString())
+          captureOutput += chunk.toString()
+          setWindowsCaptureOutputBuffer(captureOutput)
         })
 
         await waitForWindowsCaptureStart(wcProc)
+        const microphoneFallbackRequired = shouldUseWindowsBrowserMicrophoneFallback(
+          captureOutput,
+          options,
+        )
+        if (microphoneFallbackRequired) {
+          microphonePath = null
+          setWindowsMicAudioPath(null)
+        }
         setWindowsNativeCaptureActive(true)
         setNativeScreenRecordingActive(true)
         recordNativeCaptureDiagnostics({
@@ -268,11 +282,11 @@ export function registerRecordingHandlers(
           windowHandle: typeof config.windowHandle === 'number' ? config.windowHandle : null,
           helperPath: exePath,
           outputPath,
-          systemAudioPath: windowsSystemAudioPath,
-          microphonePath: windowsMicAudioPath,
-          processOutput: windowsCaptureOutputBuffer.trim() || undefined,
+          systemAudioPath,
+          microphonePath,
+          processOutput: captureOutput.trim() || undefined,
         })
-        return { success: true }
+        return { success: true, microphoneFallbackRequired }
       } catch (error) {
         recordNativeCaptureDiagnostics({
           backend: 'windows-wgc',

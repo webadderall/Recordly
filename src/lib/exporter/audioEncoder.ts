@@ -10,6 +10,7 @@ import {
 } from "@/lib/mediaTiming";
 import { resolveMediaElementSource } from "./localMediaSource";
 import type { VideoMuxer } from "./muxer";
+import { resolveSourceAudioFallbackPaths } from "./sourceAudioFallback";
 
 const AUDIO_BITRATE = 128_000;
 const DECODE_BACKPRESSURE_LIMIT = 20;
@@ -547,17 +548,18 @@ export class AudioProcessor {
 		if (this.cancelled) throw new Error("Export cancelled");
 		this.onProgress?.(0);
 
-		const hasExternalSources = sourceAudioFallbackPaths.length > 0;
+		const { externalAudioPaths } = resolveSourceAudioFallbackPaths(
+			videoUrl,
+			sourceAudioFallbackPaths,
+		);
 
-		// Decode primary audio source (streaming decode with bulk fallback)
-		const mainBuffer = !hasExternalSources
-			? await this.decodeAudioFromUrl(videoUrl)
-			: null;
+		// Decode embedded source audio separately from companion sidecars.
+		const mainBuffer = await this.decodeAudioFromUrl(videoUrl);
 		if (this.cancelled) throw new Error("Export cancelled");
 
 		// Decode companion / sidecar audio files
 		const companionEntries: Array<{ buffer: AudioBuffer; startDelaySec: number }> = [];
-		for (const audioPath of sourceAudioFallbackPaths) {
+		for (const audioPath of externalAudioPaths) {
 			if (this.cancelled) throw new Error("Export cancelled");
 			const buffer = await this.decodeAudioFromUrl(audioPath);
 			if (!buffer) continue;
@@ -593,7 +595,7 @@ export class AudioProcessor {
 		let sourceDurationSec: number;
 		if (mainBuffer) {
 			sourceDurationSec = mainBuffer.duration;
-		} else if (hasExternalSources || regionEntries.length > 0) {
+		} else if (externalAudioPaths.length > 0 || regionEntries.length > 0) {
 			sourceDurationSec = await this.getMediaDurationSec(videoUrl);
 		} else {
 			sourceDurationSec = primaryBuffer?.duration ?? 0;

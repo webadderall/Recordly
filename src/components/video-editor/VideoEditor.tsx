@@ -63,6 +63,7 @@ import {
 	VideoExporter,
 } from "@/lib/exporter";
 import { resolveMediaElementSource } from "@/lib/exporter/localMediaSource";
+import { resolveSourceAudioFallbackPaths } from "@/lib/exporter/sourceAudioFallback";
 import {
 	clampMediaTimeToDuration,
 	estimateCompanionAudioStartDelaySeconds,
@@ -239,6 +240,7 @@ async function writeSmokeExportReport(
 }
 
 const DEFAULT_MP4_EXPORT_FRAME_RATE: ExportMp4FrameRate = 30;
+const SOURCE_AUDIO_FALLBACK_TOAST_ID = "source-audio-fallback-error";
 
 function getEncodingModeBitrateMultiplier(encodingMode: ExportEncodingMode): number {
 	switch (encodingMode) {
@@ -1203,7 +1205,15 @@ export default function VideoEditor() {
 		() => videoSourcePath ?? (videoPath ? fromFileUrl(videoPath) : null),
 		[videoPath, videoSourcePath],
 	);
-	const hasSourceAudioFallback = sourceAudioFallbackPaths.length > 0;
+	const {
+		hasEmbeddedSourceAudio,
+		externalAudioPaths: previewSourceAudioFallbackPaths,
+	} = useMemo(
+		() => resolveSourceAudioFallbackPaths(currentSourcePath, sourceAudioFallbackPaths),
+		[currentSourcePath, sourceAudioFallbackPaths],
+	);
+	const shouldMutePreviewVideo =
+		!hasEmbeddedSourceAudio && previewSourceAudioFallbackPaths.length > 0;
 
 	useEffect(() => {
 		let cancelled = false;
@@ -1222,10 +1232,26 @@ export default function VideoEditor() {
 				if (cancelled) {
 					return;
 				}
-				setSourceAudioFallbackPaths(result.success ? (result.paths ?? []) : []);
-			} catch {
+				if (!result.success) {
+					setSourceAudioFallbackPaths([]);
+					toast.warning(
+						result.error
+							? `Could not load companion audio sources: ${summarizeErrorMessage(result.error)}`
+							: "Could not load companion audio sources. Playback and export may miss microphone audio.",
+						{ id: SOURCE_AUDIO_FALLBACK_TOAST_ID, duration: 10000 },
+					);
+					return;
+				}
+
+				toast.dismiss(SOURCE_AUDIO_FALLBACK_TOAST_ID);
+				setSourceAudioFallbackPaths(result.paths ?? []);
+			} catch (error) {
 				if (!cancelled) {
 					setSourceAudioFallbackPaths([]);
+					toast.warning(
+						`Could not load companion audio sources: ${summarizeErrorMessage(String(error))}`,
+						{ id: SOURCE_AUDIO_FALLBACK_TOAST_ID, duration: 10000 },
+					);
 				}
 			}
 		})();
@@ -3455,7 +3481,7 @@ export default function VideoEditor() {
 	useEffect(() => {
 		let cancelled = false;
 		const existing = sourceAudioElementsRef.current;
-		const currentIds = new Set(sourceAudioFallbackPaths);
+		const currentIds = new Set(previewSourceAudioFallbackPaths);
 
 		for (const [id, audio] of existing) {
 			if (!currentIds.has(id)) {
@@ -3468,7 +3494,7 @@ export default function VideoEditor() {
 			}
 		}
 
-		for (const audioPath of sourceAudioFallbackPaths) {
+		for (const audioPath of previewSourceAudioFallbackPaths) {
 			let audio = existing.get(audioPath);
 			if (!audio) {
 				audio = new Audio();
@@ -3504,14 +3530,14 @@ export default function VideoEditor() {
 			audio.volume = Math.max(0, Math.min(1, previewVolume));
 		}
 
-		if (sourceAudioFallbackPaths.length === 0) {
+		if (previewSourceAudioFallbackPaths.length === 0) {
 			lastSourceAudioSyncTimeRef.current = null;
 		}
 
 		return () => {
 			cancelled = true;
 		};
-	}, [previewVolume, sourceAudioFallbackPaths]);
+	}, [previewSourceAudioFallbackPaths, previewVolume]);
 
 	useEffect(() => {
 		return () => {
@@ -3579,7 +3605,7 @@ export default function VideoEditor() {
 	}, [isPlaying, currentTime, audioRegions, speedRegions]);
 
 	useEffect(() => {
-		if (sourceAudioFallbackPaths.length === 0) {
+		if (previewSourceAudioFallbackPaths.length === 0) {
 			lastSourceAudioSyncTimeRef.current = null;
 			return;
 		}
@@ -3631,7 +3657,7 @@ export default function VideoEditor() {
 		}
 
 		lastSourceAudioSyncTimeRef.current = currentTime;
-	}, [currentTime, duration, isPlaying, sourceAudioFallbackPaths, speedRegions]);
+	}, [currentTime, duration, isPlaying, previewSourceAudioFallbackPaths, speedRegions]);
 
 	const showExportSuccessToast = useCallback((filePath: string) => {
 		toast.success(`Exported successfully to ${filePath}`, {
@@ -5180,7 +5206,7 @@ export default function VideoEditor() {
 													cursorClickBounceDuration
 												}
 												cursorSway={cursorSway}
-												volume={hasSourceAudioFallback ? 0 : previewVolume}
+												volume={shouldMutePreviewVideo ? 0 : previewVolume}
 											/>
 										</div>
 									</div>
