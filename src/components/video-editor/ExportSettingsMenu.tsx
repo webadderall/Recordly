@@ -164,7 +164,7 @@ export function ExportSettingsMenu({
 												isActive ? "text-white/75 dark:text-black/75" : "text-muted-foreground/70",
 												)}
 											>
-												{mp4OutputDimensions[option.value].width} x{" "}
+												{mp4OutputDimensions[option.value].width} ×{" "}
 												{mp4OutputDimensions[option.value].height}
 											</span>
 										) : null}

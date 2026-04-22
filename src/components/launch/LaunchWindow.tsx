@@ -67,7 +67,7 @@ const LOCALE_LABELS: Record<string, string> = {
 	nl: "NL",
 	"zh-CN": "中文",
 	ko: "한국어",
-	ar: "عربي",
+	ar: "العربية",
 };
 
 const COUNTDOWN_OPTIONS = [0, 3, 5, 10];
