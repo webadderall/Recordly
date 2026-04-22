@@ -7,6 +7,7 @@ import type {
 	CropRegion,
 	CursorStyle,
 	CursorTelemetryPoint,
+	Padding,
 	SpeedRegion,
 	WebcamOverlaySettings,
 	ZoomRegion,
@@ -88,7 +89,7 @@ interface FrameRenderConfig {
 	zoomOutEasing?: ZoomTransitionEasing;
 	connectedZoomEasing?: ZoomTransitionEasing;
 	borderRadius?: number;
-	padding?: number;
+	padding?: Padding | number;
 	cropRegion: CropRegion;
 	webcam?: WebcamOverlaySettings;
 	webcamUrl?: string | null;
@@ -1193,9 +1194,24 @@ export class FrameRenderer {
 		const croppedVideoWidth = videoWidth * (cropEndX - cropStartX);
 		const croppedVideoHeight = videoHeight * (cropEndY - cropStartY);
 
-		const paddingScale = 1.0 - (padding / 100) * 0.4;
-		const viewportWidth = width * paddingScale;
-		const viewportHeight = height * paddingScale;
+		// Apply asymmetrical padding
+		const p =
+			typeof padding === "number"
+				? { top: padding, bottom: padding, left: padding, right: padding }
+				: padding;
+
+		// Padding is a percentage (0-100), where 50 matches the original VIEWPORT_SCALE of 0.8
+		// We use 0.2 as a multiplier for each side so that uniform 100% padding results in 0.6 scale (1.0 - 0.4)
+		const leftPadFrac = (p.left / 100) * 0.2;
+		const rightPadFrac = (p.right / 100) * 0.2;
+		const topPadFrac = (p.top / 100) * 0.2;
+		const bottomPadFrac = (p.bottom / 100) * 0.2;
+
+		const availableFracW = 1.0 - leftPadFrac - rightPadFrac;
+		const availableFracH = 1.0 - topPadFrac - bottomPadFrac;
+
+		const viewportWidth = width * availableFracW;
+		const viewportHeight = height * availableFracH;
 
 		// When a device frame is active, scale to fit the ENTIRE frame (video + bezels)
 		const insets = this.frameInsets;
@@ -1213,17 +1229,21 @@ export class FrameRenderer {
 		const croppedDisplayWidth = croppedVideoWidth * scale;
 		const croppedDisplayHeight = croppedVideoHeight * scale;
 
-		// Center the full frame (video + bezels) in the output canvas
+		// Center the full frame (video + bezels) in the available area
 		const fullFrameDisplayW = fullFrameVideoW * scale;
 		const fullFrameDisplayH = fullFrameVideoH * scale;
-		const frameCenterX = (width - fullFrameDisplayW) / 2;
-		const frameCenterY = (height - fullFrameDisplayH) / 2;
+
+		const availableCenterX = leftPadFrac * width + viewportWidth / 2;
+		const availableCenterY = topPadFrac * height + viewportHeight / 2;
+
+		const frameCenterX = availableCenterX - fullFrameDisplayW / 2;
+		const frameCenterY = availableCenterY - fullFrameDisplayH / 2;
 		const centerOffsetX = insets
 			? frameCenterX + insets.left * fullFrameDisplayW
-			: (width - croppedDisplayWidth) / 2;
+			: frameCenterX;
 		const centerOffsetY = insets
 			? frameCenterY + insets.top * fullFrameDisplayH
-			: (height - croppedDisplayHeight) / 2;
+			: frameCenterY;
 
 		const spriteX = centerOffsetX - cropRegion.x * fullVideoDisplayWidth;
 		const spriteY = centerOffsetY - cropRegion.y * fullVideoDisplayHeight;

@@ -56,11 +56,13 @@ import {
 	DEFAULT_ZOOM_OUT_DURATION_MS,
 	DEFAULT_ZOOM_OUT_EASING,
 	getDefaultCaptionFontFamily,
+	type Padding,
 	type SpeedRegion,
 	type TrimRegion,
 	type WebcamOverlaySettings,
 	type ZoomRegion,
 	type ZoomTransitionEasing,
+	DEFAULT_PADDING,
 } from "./types";
 
 export const PROJECT_VERSION = 1;
@@ -91,7 +93,7 @@ export interface ProjectEditorState {
 	cursorClickBounceDuration: number;
 	cursorSway: number;
 	borderRadius: number;
-	padding: number;
+	padding: Padding;
 	/** Selected frame ID (e.g. "recordly.frames/browser-dark"), or null for none */
 	frame: string | null;
 	cropRegion: CropRegion;
@@ -748,7 +750,30 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 			? clamp((editor as Partial<ProjectEditorState>).cursorSway as number, 0, 2)
 			: DEFAULT_CURSOR_SWAY,
 		borderRadius: typeof editor.borderRadius === "number" ? editor.borderRadius : 12.5,
-		padding: isFiniteNumber(editor.padding) ? clamp(editor.padding, 0, 100) : 20,
+		padding:
+			editor.padding && typeof editor.padding === "object"
+				? {
+						top: isFiniteNumber(editor.padding.top) ? clamp(editor.padding.top, 0, 100) : DEFAULT_PADDING.top,
+						bottom: isFiniteNumber(editor.padding.bottom)
+							? clamp(editor.padding.bottom, 0, 100)
+							: DEFAULT_PADDING.bottom,
+						left: isFiniteNumber(editor.padding.left)
+							? clamp(editor.padding.left, 0, 100)
+							: DEFAULT_PADDING.left,
+						right: isFiniteNumber(editor.padding.right)
+							? clamp(editor.padding.right, 0, 100)
+							: DEFAULT_PADDING.right,
+						linked: typeof editor.padding.linked === "boolean" ? editor.padding.linked : true,
+					}
+				: typeof editor.padding === "number" && isFiniteNumber(editor.padding)
+					? {
+							top: clamp(editor.padding, 0, 100),
+							bottom: clamp(editor.padding, 0, 100),
+							left: clamp(editor.padding, 0, 100),
+							right: clamp(editor.padding, 0, 100),
+							linked: true,
+						}
+					: DEFAULT_PADDING,
 		frame: typeof editor.frame === "string" ? editor.frame : null,
 		cropRegion: {
 			x: cropX,

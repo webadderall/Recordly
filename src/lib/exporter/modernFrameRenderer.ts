@@ -17,6 +17,7 @@ import type {
 	CropRegion,
 	CursorStyle,
 	CursorTelemetryPoint,
+	Padding,
 	SpeedRegion,
 	WebcamOverlaySettings,
 	ZoomRegion,
@@ -104,7 +105,7 @@ interface FrameRenderConfig {
 	zoomOutEasing?: ZoomTransitionEasing;
 	connectedZoomEasing?: ZoomTransitionEasing;
 	borderRadius?: number;
-	padding?: number;
+	padding?: Padding | number;
 	cropRegion: CropRegion;
 	webcam?: WebcamOverlaySettings;
 	webcamUrl?: string | null;
@@ -2451,13 +2452,26 @@ export class FrameRenderer {
 		const croppedVideoWidth = videoWidth * (cropEndX - cropStartX);
 		const croppedVideoHeight = videoHeight * (cropEndY - cropStartY);
 
-		const paddingScale = 1.0 - (padding / 100) * 0.4;
-		const viewportWidth = width * paddingScale;
-		const viewportHeight = height * paddingScale;
-		const scale = Math.min(
-			viewportWidth / croppedVideoWidth,
-			viewportHeight / croppedVideoHeight,
-		);
+		// Apply asymmetrical padding
+		const p =
+			typeof padding === "number"
+				? { top: padding, bottom: padding, left: padding, right: padding }
+				: padding;
+
+		// Padding is a percentage (0-100), where 50 matches the original VIEWPORT_SCALE of 0.8
+		// We use 0.2 as a multiplier for each side so that uniform 100% padding results in 0.6 scale (1.0 - 0.4)
+		const leftPadFrac = (p.left / 100) * 0.2;
+		const rightPadFrac = (p.right / 100) * 0.2;
+		const topPadFrac = (p.top / 100) * 0.2;
+		const bottomPadFrac = (p.bottom / 100) * 0.2;
+
+		const availableFracW = 1.0 - leftPadFrac - rightPadFrac;
+		const availableFracH = 1.0 - topPadFrac - bottomPadFrac;
+
+		const viewportWidth = width * availableFracW;
+		const viewportHeight = height * availableFracH;
+
+		const scale = Math.min(viewportWidth / croppedVideoWidth, viewportHeight / croppedVideoHeight);
 
 		this.videoSprite.scale.set(scale);
 
@@ -2465,8 +2479,13 @@ export class FrameRenderer {
 		const fullVideoDisplayHeight = videoHeight * scale;
 		const croppedDisplayWidth = croppedVideoWidth * scale;
 		const croppedDisplayHeight = croppedVideoHeight * scale;
-		const centerOffsetX = (width - croppedDisplayWidth) / 2;
-		const centerOffsetY = (height - croppedDisplayHeight) / 2;
+
+		// Center the video in the available area
+		const availableCenterX = leftPadFrac * width + viewportWidth / 2;
+		const availableCenterY = topPadFrac * height + viewportHeight / 2;
+
+		const centerOffsetX = availableCenterX - croppedDisplayWidth / 2;
+		const centerOffsetY = availableCenterY - croppedDisplayHeight / 2;
 
 		const spriteX = centerOffsetX - cropRegion.x * fullVideoDisplayWidth;
 		const spriteY = centerOffsetY - cropRegion.y * fullVideoDisplayHeight;
@@ -2705,6 +2724,14 @@ export class FrameRenderer {
 		}
 
 		return this.outputCanvasOverride ?? (this.app.canvas as HTMLCanvasElement);
+	}
+
+	capturePixelsForNativeExport(): Uint8ClampedArray | null {
+		if (!this.app || this.outputCanvasOverride) {
+			return null;
+		}
+
+		return (this.app.renderer.extract.pixels(this.app.stage) as unknown) as Uint8ClampedArray;
 	}
 
 	getRendererBackend(): ExportRenderBackend {

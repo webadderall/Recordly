@@ -152,7 +152,7 @@ export class ExtensionHost {
 		canvasWidth: number;
 		canvasHeight: number;
 		borderRadius: number;
-		padding: number;
+		padding: number | { top: number; right: number; bottom: number; left: number };
 	} | null = null;
 	private _zoomState: { scale: number; focusX: number; focusY: number; progress: number } | null =
 		null;
@@ -441,7 +441,7 @@ export class ExtensionHost {
 			canvasWidth: number;
 			canvasHeight: number;
 			borderRadius: number;
-			padding: number;
+			padding: number | { top: number; right: number; bottom: number; left: number };
 		} | null,
 	): void {
 		this._videoLayout = layout;

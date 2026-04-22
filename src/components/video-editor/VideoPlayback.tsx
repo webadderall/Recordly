@@ -40,7 +40,7 @@ import {
 	type AutoCaptionSettings,
 	type CaptionCue,
 	type CursorStyle,
-	type CursorTelemetryPoint,
+	type Padding,
 	type SpeedRegion,
 	type TrimRegion,
 	type WebcamOverlaySettings,
@@ -110,6 +110,7 @@ import {
 	DEFAULT_ZOOM_IN_OVERLAP_MS,
 	DEFAULT_ZOOM_OUT_DURATION_MS,
 	DEFAULT_ZOOM_OUT_EASING,
+	DEFAULT_PADDING,
 	getDefaultCaptionFontFamily,
 } from "./types";
 import {
@@ -241,7 +242,7 @@ interface VideoPlaybackProps {
 	zoomOutEasing?: ZoomTransitionEasing;
 	connectedZoomEasing?: ZoomTransitionEasing;
 	borderRadius?: number;
-	padding?: number;
+	padding?: Padding | number;
 	frame?: string | null;
 	cropRegion?: import("./types").CropRegion;
 	webcam?: WebcamOverlaySettings;
@@ -311,7 +312,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			zoomOutEasing = DEFAULT_ZOOM_OUT_EASING,
 			connectedZoomEasing = DEFAULT_CONNECTED_ZOOM_EASING,
 			borderRadius = 0,
-			padding = 50,
+			padding = DEFAULT_PADDING,
 			frame = null,
 			cropRegion,
 			webcam,
