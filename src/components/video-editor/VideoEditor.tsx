@@ -637,6 +637,8 @@ export default function VideoEditor() {
 	const nextZoomIdRef = useRef(1);
 	const nextTrimIdRef = useRef(1);
 	const nextClipIdRef = useRef(1);
+	const autoFullTrackClipIdRef = useRef<string | null>(null);
+	const autoFullTrackClipEndMsRef = useRef<number | null>(null);
 	const nextSpeedIdRef = useRef(1);
 	const nextAudioIdRef = useRef(1);
 
@@ -2504,6 +2506,8 @@ export default function VideoEditor() {
 		if (totalMs <= 0 || clipInitializedRef.current) return;
 		if (clipRegions.length === 0) {
 			const id = `clip-${nextClipIdRef.current++}`;
+			autoFullTrackClipIdRef.current = id;
+			autoFullTrackClipEndMsRef.current = totalMs;
 			setClipRegions([{ id, startMs: 0, endMs: totalMs, speed: 1 }]);
 		}
 		clipInitializedRef.current = true;
