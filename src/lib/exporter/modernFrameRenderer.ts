@@ -17,12 +17,14 @@ import type {
 	CropRegion,
 	CursorStyle,
 	CursorTelemetryPoint,
+	Padding,
 	SpeedRegion,
 	WebcamOverlaySettings,
 	ZoomRegion,
 	ZoomTransitionEasing,
 } from "@/components/video-editor/types";
 import { getDefaultCaptionFontFamily, ZOOM_DEPTH_SCALES } from "@/components/video-editor/types";
+import { computePaddedLayout } from "@/components/video-editor/videoPlayback/layoutUtils";
 import { DEFAULT_FOCUS } from "@/components/video-editor/videoPlayback/constants";
 import {
 	type CursorFollowCameraState,
@@ -104,7 +106,7 @@ interface FrameRenderConfig {
 	zoomOutEasing?: ZoomTransitionEasing;
 	connectedZoomEasing?: ZoomTransitionEasing;
 	borderRadius?: number;
-	padding?: number;
+	padding?: Padding | number;
 	cropRegion: CropRegion;
 	webcam?: WebcamOverlaySettings;
 	webcamUrl?: string | null;
@@ -128,6 +130,7 @@ interface FrameRenderConfig {
 	zoomSmoothness?: number;
 	zoomClassicMode?: boolean;
 	frame?: string | null;
+	nativeReadbackMode?: "pixels" | "canvas";
 }
 
 interface AnimationState {
@@ -2434,43 +2437,29 @@ export class FrameRenderer {
 	}
 
 	private updateLayout(): void {
-		if (!this.videoSprite || !this.videoMaskGraphics || !this.videoContainer) {
-			return;
-		}
+		if (!this.app || !this.videoSprite || !this.videoMaskGraphics) return;
 
-		const { width, height } = this.config;
-		const { cropRegion, borderRadius = 0, padding = 0 } = this.config;
-		const videoWidth = this.config.videoWidth;
-		const videoHeight = this.config.videoHeight;
+		const {
+			width,
+			height,
+			cropRegion,
+			borderRadius = 0,
+			padding = 0,
+			videoWidth,
+			videoHeight,
+		} = this.config;
 
-		const cropStartX = cropRegion.x;
-		const cropStartY = cropRegion.y;
-		const cropEndX = cropRegion.x + cropRegion.width;
-		const cropEndY = cropRegion.y + cropRegion.height;
+		const layout = computePaddedLayout({
+			width,
+			height,
+			padding,
+			cropRegion,
+			videoWidth,
+			videoHeight,
+		});
 
-		const croppedVideoWidth = videoWidth * (cropEndX - cropStartX);
-		const croppedVideoHeight = videoHeight * (cropEndY - cropStartY);
-
-		const paddingScale = 1.0 - (padding / 100) * 0.4;
-		const viewportWidth = width * paddingScale;
-		const viewportHeight = height * paddingScale;
-		const scale = Math.min(
-			viewportWidth / croppedVideoWidth,
-			viewportHeight / croppedVideoHeight,
-		);
-
-		this.videoSprite.scale.set(scale);
-
-		const fullVideoDisplayWidth = videoWidth * scale;
-		const fullVideoDisplayHeight = videoHeight * scale;
-		const croppedDisplayWidth = croppedVideoWidth * scale;
-		const croppedDisplayHeight = croppedVideoHeight * scale;
-		const centerOffsetX = (width - croppedDisplayWidth) / 2;
-		const centerOffsetY = (height - croppedDisplayHeight) / 2;
-
-		const spriteX = centerOffsetX - cropRegion.x * fullVideoDisplayWidth;
-		const spriteY = centerOffsetY - cropRegion.y * fullVideoDisplayHeight;
-		this.videoSprite.position.set(spriteX, spriteY);
+		this.videoSprite.scale.set(layout.scale);
+		this.videoSprite.position.set(layout.spriteX, layout.spriteY);
 
 		const previewWidth = this.config.previewWidth || 1920;
 		const previewHeight = this.config.previewHeight || 1080;
@@ -2479,32 +2468,35 @@ export class FrameRenderer {
 
 		this.videoMaskGraphics.clear();
 		drawSquircleOnGraphics(this.videoMaskGraphics, {
-			x: centerOffsetX,
-			y: centerOffsetY,
-			width: croppedDisplayWidth,
-			height: croppedDisplayHeight,
+			x: layout.centerOffsetX,
+			y: layout.centerOffsetY,
+			width: layout.croppedDisplayWidth,
+			height: layout.croppedDisplayHeight,
 			radius: scaledBorderRadius,
 		});
 		this.videoMaskGraphics.fill({ color: 0xffffff });
 
 		this.updateVideoShadowLayout({
-			maskX: centerOffsetX,
-			maskY: centerOffsetY,
-			maskWidth: croppedDisplayWidth,
-			maskHeight: croppedDisplayHeight,
+			maskX: layout.centerOffsetX,
+			maskY: layout.centerOffsetY,
+			maskWidth: layout.croppedDisplayWidth,
+			maskHeight: layout.croppedDisplayHeight,
 			maskRadius: scaledBorderRadius,
 		});
 
 		this.layoutCache = {
 			stageSize: { width, height },
-			videoSize: { width: croppedVideoWidth, height: croppedVideoHeight },
-			baseScale: scale,
-			baseOffset: { x: spriteX, y: spriteY },
+			videoSize: {
+				width: videoWidth * cropRegion.width,
+				height: videoHeight * cropRegion.height,
+			},
+			baseScale: layout.scale,
+			baseOffset: { x: layout.spriteX, y: layout.spriteY },
 			maskRect: {
-				x: centerOffsetX,
-				y: centerOffsetY,
-				width: croppedDisplayWidth,
-				height: croppedDisplayHeight,
+				x: layout.centerOffsetX,
+				y: layout.centerOffsetY,
+				width: layout.croppedDisplayWidth,
+				height: layout.croppedDisplayHeight,
 				sourceCrop: cropRegion,
 			},
 		};
@@ -2705,6 +2697,28 @@ export class FrameRenderer {
 		}
 
 		return this.outputCanvasOverride ?? (this.app.canvas as HTMLCanvasElement);
+	}
+
+	capturePixelsForNativeExport(): Uint8ClampedArray | null {
+		if (!this.app) {
+			return null;
+		}
+
+		const finalCanvas =
+			this.outputCanvasOverride ??
+			(this.shouldCompositeExtensionFrame() ? this.compositeCanvas : null);
+
+		if (finalCanvas) {
+			const context = finalCanvas.getContext("2d");
+			return context
+				? context.getImageData(0, 0, finalCanvas.width, finalCanvas.height).data
+				: null;
+		}
+
+		const result = this.app.renderer.extract.pixels(this.app.stage);
+		const pixels = result.pixels;
+
+		return pixels instanceof Uint8ClampedArray ? pixels : new Uint8ClampedArray(pixels);
 	}
 
 	getRendererBackend(): ExportRenderBackend {

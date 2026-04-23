@@ -312,6 +312,22 @@ export const DEFAULT_CROP_REGION: CropRegion = {
 	height: 1,
 };
 
+export interface Padding {
+	top: number;
+	bottom: number;
+	left: number;
+	right: number;
+	linked?: boolean;
+}
+
+export const DEFAULT_PADDING: Padding = {
+	top: 50,
+	bottom: 50,
+	left: 50,
+	right: 50,
+	linked: true,
+};
+
 export interface AudioRegion {
 	id: string;
 	startMs: number;

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { DEFAULT_WEBCAM_OVERLAY } from "@/components/video-editor/types";
+import { DEFAULT_WEBCAM_OVERLAY } from "../../components/video-editor/types";
 
 vi.mock("pixi.js", () => ({
 	Application: class {},
@@ -94,6 +94,7 @@ function createMockContext() {
 		drawImage: vi.fn(),
 		save: vi.fn(),
 		restore: vi.fn(),
+		getImageData: vi.fn(() => ({ data: new Uint8ClampedArray(0) })),
 		globalAlpha: 1,
 		imageSmoothingEnabled: true,
 		imageSmoothingQuality: "high",
@@ -182,6 +183,6 @@ describe("ModernFrameRenderer blur export path", () => {
 
 		expect(renderAnnotations).toHaveBeenCalledTimes(1);
 		expect(renderer.getCanvas()).not.toBe(sourceCanvas);
-		expect(renderer.capturePixelsForNativeExport()).toBeNull();
+		expect(renderer.capturePixelsForNativeExport()).not.toBeNull();
 	});
 });

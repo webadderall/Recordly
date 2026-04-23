@@ -1,4 +1,4 @@
-import { Palette, Trash as Trash2, UploadSimple as Upload, X } from "@phosphor-icons/react";
+import { Link, LinkBreak, Palette, Trash as Trash2, UploadSimple as Upload, X } from "@phosphor-icons/react";
 import { AnimatePresence, LayoutGroup, motion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -43,6 +43,7 @@ import type {
 	CursorStyle,
 	EditorEffectSection,
 	FigureData,
+	Padding,
 	PlaybackSpeed,
 	WebcamOverlaySettings,
 	WebcamPositionPreset,
@@ -50,6 +51,9 @@ import type {
 	ZoomMode,
 	ZoomTransitionEasing,
 } from "./types";
+import {
+	isZeroPadding,
+} from "./videoPlayback/layoutUtils";
 import {
 	DEFAULT_AUTO_CAPTION_SETTINGS,
 	DEFAULT_CROP_REGION,
@@ -60,6 +64,7 @@ import {
 	DEFAULT_CURSOR_SMOOTHING,
 	DEFAULT_CURSOR_STYLE,
 	DEFAULT_CURSOR_SWAY,
+	DEFAULT_PADDING,
 	DEFAULT_WEBCAM_CORNER_RADIUS,
 	DEFAULT_WEBCAM_MARGIN,
 	DEFAULT_WEBCAM_POSITION_PRESET,
@@ -394,8 +399,8 @@ interface SettingsPanelProps {
 	onWebcamChange?: (webcam: WebcamOverlaySettings) => void;
 	onUploadWebcam?: () => void;
 	onClearWebcam?: () => void;
-	padding?: number;
-	onPaddingChange?: (padding: number) => void;
+	padding?: Padding;
+	onPaddingChange?: (padding: Padding) => void;
 	frame?: string | null;
 	onFrameChange?: (frameId: string | null) => void;
 	cropRegion?: CropRegion;
@@ -734,7 +739,7 @@ export function SettingsPanel({
 	onWebcamChange,
 	onUploadWebcam,
 	onClearWebcam,
-	padding = 50,
+	padding = DEFAULT_PADDING,
 	onPaddingChange,
 	frame = null,
 	onFrameChange,
@@ -787,7 +792,7 @@ export function SettingsPanel({
 	);
 	const removeBackgroundStateRef = useRef<{
 		aspectRatio: AspectRatio;
-		padding: number;
+		padding: Padding;
 	} | null>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const builtInWallpaperPaths = useMemo(
@@ -915,7 +920,7 @@ export function SettingsPanel({
 	const [gradient, setGradient] = useState<string>(
 		GRADIENTS.includes(selected) ? selected : GRADIENTS[0],
 	);
-	const removeBackgroundEnabled = aspectRatio === "native" && padding === 0;
+	const removeBackgroundEnabled = aspectRatio === "native" && isZeroPadding(padding);
 
 	// Device frames from extension system
 	const [availableFrames, setAvailableFrames] = useState<FrameInstance[]>([]);
@@ -1126,14 +1131,60 @@ export function SettingsPanel({
 				padding,
 			};
 			onAspectRatioChange?.("native");
-			onPaddingChange?.(0);
+			onPaddingChange?.({ top: 0, bottom: 0, left: 0, right: 0, linked: padding.linked });
 			return;
 		}
 
-		if (removeBackgroundStateRef.current) {
-			onAspectRatioChange?.(removeBackgroundStateRef.current.aspectRatio);
-			onPaddingChange?.(removeBackgroundStateRef.current.padding);
+		const previousState = removeBackgroundStateRef.current;
+		if (previousState) {
+			onAspectRatioChange?.(previousState.aspectRatio);
+			onPaddingChange?.(previousState.padding);
 			removeBackgroundStateRef.current = null;
+			return;
+		}
+
+		// Fallback if the project loaded in a "background removed" state already
+		onAspectRatioChange?.(initialEditorPreferences.aspectRatio);
+		onPaddingChange?.({ ...DEFAULT_PADDING });
+	};
+
+	const togglePaddingLink = () => {
+		const isLinked = padding.linked !== false;
+		const nextLinked = !isLinked;
+		if (nextLinked) {
+			// Compute average for relinking to avoid sudden shifts
+			const avg = Math.round(
+				(padding.top + padding.bottom + padding.left + padding.right) / 4,
+			);
+			onPaddingChange?.({
+				top: avg,
+				bottom: avg,
+				left: avg,
+				right: avg,
+				linked: true,
+			});
+		} else {
+			onPaddingChange?.({
+				...padding,
+				linked: false,
+			});
+		}
+	};
+
+	const handlePaddingSideChange = (side: keyof Padding, value: number) => {
+		if (padding.linked !== false) {
+			onPaddingChange?.({
+				top: value,
+				bottom: value,
+				left: value,
+				right: value,
+				linked: true,
+			});
+		} else {
+			onPaddingChange?.({
+				...padding,
+				[side]: value,
+			});
 		}
 	};
 
@@ -1289,7 +1340,7 @@ export function SettingsPanel({
 	const resetFrameSection = () => {
 		onShadowChange?.(initialEditorPreferences.shadowIntensity);
 		onBorderRadiusChange?.(initialEditorPreferences.borderRadius);
-		onPaddingChange?.(initialEditorPreferences.padding);
+		onPaddingChange?.(DEFAULT_PADDING);
 		onFrameChange?.(null);
 		onAspectRatioChange?.(initialEditorPreferences.aspectRatio);
 		removeBackgroundStateRef.current = null;
@@ -1779,17 +1830,95 @@ export function SettingsPanel({
 					formatValue={(v) => `${v}px`}
 					parseInput={(text) => parseFloat(text.replace(/px$/, ""))}
 				/>
-				<SliderControl
-					label={tSettings("effects.padding")}
-					value={padding}
-					defaultValue={initialEditorPreferences.padding}
-					min={0}
-					max={100}
-					step={1}
-					onChange={(v) => onPaddingChange?.(v)}
-					formatValue={(v) => `${v}%`}
-					parseInput={(text) => parseFloat(text.replace(/%$/, ""))}
-				/>
+				<div className="flex flex-col gap-1.5 pt-0.5">
+					<div className="flex items-center justify-between">
+						<span className="text-[10px] text-muted-foreground">
+							{tSettings("effects.padding")}
+						</span>
+						<button
+							type="button"
+							onClick={togglePaddingLink}
+							className={cn(
+								"p-1 rounded-md transition-colors",
+								padding.linked !== false
+									? "text-[#2563EB] bg-[#2563EB]/10"
+									: "text-muted-foreground hover:bg-foreground/[0.05]",
+							)}
+							title={
+								padding.linked !== false
+									? tSettings("effects.paddingLinked", "Linked (Uniform)")
+									: tSettings("effects.paddingUnlinked", "Unlinked (Asymmetrical)")
+							}
+						>
+							{padding.linked !== false ? (
+								<Link size={12} weight="bold" />
+							) : (
+								<LinkBreak size={12} weight="bold" />
+							)}
+						</button>
+					</div>
+
+					{padding.linked !== false ? (
+						<SliderControl
+							label=""
+							value={padding.top}
+							defaultValue={DEFAULT_PADDING.top}
+							min={0}
+							max={100}
+							step={1}
+							onChange={(v) => handlePaddingSideChange("top", v)}
+							formatValue={(v) => `${v}%`}
+							parseInput={(text) => parseFloat(text.replace(/%$/, ""))}
+						/>
+					) : (
+						<div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
+							<SliderControl
+								label={tSettings("effects.paddingTop", "Top")}
+								value={padding.top}
+								defaultValue={DEFAULT_PADDING.top}
+								min={0}
+								max={100}
+								step={1}
+								onChange={(v) => handlePaddingSideChange("top", v)}
+								formatValue={(v) => `${v}%`}
+								parseInput={(text) => parseFloat(text.replace(/%$/, ""))}
+							/>
+							<SliderControl
+								label={tSettings("effects.paddingBottom", "Bottom")}
+								value={padding.bottom}
+								defaultValue={DEFAULT_PADDING.bottom}
+								min={0}
+								max={100}
+								step={1}
+								onChange={(v) => handlePaddingSideChange("bottom", v)}
+								formatValue={(v) => `${v}%`}
+								parseInput={(text) => parseFloat(text.replace(/%$/, ""))}
+							/>
+							<SliderControl
+								label={tSettings("effects.paddingLeft", "Left")}
+								value={padding.left}
+								defaultValue={DEFAULT_PADDING.left}
+								min={0}
+								max={100}
+								step={1}
+								onChange={(v) => handlePaddingSideChange("left", v)}
+								formatValue={(v) => `${v}%`}
+								parseInput={(text) => parseFloat(text.replace(/%$/, ""))}
+							/>
+							<SliderControl
+								label={tSettings("effects.paddingRight", "Right")}
+								value={padding.right}
+								defaultValue={DEFAULT_PADDING.right}
+								min={0}
+								max={100}
+								step={1}
+								onChange={(v) => handlePaddingSideChange("right", v)}
+								formatValue={(v) => `${v}%`}
+								parseInput={(text) => parseFloat(text.replace(/%$/, ""))}
+							/>
+						</div>
+					)}
+				</div>
 				<div className="flex items-center justify-between rounded-lg bg-foreground/[0.03] px-2.5 py-1.5">
 					<span className="text-[10px] text-muted-foreground">
 						{tSettings("effects.removeBackground")}

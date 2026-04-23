@@ -56,11 +56,13 @@ import {
 	DEFAULT_ZOOM_OUT_DURATION_MS,
 	DEFAULT_ZOOM_OUT_EASING,
 	getDefaultCaptionFontFamily,
+	type Padding,
 	type SpeedRegion,
 	type TrimRegion,
 	type WebcamOverlaySettings,
 	type ZoomRegion,
 	type ZoomTransitionEasing,
+	DEFAULT_PADDING,
 } from "./types";
 
 export const PROJECT_VERSION = 1;
@@ -91,7 +93,7 @@ export interface ProjectEditorState {
 	cursorClickBounceDuration: number;
 	cursorSway: number;
 	borderRadius: number;
-	padding: number;
+	padding: Padding;
 	/** Selected frame ID (e.g. "recordly.frames/browser-dark"), or null for none */
 	frame: string | null;
 	cropRegion: CropRegion;
@@ -758,7 +760,30 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 			? clamp((editor as Partial<ProjectEditorState>).cursorSway as number, 0, 2)
 			: DEFAULT_CURSOR_SWAY,
 		borderRadius: typeof editor.borderRadius === "number" ? editor.borderRadius : 12.5,
-		padding: isFiniteNumber(editor.padding) ? clamp(editor.padding, 0, 100) : 20,
+		padding: (() => {
+			const p = editor.padding;
+			if (p && typeof p === "object") {
+				const linked = typeof p.linked === "boolean" ? p.linked : true;
+				const top = isFiniteNumber(p.top) ? clamp(p.top, 0, 100) : DEFAULT_PADDING.top;
+				if (linked) {
+					return { top, bottom: top, left: top, right: top, linked: true };
+				}
+				return {
+					top,
+					bottom: isFiniteNumber(p.bottom)
+						? clamp(p.bottom, 0, 100)
+						: DEFAULT_PADDING.bottom,
+					left: isFiniteNumber(p.left) ? clamp(p.left, 0, 100) : DEFAULT_PADDING.left,
+					right: isFiniteNumber(p.right) ? clamp(p.right, 0, 100) : DEFAULT_PADDING.right,
+					linked: false,
+				};
+			}
+			if (typeof p === "number" && isFiniteNumber(p)) {
+				const val = clamp(p, 0, 100);
+				return { top: val, bottom: val, left: val, right: val, linked: true };
+			}
+			return { ...DEFAULT_PADDING };
+		})(),
 		frame: typeof editor.frame === "string" ? editor.frame : null,
 		cropRegion: {
 			x: cropX,

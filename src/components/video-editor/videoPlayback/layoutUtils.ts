@@ -1,6 +1,124 @@
 import { Application, Graphics, Sprite } from "pixi.js";
 import { drawSquircleOnGraphics } from "@/lib/geometry/squircle";
-import type { CropRegion } from "../types";
+import type { CropRegion, Padding } from "../types";
+
+export const PADDING_SCALE_FACTOR = 0.2;
+
+export function isZeroPadding(padding: Padding | number): boolean {
+	if (typeof padding === "number") {
+		return padding === 0;
+	}
+	return (
+		padding.top === 0 &&
+		padding.bottom === 0 &&
+		padding.left === 0 &&
+		padding.right === 0
+	);
+}
+
+export interface PaddedLayoutResult {
+	scale: number;
+	centerOffsetX: number;
+	centerOffsetY: number;
+	spriteX: number;
+	spriteY: number;
+	fullFrameDisplayW: number;
+	fullFrameDisplayH: number;
+	fullVideoDisplayWidth: number;
+	fullVideoDisplayHeight: number;
+	croppedDisplayWidth: number;
+	croppedDisplayHeight: number;
+	cropStartX: number;
+	cropStartY: number;
+}
+
+export function computePaddedLayout(params: {
+	width: number;
+	height: number;
+	padding: Padding | number;
+	frameInsets?: { top: number; right: number; bottom: number; left: number } | null;
+	cropRegion: CropRegion;
+	videoWidth: number;
+	videoHeight: number;
+}): PaddedLayoutResult {
+	const { width, height, padding, frameInsets, cropRegion, videoWidth, videoHeight } = params;
+
+	// Apply asymmetrical padding
+	const p =
+		typeof padding === "number"
+			? { top: padding, bottom: padding, left: padding, right: padding }
+			: padding;
+
+	// Padding is a percentage (0-100)
+	// Clamp to ensure we don't have overlapping padding that exceeds 100% of a dimension
+	const clampPercent = (v: number) => Math.min(100, Math.max(0, v));
+	const leftPadFrac = (clampPercent(p.left) / 100) * PADDING_SCALE_FACTOR;
+	const rightPadFrac = (clampPercent(p.right) / 100) * PADDING_SCALE_FACTOR;
+	const topPadFrac = (clampPercent(p.top) / 100) * PADDING_SCALE_FACTOR;
+	const bottomPadFrac = (clampPercent(p.bottom) / 100) * PADDING_SCALE_FACTOR;
+
+	const availableFracW = Math.max(0, 1.0 - leftPadFrac - rightPadFrac);
+	const availableFracH = Math.max(0, 1.0 - topPadFrac - bottomPadFrac);
+
+	const maxDisplayWidth = width * availableFracW;
+	const maxDisplayHeight = height * availableFracH;
+
+	const crop = cropRegion;
+	const croppedVideoWidth = videoWidth * crop.width;
+	const croppedVideoHeight = videoHeight * crop.height;
+
+	const insets = frameInsets;
+	const screenFracW = insets ? 1 - insets.left - insets.right : 1;
+	const screenFracH = insets ? 1 - insets.top - insets.bottom : 1;
+
+	const fullFrameVideoW = croppedVideoWidth / screenFracW;
+	const fullFrameVideoH = croppedVideoHeight / screenFracH;
+
+	const scale = Math.min(
+		fullFrameVideoW > 0 ? maxDisplayWidth / fullFrameVideoW : 0,
+		fullFrameVideoH > 0 ? maxDisplayHeight / fullFrameVideoH : 0,
+	);
+
+	const fullVideoDisplayWidth = videoWidth * scale;
+	const fullVideoDisplayHeight = videoHeight * scale;
+	const croppedDisplayWidth = croppedVideoWidth * scale;
+	const croppedDisplayHeight = croppedVideoHeight * scale;
+
+	const fullFrameDisplayW = fullFrameVideoW * scale;
+	const fullFrameDisplayH = fullFrameVideoH * scale;
+
+	const availableCenterX = leftPadFrac * width + maxDisplayWidth / 2;
+	const availableCenterY = topPadFrac * height + maxDisplayHeight / 2;
+
+	const frameCenterX = availableCenterX - fullFrameDisplayW / 2;
+	const frameCenterY = availableCenterY - fullFrameDisplayH / 2;
+
+	const centerOffsetX = insets
+		? frameCenterX + insets.left * fullFrameDisplayW
+		: frameCenterX;
+	const centerOffsetY = insets
+		? frameCenterY + insets.top * fullFrameDisplayH
+		: frameCenterY;
+
+	const spriteX = centerOffsetX - crop.x * fullVideoDisplayWidth;
+	const spriteY = centerOffsetY - crop.y * fullVideoDisplayHeight;
+
+	return {
+		scale,
+		centerOffsetX,
+		centerOffsetY,
+		spriteX,
+		spriteY,
+		fullFrameDisplayW,
+		fullFrameDisplayH,
+		fullVideoDisplayWidth,
+		fullVideoDisplayHeight,
+		croppedDisplayWidth,
+		croppedDisplayHeight,
+		cropStartX: crop.x * videoWidth,
+		cropStartY: crop.y * videoHeight,
+	};
+}
 
 interface LayoutParams {
 	container: HTMLDivElement;
@@ -11,7 +129,7 @@ interface LayoutParams {
 	cropRegion?: CropRegion;
 	lockedVideoDimensions?: { width: number; height: number } | null;
 	borderRadius?: number;
-	padding?: number;
+	padding?: Padding | number;
 	/** Screen insets from the active device frame, used to scale/center the full frame */
 	frameInsets?: { top: number; right: number; bottom: number; left: number } | null;
 }
@@ -63,99 +181,47 @@ export function layoutVideoContent(params: LayoutParams): LayoutResult | null {
 	app.canvas.style.width = "100%";
 	app.canvas.style.height = "100%";
 
-	// Apply crop region
 	const crop = cropRegion || { x: 0, y: 0, width: 1, height: 1 };
+	const layout = computePaddedLayout({
+		width,
+		height,
+		padding,
+		frameInsets,
+		cropRegion: crop,
+		videoWidth,
+		videoHeight,
+	});
 
-	// Calculate the cropped dimensions
-	const croppedVideoWidth = videoWidth * crop.width;
-	const croppedVideoHeight = videoHeight * crop.height;
+	videoSprite.scale.set(layout.scale);
+	videoSprite.position.set(layout.spriteX, layout.spriteY);
 
-	const cropStartX = crop.x * videoWidth;
-	const cropStartY = crop.y * videoHeight;
-	const cropEndX = cropStartX + croppedVideoWidth;
-	const cropEndY = cropStartY + croppedVideoHeight;
-
-	// Calculate scale to fit the cropped area in the viewport
-	// Padding is a percentage (0-100), where 50 matches the original VIEWPORT_SCALE of 0.8
-	const paddingScale = 1.0 - (padding / 100) * 0.4;
-	const maxDisplayWidth = width * paddingScale;
-	const maxDisplayHeight = height * paddingScale;
-
-	// When a device frame is active, the frame extends beyond the video area.
-	// We need to scale so the ENTIRE frame (video + bezels) fits in the viewport,
-	// then center the full frame, not just the video content.
-	const insets = frameInsets;
-	// Fraction of the full frame occupied by the screen area
-	const screenFracW = insets ? 1 - insets.left - insets.right : 1;
-	const screenFracH = insets ? 1 - insets.top - insets.bottom : 1;
-	// Full frame dimensions in video pixels (the frame image is this large relative to the screen)
-	const fullFrameVideoW = croppedVideoWidth / screenFracW;
-	const fullFrameVideoH = croppedVideoHeight / screenFracH;
-
-	const scale = Math.min(maxDisplayWidth / fullFrameVideoW, maxDisplayHeight / fullFrameVideoH);
-
-	videoSprite.scale.set(scale);
-
-	// Calculate display size of the full video at this scale
-	const fullVideoDisplayWidth = videoWidth * scale;
-	const fullVideoDisplayHeight = videoHeight * scale;
-
-	// Calculate display size of just the cropped region
-	const croppedDisplayWidth = croppedVideoWidth * scale;
-	const croppedDisplayHeight = croppedVideoHeight * scale;
-
-	// Center the full frame (or just the video if no frame) in the container
-	// Full frame display dimensions
-	const fullFrameDisplayW = fullFrameVideoW * scale;
-	const fullFrameDisplayH = fullFrameVideoH * scale;
-	// The full frame's top-left, centered in the viewport
-	const frameCenterX = (width - fullFrameDisplayW) / 2;
-	const frameCenterY = (height - fullFrameDisplayH) / 2;
-	// The screen area starts at frameCenterX + insets.left * fullFrameDisplayW
-	const centerOffsetX = insets
-		? frameCenterX + insets.left * fullFrameDisplayW
-		: (width - croppedDisplayWidth) / 2;
-	const centerOffsetY = insets
-		? frameCenterY + insets.top * fullFrameDisplayH
-		: (height - croppedDisplayHeight) / 2;
-
-	// Position the full video sprite so that when we apply the mask,
-	// the cropped region appears centered
-	// The crop starts at (crop.x * videoWidth, crop.y * videoHeight) in video coordinates
-	// In display coordinates, that's (crop.x * fullVideoDisplayWidth, crop.y * fullVideoDisplayHeight)
-	// We want that point to be at centerOffsetX, centerOffsetY
-	const spriteX = centerOffsetX - crop.x * fullVideoDisplayWidth;
-	const spriteY = centerOffsetY - crop.y * fullVideoDisplayHeight;
-
-	videoSprite.position.set(spriteX, spriteY);
-
-	// Create a mask that only shows the cropped region (centered in container)
-	const maskX = centerOffsetX;
-	const maskY = centerOffsetY;
-
-	// Apply border radius
 	maskGraphics.clear();
 	drawSquircleOnGraphics(maskGraphics, {
-		x: maskX,
-		y: maskY,
-		width: croppedDisplayWidth,
-		height: croppedDisplayHeight,
+		x: layout.centerOffsetX,
+		y: layout.centerOffsetY,
+		width: layout.croppedDisplayWidth,
+		height: layout.croppedDisplayHeight,
 		radius: borderRadius,
 	});
 	maskGraphics.fill({ color: 0xffffff });
 
 	return {
 		stageSize: { width, height },
-		videoSize: { width: croppedVideoWidth, height: croppedVideoHeight },
-		baseScale: scale,
-		baseOffset: { x: spriteX, y: spriteY },
+		videoSize: { width: videoWidth * crop.width, height: videoHeight * crop.height },
+		baseScale: layout.scale,
+		baseOffset: { x: layout.spriteX, y: layout.spriteY },
 		maskRect: {
-			x: maskX,
-			y: maskY,
-			width: croppedDisplayWidth,
-			height: croppedDisplayHeight,
+			x: layout.centerOffsetX,
+			y: layout.centerOffsetY,
+			width: layout.croppedDisplayWidth,
+			height: layout.croppedDisplayHeight,
 			sourceCrop: crop,
 		},
-		cropBounds: { startX: cropStartX, endX: cropEndX, startY: cropStartY, endY: cropEndY },
+		cropBounds: {
+			startX: layout.cropStartX,
+			endX: layout.cropStartX + videoWidth * crop.width,
+			startY: layout.cropStartY,
+			endY: layout.cropStartY + videoHeight * crop.height,
+		},
 	};
 }

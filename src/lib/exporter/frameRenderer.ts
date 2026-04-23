@@ -7,6 +7,7 @@ import type {
 	CropRegion,
 	CursorStyle,
 	CursorTelemetryPoint,
+	Padding,
 	SpeedRegion,
 	WebcamOverlaySettings,
 	ZoomRegion,
@@ -17,6 +18,7 @@ import {
 	BASE_PREVIEW_WIDTH,
 	ZOOM_DEPTH_SCALES,
 } from "@/components/video-editor/types";
+import { computePaddedLayout } from "@/components/video-editor/videoPlayback/layoutUtils";
 import { DEFAULT_FOCUS } from "@/components/video-editor/videoPlayback/constants";
 import {
 	type CursorFollowCameraState,
@@ -88,7 +90,7 @@ interface FrameRenderConfig {
 	zoomOutEasing?: ZoomTransitionEasing;
 	connectedZoomEasing?: ZoomTransitionEasing;
 	borderRadius?: number;
-	padding?: number;
+	padding?: Padding | number;
 	cropRegion: CropRegion;
 	webcam?: WebcamOverlaySettings;
 	webcamUrl?: string | null;
@@ -1179,55 +1181,20 @@ export class FrameRenderer {
 	private updateLayout(): void {
 		if (!this.app || !this.videoSprite || !this.maskGraphics || !this.videoContainer) return;
 
-		const { width, height } = this.config;
-		const { cropRegion, borderRadius = 0, padding = 0 } = this.config;
-		const videoWidth = this.config.videoWidth;
-		const videoHeight = this.config.videoHeight;
+		const { width, height, cropRegion, borderRadius = 0, padding = 0, videoWidth, videoHeight } = this.config;
 
-		// Calculate cropped video dimensions
-		const cropStartX = cropRegion.x;
-		const cropStartY = cropRegion.y;
-		const cropEndX = cropRegion.x + cropRegion.width;
-		const cropEndY = cropRegion.y + cropRegion.height;
+		const layout = computePaddedLayout({
+			width,
+			height,
+			padding,
+			frameInsets: this.frameInsets,
+			cropRegion,
+			videoWidth,
+			videoHeight,
+		});
 
-		const croppedVideoWidth = videoWidth * (cropEndX - cropStartX);
-		const croppedVideoHeight = videoHeight * (cropEndY - cropStartY);
-
-		const paddingScale = 1.0 - (padding / 100) * 0.4;
-		const viewportWidth = width * paddingScale;
-		const viewportHeight = height * paddingScale;
-
-		// When a device frame is active, scale to fit the ENTIRE frame (video + bezels)
-		const insets = this.frameInsets;
-		const screenFracW = insets ? 1 - insets.left - insets.right : 1;
-		const screenFracH = insets ? 1 - insets.top - insets.bottom : 1;
-		const fullFrameVideoW = croppedVideoWidth / screenFracW;
-		const fullFrameVideoH = croppedVideoHeight / screenFracH;
-
-		const scale = Math.min(viewportWidth / fullFrameVideoW, viewportHeight / fullFrameVideoH);
-
-		this.videoSprite.scale.set(scale);
-
-		const fullVideoDisplayWidth = videoWidth * scale;
-		const fullVideoDisplayHeight = videoHeight * scale;
-		const croppedDisplayWidth = croppedVideoWidth * scale;
-		const croppedDisplayHeight = croppedVideoHeight * scale;
-
-		// Center the full frame (video + bezels) in the output canvas
-		const fullFrameDisplayW = fullFrameVideoW * scale;
-		const fullFrameDisplayH = fullFrameVideoH * scale;
-		const frameCenterX = (width - fullFrameDisplayW) / 2;
-		const frameCenterY = (height - fullFrameDisplayH) / 2;
-		const centerOffsetX = insets
-			? frameCenterX + insets.left * fullFrameDisplayW
-			: (width - croppedDisplayWidth) / 2;
-		const centerOffsetY = insets
-			? frameCenterY + insets.top * fullFrameDisplayH
-			: (height - croppedDisplayHeight) / 2;
-
-		const spriteX = centerOffsetX - cropRegion.x * fullVideoDisplayWidth;
-		const spriteY = centerOffsetY - cropRegion.y * fullVideoDisplayHeight;
-		this.videoSprite.position.set(spriteX, spriteY);
+		this.videoSprite.scale.set(layout.scale);
+		this.videoSprite.position.set(layout.spriteX, layout.spriteY);
 
 		this.videoContainer.position.set(0, 0);
 
@@ -1240,10 +1207,10 @@ export class FrameRenderer {
 
 		this.maskGraphics.clear();
 		drawSquircleOnGraphics(this.maskGraphics, {
-			x: centerOffsetX,
-			y: centerOffsetY,
-			width: croppedDisplayWidth,
-			height: croppedDisplayHeight,
+			x: layout.centerOffsetX,
+			y: layout.centerOffsetY,
+			width: layout.croppedDisplayWidth,
+			height: layout.croppedDisplayHeight,
 			radius: scaledBorderRadius,
 		});
 		this.maskGraphics.fill({ color: 0xffffff });
@@ -1251,14 +1218,17 @@ export class FrameRenderer {
 		// Cache layout info
 		this.layoutCache = {
 			stageSize: { width, height },
-			videoSize: { width: croppedVideoWidth, height: croppedVideoHeight },
-			baseScale: scale,
-			baseOffset: { x: spriteX, y: spriteY },
+			videoSize: {
+				width: videoWidth * cropRegion.width,
+				height: videoHeight * cropRegion.height,
+			},
+			baseScale: layout.scale,
+			baseOffset: { x: layout.spriteX, y: layout.spriteY },
 			maskRect: {
-				x: centerOffsetX,
-				y: centerOffsetY,
-				width: croppedDisplayWidth,
-				height: croppedDisplayHeight,
+				x: layout.centerOffsetX,
+				y: layout.centerOffsetY,
+				width: layout.croppedDisplayWidth,
+				height: layout.croppedDisplayHeight,
 				sourceCrop: cropRegion,
 			},
 		};

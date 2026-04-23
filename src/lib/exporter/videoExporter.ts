@@ -6,6 +6,7 @@ import type {
 	CropRegion,
 	CursorStyle,
 	CursorTelemetryPoint,
+	Padding,
 	SpeedRegion,
 	TrimRegion,
 	WebcamOverlaySettings,
@@ -55,7 +56,7 @@ interface VideoExporterConfig extends ExportConfig {
 	zoomOutEasing?: ZoomTransitionEasing;
 	connectedZoomEasing?: ZoomTransitionEasing;
 	borderRadius?: number;
-	padding?: number;
+	padding?: Padding | number;
 	videoPadding?: number;
 	cropRegion: CropRegion;
 	webcam?: WebcamOverlaySettings;

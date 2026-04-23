@@ -241,8 +241,8 @@ export interface RenderHookContext {
 		maskRect: { x: number; y: number; width: number; height: number };
 		/** Border radius applied to the video (in canvas pixels) */
 		borderRadius: number;
-		/** Padding around the video (in canvas pixels) */
-		padding: number;
+		/** Padding around the video (in canvas pixels). Can be a number (global) or an object with individual sides. */
+		padding: number | { top: number; right: number; bottom: number; left: number };
 	};
 	/** Current zoom state */
 	zoom?: {
@@ -350,7 +350,7 @@ export interface CursorEffectContext {
 	videoLayout?: {
 		maskRect: { x: number; y: number; width: number; height: number };
 		borderRadius: number;
-		padding: number;
+		padding: number | { top: number; right: number; bottom: number; left: number };
 	};
 }
 
@@ -474,7 +474,7 @@ export interface RecordlyExtensionAPI {
 		canvasWidth: number;
 		canvasHeight: number;
 		borderRadius: number;
-		padding: number;
+		padding: number | { top: number; right: number; bottom: number; left: number };
 	} | null;
 
 	/**
