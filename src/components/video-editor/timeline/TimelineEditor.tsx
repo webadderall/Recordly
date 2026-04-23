@@ -1,5 +1,3 @@
-import type { Range, Span } from "dnd-timeline";
-import { useTimelineContext } from "dnd-timeline";
 import {
 	Check,
 	CaretDown as ChevronDown,
@@ -11,6 +9,8 @@ import {
 	MagicWand as WandSparkles,
 	MagnifyingGlassPlus as ZoomIn,
 } from "@phosphor-icons/react";
+import type { Range, Span } from "dnd-timeline";
+import { useTimelineContext } from "dnd-timeline";
 import {
 	forwardRef,
 	type KeyboardEvent as ReactKeyboardEvent,
@@ -56,6 +56,7 @@ import type {
 	ZoomRegion,
 } from "../types";
 import AudioWaveform from "./AudioWaveform";
+import { findAudioTrackPlacement } from "./audioTrackPlacement";
 import Item from "./Item";
 import KeyframeMarkers from "./KeyframeMarkers";
 import Row from "./Row";
@@ -1526,14 +1527,8 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 			}
 
 			const startPos = Math.max(0, Math.min(currentTimeMs, totalMs));
-			const sorted = [...audioRegions].sort((a, b) => a.startMs - b.startMs);
-			const nextRegion = sorted.find((region) => region.startMs > startPos);
-			const gapToNext = nextRegion ? nextRegion.startMs - startPos : totalMs - startPos;
-
-			const isOverlapping = sorted.some(
-				(region) => startPos >= region.startMs && startPos < region.endMs,
-			);
-			if (isOverlapping || gapToNext <= 0) {
+			const placement = findAudioTrackPlacement(audioRegions, startPos, totalMs);
+			if (!placement) {
 				toast.error("Cannot place audio here", {
 					description:
 						"Audio region already exists at this location or not enough space available.",
@@ -1541,9 +1536,12 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 				return;
 			}
 
-			// Use full audio duration, but clamp to available gap and video length
-			const actualDuration = Math.min(audioDurationMs, gapToNext, totalMs - startPos);
-			onAudioAdded({ start: startPos, end: startPos + actualDuration }, result.path);
+			const actualDuration = Math.min(audioDurationMs, placement.availableDurationMs);
+			onAudioAdded(
+				{ start: startPos, end: startPos + actualDuration },
+				result.path,
+				placement.trackIndex,
+			);
 		}, [videoDuration, totalMs, currentTimeMs, audioRegions, onAudioAdded]);
 
 		const handleAddAnnotation = useCallback(
