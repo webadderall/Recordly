@@ -54,6 +54,14 @@ import nlLaunch from "@/i18n/locales/nl/launch.json";
 import nlSettings from "@/i18n/locales/nl/settings.json";
 import nlShortcuts from "@/i18n/locales/nl/shortcuts.json";
 import nlTimeline from "@/i18n/locales/nl/timeline.json";
+import ptBRCommon from "@/i18n/locales/pt-BR/common.json";
+import ptBRDialogs from "@/i18n/locales/pt-BR/dialogs.json";
+import ptBREditor from "@/i18n/locales/pt-BR/editor.json";
+import ptBRExtensions from "@/i18n/locales/pt-BR/extensions.json";
+import ptBRLaunch from "@/i18n/locales/pt-BR/launch.json";
+import ptBRSettings from "@/i18n/locales/pt-BR/settings.json";
+import ptBRShortcuts from "@/i18n/locales/pt-BR/shortcuts.json";
+import ptBRTimeline from "@/i18n/locales/pt-BR/timeline.json";
 import zhCNCommon from "@/i18n/locales/zh-CN/common.json";
 import zhCNDialogs from "@/i18n/locales/zh-CN/dialogs.json";
 import zhCNEditor from "@/i18n/locales/zh-CN/editor.json";
@@ -117,6 +125,16 @@ const messages: Record<AppLocale, LocaleBundle> = {
 		dialogs: koDialogs,
 		shortcuts: koShortcuts,
 		extensions: koExtensions,
+	},
+	"pt-BR": {
+		common: ptBRCommon,
+		launch: ptBRLaunch,
+		editor: ptBREditor,
+		timeline: ptBRTimeline,
+		settings: ptBRSettings,
+		dialogs: ptBRDialogs,
+		shortcuts: ptBRShortcuts,
+		extensions: ptBRExtensions,
 	},
 	"zh-CN": {
 		common: zhCNCommon,
