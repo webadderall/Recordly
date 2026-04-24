@@ -486,13 +486,15 @@ function getUpdateNotificationTitle(payload: UpdateToastPayload) {
 function getUpdateNotificationBody(payload: UpdateToastPayload) {
 	switch (payload.phase) {
 		case "available":
-			return "Click to download the update.";
+			return "Click to install the update and restart Recordly.";
 		case "downloading":
-			return "Recordly is downloading the update in the foreground.";
+			return "Recordly is downloading the update and will restart when it is ready.";
 		case "ready":
-			return "Click to install the downloaded update.";
+			return "Click to install the downloaded update and restart.";
 		case "error":
-			return "Click to retry checking for updates.";
+			return payload.primaryAction === "install-and-restart"
+				? "Click to try the install again."
+				: "Click to retry checking for updates.";
 	}
 }
 
@@ -541,13 +543,21 @@ function sendUpdateToastToWindows(channel: "update-toast-state", payload: unknow
 			focusOrCreateMainWindow();
 			switch (updatePayload.phase) {
 				case "available":
-					void downloadAvailableUpdate(sendUpdateToastToWindows);
+					void downloadAvailableUpdate(sendUpdateToastToWindows, {
+						installAfterDownload: true,
+					});
 					break;
 				case "ready":
 					installDownloadedUpdateNow(sendUpdateToastToWindows);
 					break;
 				case "error":
-					void checkForAppUpdates(getUpdateDialogWindow, { manual: true });
+					if (updatePayload.primaryAction === "install-and-restart") {
+						void downloadAvailableUpdate(sendUpdateToastToWindows, {
+							installAfterDownload: true,
+						});
+					} else {
+						void checkForAppUpdates(getUpdateDialogWindow, { manual: true });
+					}
 					break;
 				default:
 					break;
@@ -615,8 +625,10 @@ ipcMain.handle("install-downloaded-update", () => {
 	return { success: true };
 });
 
-ipcMain.handle("download-available-update", () => {
-	return downloadAvailableUpdate(sendUpdateToastToWindows);
+ipcMain.handle("download-available-update", (_event, installAfterDownload?: boolean) => {
+	return downloadAvailableUpdate(sendUpdateToastToWindows, {
+		installAfterDownload: Boolean(installAfterDownload),
+	});
 });
 
 ipcMain.handle("defer-downloaded-update", (_event, delayMs?: number) => {
@@ -905,8 +917,7 @@ app.whenReady().then(async () => {
 			// source picker entirely). This avoids calling getSources() which
 			// would itself trigger an extra portal dialog.
 			const isLinuxPortalSentinel =
-				process.platform === "linux" &&
-				(sourceId === "screen:linux-portal" || !sourceId);
+				process.platform === "linux" && (sourceId === "screen:linux-portal" || !sourceId);
 			if (isLinuxPortalSentinel) {
 				callback({ video: { id: "screen:0:0", name: "Entire screen" } });
 				return;

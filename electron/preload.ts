@@ -460,8 +460,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	installDownloadedUpdate: () => {
 		return ipcRenderer.invoke("install-downloaded-update");
 	},
-	downloadAvailableUpdate: () => {
-		return ipcRenderer.invoke("download-available-update");
+	downloadAvailableUpdate: (installAfterDownload?: boolean) => {
+		return ipcRenderer.invoke("download-available-update", installAfterDownload);
 	},
 	deferDownloadedUpdate: (delayMs?: number) => {
 		return ipcRenderer.invoke("defer-downloaded-update", delayMs);
@@ -484,31 +484,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	checkForAppUpdates: () => {
 		return ipcRenderer.invoke("check-for-app-updates");
 	},
-	onUpdateToastStateChanged: (
-		callback: (
-			payload: {
-				version: string;
-				detail: string;
-				phase: "available" | "downloading" | "ready" | "error";
-				delayMs: number;
-				isPreview?: boolean;
-				progressPercent?: number;
-				primaryAction?: "download-update" | "install-update" | "retry-check";
-			} | null,
-		) => void,
-	) => {
-		const listener = (
-			_event: Electron.IpcRendererEvent,
-			payload: {
-				version: string;
-				detail: string;
-				phase: "available" | "downloading" | "ready" | "error";
-				delayMs: number;
-				isPreview?: boolean;
-				progressPercent?: number;
-				primaryAction?: "download-update" | "install-update" | "retry-check";
-			} | null,
-		) => callback(payload);
+	onUpdateToastStateChanged: (callback: (payload: UpdateToastState | null) => void) => {
+		const listener = (_event: Electron.IpcRendererEvent, payload: UpdateToastState | null) =>
+			callback(payload);
 		ipcRenderer.on("update-toast-state", listener);
 		return () => ipcRenderer.removeListener("update-toast-state", listener);
 	},

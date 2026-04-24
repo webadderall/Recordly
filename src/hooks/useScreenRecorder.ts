@@ -55,6 +55,7 @@ type DesktopCaptureMediaDevices = {
 type UseScreenRecorderReturn = {
 	recording: boolean;
 	paused: boolean;
+	finalizing: boolean;
 	countdownActive: boolean;
 	toggleRecording: () => void;
 	pauseRecording: () => void;
@@ -79,6 +80,7 @@ type UseScreenRecorderReturn = {
 export function useScreenRecorder(): UseScreenRecorderReturn {
 	const [recording, setRecording] = useState(false);
 	const [paused, setPaused] = useState(false);
+	const [finalizing, setFinalizing] = useState(false);
 	const [starting, setStarting] = useState(false);
 	const [countdownActive, setCountdownActive] = useState(false);
 	const [isMacOS, setIsMacOS] = useState(false);
@@ -115,34 +117,12 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 	const accumulatedPausedDurationMs = useRef(0);
 	const pauseStartedAtMs = useRef<number | null>(null);
 	const pauseSegmentsRef = useRef<PauseSegment[]>([]);
-	const recordingFinalizationToastId = useRef<string | number | null>(null);
 	const micFallbackRecorder = useRef<MediaRecorder | null>(null);
 	const micFallbackChunks = useRef<Blob[]>([]);
 
-	const showRecordingFinalizationToast = useCallback((message = "Preparing recording...") => {
-		recordingFinalizationToastId.current = toast.loading(message, {
-			id: recordingFinalizationToastId.current ?? undefined,
-			duration: Number.POSITIVE_INFINITY,
-		});
+	const notifyRecordingFinalizationFailure = useCallback(async (message: string) => {
+		toast.error(message, { duration: 10000 });
 	}, []);
-
-	const clearRecordingFinalizationToast = useCallback(() => {
-		const toastId = recordingFinalizationToastId.current;
-		if (toastId === null) {
-			return;
-		}
-
-		toast.dismiss(toastId);
-		recordingFinalizationToastId.current = null;
-	}, []);
-
-	const notifyRecordingFinalizationFailure = useCallback(
-		async (message: string) => {
-			clearRecordingFinalizationToast();
-			toast.error(message, { duration: 10000 });
-		},
-		[clearRecordingFinalizationToast],
-	);
 
 	const logNativeCaptureDiagnostics = useCallback(async (context: string) => {
 		if (typeof window.electronAPI?.getLastNativeCaptureDiagnostics !== "function") {
@@ -401,10 +381,9 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 				}
 			}
 
-			clearRecordingFinalizationToast();
 			await window.electronAPI.switchToEditor();
 		},
-		[clearRecordingFinalizationToast],
+		[],
 	);
 
 	const stopMicFallbackRecorder = useCallback((): Promise<Blob | null> => {
@@ -435,7 +414,10 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 	}, []);
 
 	const storeMicrophoneSidecar = useCallback(
-		async (micFallbackBlobPromise: Promise<Blob | null> | null | undefined, finalPath: string) => {
+		async (
+			micFallbackBlobPromise: Promise<Blob | null> | null | undefined,
+			finalPath: string,
+		) => {
 			const micFallbackBlob = await micFallbackBlobPromise;
 			if (!micFallbackBlob) {
 				return;
@@ -629,9 +611,9 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 		if (nativeScreenRecording.current) {
 			nativeScreenRecording.current = false;
 			setRecording(false);
+			setFinalizing(true);
 
 			void (async () => {
-				showRecordingFinalizationToast();
 				const micFallbackBlobPromise = stopMicFallbackRecorder();
 				const webcamPath = await stopWebcamRecorder();
 				const isNativeWindows = nativeWindowsRecording.current;
@@ -649,9 +631,8 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 					);
 					void logNativeCaptureDiagnostics("stop-native-screen-recording");
 					try {
-						const recoveredPath = await recoverNativeRecordingSession(
-							micFallbackBlobPromise,
-						);
+						const recoveredPath =
+							await recoverNativeRecordingSession(micFallbackBlobPromise);
 						if (recoveredPath) {
 							return;
 						}
@@ -665,6 +646,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 							? "Failed to finish the macOS recording, so the editor was not opened."
 							: "Failed to finish the recording, so the editor was not opened.",
 					);
+					setFinalizing(false);
 					await notifyRecordingFinalizationFailure(failureMessage);
 					return;
 				}
@@ -1237,7 +1219,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 				cleanupCapturedMedia();
 				if (chunks.current.length === 0) return;
 
-				showRecordingFinalizationToast();
+				setFinalizing(true);
 
 				const duration = getRecordingDurationMs(Date.now());
 				const recordedChunks = chunks.current;
@@ -1259,6 +1241,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 					);
 					if (!videoResult.success) {
 						console.error("Failed to store video:", videoResult.message);
+						setFinalizing(false);
 						await notifyRecordingFinalizationFailure(
 							videoResult.message || "Failed to store the recording.",
 						);
@@ -1271,11 +1254,13 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 							: resolvedWebcamPath.current;
 						await finalizeRecordingSession(videoResult.path, webcamPath);
 					} else {
+						setFinalizing(false);
 						await notifyRecordingFinalizationFailure("Failed to save the recording.");
 					}
 				} catch (error) {
 					console.error("Error saving recording:", error);
 					const message = error instanceof Error ? error.message : String(error);
+					setFinalizing(false);
 					await notifyRecordingFinalizationFailure(
 						`Failed to finalize the recording. ${message}`,
 					);
@@ -1418,7 +1403,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 	}, [cleanupCapturedMedia, markRecordingResumed, recording]);
 
 	const toggleRecording = async () => {
-		if (starting || countdownActive) {
+		if (starting || countdownActive || finalizing) {
 			return;
 		}
 
@@ -1446,6 +1431,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 	return {
 		recording,
 		paused,
+		finalizing,
 		countdownActive,
 		toggleRecording,
 		pauseRecording,

@@ -50,7 +50,11 @@ interface UpdateToastState {
 	delayMs: number;
 	isPreview?: boolean;
 	progressPercent?: number;
-	primaryAction?: "download-update" | "install-update" | "retry-check";
+	transferredBytes?: number;
+	totalBytes?: number;
+	remainingBytes?: number;
+	bytesPerSecond?: number;
+	primaryAction?: "install-and-restart" | "retry-check";
 }
 
 interface UpdateStatusSummary {
@@ -418,7 +422,9 @@ interface Window {
 			error?: string;
 		}>;
 		installDownloadedUpdate: () => Promise<{ success: boolean }>;
-		downloadAvailableUpdate: () => Promise<{ success: boolean; message?: string }>;
+		downloadAvailableUpdate: (
+			installAfterDownload?: boolean,
+		) => Promise<{ success: boolean; message?: string }>;
 		deferDownloadedUpdate: (delayMs?: number) => Promise<{
 			success: boolean;
 			message?: string;
