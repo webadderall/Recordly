@@ -15,7 +15,8 @@
 	background: rgba(18, 18, 24, 0.97);
 	border: 1px solid rgba(255, 255, 255, 0.07);
 	border-radius: 20px;
-	padding: 11px 20px 11px 18px;
+	padding-block: 11px;
+	padding-inline: 18px 20px;
 	box-shadow:
 		0 10px 30px rgba(0, 0, 0, 0.24),
 		0 2px 10px rgba(0, 0, 0, 0.12),
@@ -106,7 +107,8 @@
 	height: 40px;
 	min-width: 0;
 	max-width: 640px;
-	padding: 0 14px 0 12px;
+	padding-block: 0;
+	padding-inline: 12px 14px;
 	border-radius: 11px;
 	border: 1px solid #2a2a34;
 	background: #1a1a22;
