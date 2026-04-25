@@ -293,13 +293,14 @@
 	opacity: 1;
 }
 
+
 .zoomEndCap.left {
-	left: 6px;
+	inset-inline-start: 6px;
 	cursor: col-resize;
 }
 
 .zoomEndCap.right {
-	right: 6px;
+	inset-inline-end: 6px;
 	cursor: col-resize;
 }
 
