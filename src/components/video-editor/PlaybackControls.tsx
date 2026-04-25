@@ -68,7 +68,7 @@ export default function PlaybackControls({
 				{/* Custom Track Background */}
 				<div className="absolute left-0 right-0 h-0.5 bg-foreground/10 rounded-full overflow-hidden">
 					<div
-						className="h-full bg-[#2563EB] rounded-full"
+						className="absolute inset-y-0 start-0 h-full bg-[#2563EB] rounded-full"
 						style={{ width: `${progress}%` }}
 					/>
 				</div>
@@ -86,10 +86,9 @@ export default function PlaybackControls({
 
 				{/* Custom Thumb (visual only, follows progress) */}
 				<div
-					className="absolute w-2.5 h-2.5 bg-foreground rounded-full pointer-events-none group-hover:scale-125 transition-transform duration-100"
+					className="absolute w-2.5 h-2.5 bg-foreground rounded-full pointer-events-none group-hover:scale-125 transition-transform duration-100 -translate-x-1/2 rtl:translate-x-1/2"
 					style={{
-						left: `${progress}%`,
-						transform: "translateX(-50%)",
+						insetInlineStart: `${progress}%`,
 					}}
 				/>
 			</div>
@@ -107,7 +106,7 @@ export default function PlaybackControls({
 				<div className="group relative flex h-6 w-20 items-center">
 					<div className="absolute left-0 right-0 h-0.5 rounded-full bg-foreground/10 overflow-hidden">
 						<div
-							className="h-full rounded-full bg-foreground/70"
+							className="absolute inset-y-0 start-0 h-full rounded-full bg-foreground/70"
 							style={{ width: `${volume * 100}%` }}
 						/>
 					</div>
@@ -121,8 +120,8 @@ export default function PlaybackControls({
 						className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
 					/>
 					<div
-						className="pointer-events-none absolute h-2.5 w-2.5 rounded-full bg-foreground transition-transform duration-100 group-hover:scale-125"
-						style={{ left: `${volume * 100}%`, transform: "translateX(-50%)" }}
+						className="pointer-events-none absolute h-2.5 w-2.5 rounded-full bg-foreground transition-transform duration-100 group-hover:scale-125 -translate-x-1/2 rtl:translate-x-1/2"
+						style={{ insetInlineStart: `${volume * 100}%` }}
 					/>
 				</div>
 			</div>
