@@ -84,6 +84,17 @@ describe("getAudioSyncAdjustment", () => {
 			"[1:a]volume=1.400,aresample=async=1:first_pts=0,asetpts=PTS-STARTPTS[aout]",
 		]);
 	});
+
+	it("can prepend mic normalization filters before sync handling", () => {
+		const filterParts: string[] = [];
+		appendSyncedAudioFilter(filterParts, "[1:a]", "aout", getAudioSyncAdjustment(120, 120), {
+			preFilters: ["loudnorm=I=-16:TP=-1.5:LRA=11"],
+		});
+
+		expect(filterParts).toEqual([
+			"[1:a]loudnorm=I=-16:TP=-1.5:LRA=11,aresample=async=1:first_pts=0,asetpts=PTS-STARTPTS[aout]",
+		]);
+	});
 });
 
 describe("applyRecordedAudioStartDelay", () => {

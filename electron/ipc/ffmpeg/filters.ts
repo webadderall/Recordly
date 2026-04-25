@@ -102,9 +102,12 @@ export function appendSyncedAudioFilter(
 	inputLabel: string,
 	outputLabel: string,
 	adjustment: AudioSyncAdjustment,
-	volumeMultiplier = 1,
+	options: number | { volumeMultiplier?: number; preFilters?: string[] } = 1,
 ) {
-	const filters: string[] = [];
+	const volumeMultiplier =
+		typeof options === "number" ? options : (options.volumeMultiplier ?? 1);
+	const preFilters = typeof options === "number" ? [] : (options.preFilters ?? []);
+	const filters: string[] = [...preFilters];
 
 	if (adjustment.mode === "delay" && adjustment.delayMs > 0) {
 		filters.push(`adelay=${adjustment.delayMs}|${adjustment.delayMs}`);
