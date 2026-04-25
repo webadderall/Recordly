@@ -23,7 +23,7 @@ const KeyframeMarkers: React.FC<KeyframeMarkersProps> = ({
 	videoDurationMs,
 	timelineRef,
 }) => {
-	const { sidebarWidth, range, valueToPixels, pixelsToValue } = useTimelineContext();
+	const { sidebarWidth, range, valueToPixels, getValueFromScreenX } = useTimelineContext();
 	const [draggingKeyframeId, setDraggingKeyframeId] = useState<string | null>(null);
 
 	useEffect(() => {
@@ -32,13 +32,11 @@ const KeyframeMarkers: React.FC<KeyframeMarkersProps> = ({
 		const handleMouseMove = (e: MouseEvent) => {
 			if (!timelineRef.current) return;
 
-			const rect = timelineRef.current.getBoundingClientRect();
-			const clickX = e.clientX - rect.left - sidebarWidth;
-			const relativeMs = pixelsToValue(clickX);
-			const absoluteMs = Math.max(0, Math.min(range.start + relativeMs, videoDurationMs));
+			const absoluteMs = getValueFromScreenX(e.clientX);
+			const clampedMs = Math.max(0, Math.min(absoluteMs, videoDurationMs));
 
 			// Update the keyframe position in real-time
-			onKeyframeMove(draggingKeyframeId, absoluteMs);
+			onKeyframeMove(draggingKeyframeId, clampedMs);
 		};
 
 		const handleMouseUp = () => {
@@ -55,15 +53,7 @@ const KeyframeMarkers: React.FC<KeyframeMarkersProps> = ({
 			window.removeEventListener("mouseup", handleMouseUp);
 			document.body.style.cursor = "";
 		};
-	}, [
-		draggingKeyframeId,
-		onKeyframeMove,
-		timelineRef,
-		sidebarWidth,
-		range.start,
-		videoDurationMs,
-		pixelsToValue,
-	]);
+	}, [draggingKeyframeId, onKeyframeMove, timelineRef, getValueFromScreenX, videoDurationMs]);
 
 	return (
 		<>
@@ -77,9 +67,9 @@ const KeyframeMarkers: React.FC<KeyframeMarkersProps> = ({
 						key={kf.id}
 						className={`absolute top-8 cursor-grab active:cursor-grabbing ${isSelected ? "ring-2 ring-[#2563EB]" : ""}`}
 						style={{
-							left: `${sidebarWidth + offset - 8}px`,
+							insetInlineStart: `${sidebarWidth + offset - 8}px`,
 							zIndex: isDragging ? 50 : 40,
-							transition: isDragging ? "none" : "left 0.1s ease-out",
+							transition: isDragging ? "none" : "inset-inline-start 0.1s ease-out",
 						}}
 						onMouseDown={(e) => {
 							e.stopPropagation();

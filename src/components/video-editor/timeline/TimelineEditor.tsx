@@ -300,31 +300,23 @@ function PlaybackCursor({
 	currentTimeMs,
 	videoDurationMs,
 	onSeek,
-	timelineRef,
 	keyframes = [],
 }: {
 	currentTimeMs: number;
 	videoDurationMs: number;
 	onSeek?: (time: number) => void;
-	timelineRef: React.RefObject<HTMLDivElement>;
 	keyframes?: { id: string; time: number }[];
 }) {
-	const { sidebarWidth, direction, range, valueToPixels, pixelsToValue } = useTimelineContext();
-	const sideProperty = direction === "rtl" ? "right" : "left";
+	const { sidebarWidth, range, valueToPixels, getValueFromScreenX } = useTimelineContext();
 	const [isDragging, setIsDragging] = useState(false);
 
 	useEffect(() => {
 		if (!isDragging) return;
 
 		const handleMouseMove = (e: MouseEvent) => {
-			if (!timelineRef.current || !onSeek) return;
+			if (!onSeek) return;
 
-			const rect = timelineRef.current.getBoundingClientRect();
-			const clickX = e.clientX - rect.left - sidebarWidth;
-
-			// Allow dragging outside to 0 or max, but clamp the value
-			const relativeMs = pixelsToValue(clickX);
-			let absoluteMs = Math.max(0, Math.min(range.start + relativeMs, videoDurationMs));
+			let absoluteMs = Math.max(0, Math.min(getValueFromScreenX(e.clientX), videoDurationMs));
 
 			// Snap to nearby keyframe if within threshold (150ms)
 			const snapThresholdMs = 150;
@@ -359,12 +351,10 @@ function PlaybackCursor({
 	}, [
 		isDragging,
 		onSeek,
-		timelineRef,
-		sidebarWidth,
+		getValueFromScreenX,
 		range.start,
 		range.end,
 		videoDurationMs,
-		pixelsToValue,
 		keyframes,
 	]);
 
@@ -384,14 +374,14 @@ function PlaybackCursor({
 		<div
 			className="absolute top-0 bottom-0 z-50 group/cursor"
 			style={{
-				[sideProperty === "right" ? "marginRight" : "marginLeft"]: `${sidebarWidth - 1}px`,
+				marginInlineStart: `${sidebarWidth - 1}px`,
 				pointerEvents: "none", // Allow clicks to pass through to timeline, but we'll enable pointer events on the handle
 			}}
 		>
 			<div
 				className="absolute top-0 bottom-0 w-[2px] bg-[#2563EB] shadow-[0_0_10px_rgba(37,99,235,0.5)] cursor-ew-resize pointer-events-auto hover:shadow-[0_0_15px_rgba(37,99,235,0.7)] transition-shadow"
 				style={{
-					[sideProperty]: `${offset}px`,
+					insetInlineStart: `${offset}px`,
 				}}
 				onMouseDown={(e) => {
 					e.stopPropagation(); // Prevent timeline click
@@ -421,8 +411,7 @@ function TimelineAxis({
 	videoDurationMs: number;
 	currentTimeMs: number;
 }) {
-	const { sidebarWidth, direction, range, valueToPixels } = useTimelineContext();
-	const sideProperty = direction === "rtl" ? "right" : "left";
+	const { sidebarWidth, range, valueToPixels } = useTimelineContext();
 
 	const { intervalMs } = useMemo(
 		() => calculateAxisScale(range.end - range.start),
@@ -486,7 +475,7 @@ function TimelineAxis({
 		<div
 			className="h-8 bg-editor-bg border-b border-foreground/10 relative overflow-hidden select-none"
 			style={{
-				[sideProperty === "right" ? "marginRight" : "marginLeft"]: `${sidebarWidth}px`,
+				marginInlineStart: `${sidebarWidth}px`,
 			}}
 		>
 			{/* Minor Ticks */}
@@ -496,7 +485,7 @@ function TimelineAxis({
 					<div
 						key={`minor-${time}`}
 						className="absolute bottom-1 h-1 w-[1px] bg-foreground/5"
-						style={{ [sideProperty]: `${offset}px` }}
+						style={{ insetInlineStart: `${offset}px` }}
 					/>
 				);
 			})}
@@ -511,12 +500,15 @@ function TimelineAxis({
 					display: "flex",
 					flexDirection: "row",
 					alignItems: "flex-end",
-					[sideProperty]: `${offset}px`,
-					transform: "translateX(-50%)",
+					insetInlineStart: `${offset}px`,
 				};
 
 				return (
-					<div key={marker.time} style={markerStyle}>
+					<div
+						key={marker.time}
+						className="-translate-x-1/2 rtl:translate-x-1/2"
+						style={markerStyle}
+					>
 						<div className="flex flex-col items-center pb-1">
 							<div className="mb-1.5 h-[5px] w-[5px] rounded-full bg-foreground/30" />
 							<span
@@ -538,8 +530,7 @@ function TimelineAxis({
 }
 
 function ClipMarkerOverlay({ videoDurationMs }: { videoDurationMs: number }) {
-	const { direction, range, valueToPixels } = useTimelineContext();
-	const sideProperty = direction === "rtl" ? "right" : "left";
+	const { range, valueToPixels } = useTimelineContext();
 
 	const { intervalMs } = useMemo(
 		() => calculateAxisScale(range.end - range.start),
@@ -573,7 +564,7 @@ function ClipMarkerOverlay({ videoDurationMs }: { videoDurationMs: number }) {
 					style={{
 						top: "7.5%",
 						bottom: "7.5%",
-						[sideProperty]: `${offset}px`,
+						insetInlineStart: `${offset}px`,
 						background:
 							"linear-gradient(to bottom, transparent 0%, rgba(255,255,255,0.10) 35%, rgba(255,255,255,0.10) 65%, transparent 100%)",
 					}}
@@ -626,7 +617,7 @@ function Timeline({
 	keyframes?: { id: string; time: number }[];
 	audioPeaks?: AudioPeaksData | null;
 }) {
-	const { setTimelineRef, style, sidebarWidth, range, pixelsToValue } = useTimelineContext();
+	const { setTimelineRef, style, getValueFromScreenX } = useTimelineContext();
 	const localTimelineRef = useRef<HTMLDivElement | null>(null);
 
 	const setRefs = useCallback(
@@ -651,16 +642,11 @@ function Timeline({
 			onSelectAudio?.(null);
 			onClearBlockSelection?.();
 
-			const rect = e.currentTarget.getBoundingClientRect();
-			const clickX = e.clientX - rect.left - sidebarWidth;
-
-			if (clickX < 0) return;
-
-			const relativeMs = pixelsToValue(clickX);
-			const absoluteMs = Math.max(0, Math.min(range.start + relativeMs, videoDurationMs));
-			const timeInSeconds = absoluteMs / 1000;
-
-			onSeek(timeInSeconds);
+			const absoluteMs = Math.max(
+				0,
+				Math.min(getValueFromScreenX(e.clientX), videoDurationMs),
+			);
+			onSeek(absoluteMs / 1000);
 		},
 		[
 			onSeek,
@@ -672,9 +658,7 @@ function Timeline({
 			onSelectAudio,
 			onClearBlockSelection,
 			videoDurationMs,
-			sidebarWidth,
-			range.start,
-			pixelsToValue,
+			getValueFromScreenX,
 		],
 	);
 
@@ -716,7 +700,6 @@ function Timeline({
 				currentTimeMs={currentTimeMs}
 				videoDurationMs={videoDurationMs}
 				onSeek={onSeek}
-				timelineRef={localTimelineRef}
 				keyframes={keyframes}
 			/>
 
