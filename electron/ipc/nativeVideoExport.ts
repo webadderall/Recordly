@@ -1,4 +1,4 @@
-import { buildAtempoFilters } from "./ffmpeg/filters";
+import { ATEMPO_FILTER_EPSILON, buildAtempoFilters } from "./ffmpeg/filters";
 
 const NATIVE_EXPORT_INPUT_BYTES_PER_PIXEL = 4;
 const MIN_EDITED_TRACK_TEMPO_SPEED = 0.5;
@@ -225,14 +225,12 @@ export function buildEditedTrackSourceAudioFilter(
 			"asetpts=PTS-STARTPTS",
 		];
 
-		if (Math.abs(speed - 1) > 0.0001) {
-			const tempoFilters = buildAtempoFilters(speed);
-			if (tempoFilters.length === 0) {
-				hasInvalidSegment = true;
-				return;
-			}
-
+		const tempoFilters = buildAtempoFilters(speed);
+		if (tempoFilters.length > 0) {
 			segmentFilter.push(...tempoFilters);
+		} else if (Math.abs(speed - 1) > ATEMPO_FILTER_EPSILON) {
+			hasInvalidSegment = true;
+			return;
 		}
 
 		filterParts.push(`${segmentFilter.join(",")}[${label}]`);

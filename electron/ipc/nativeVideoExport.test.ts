@@ -48,6 +48,18 @@ describe("buildEditedTrackSourceAudioFilter", () => {
 		);
 	});
 
+	it("treats near-unity speed changes as unchanged audio", () => {
+		const filter = buildEditedTrackSourceAudioFilter(
+			[{ startMs: 0, endMs: 2_000, speed: 1.0002 }],
+			44_100,
+		);
+
+		expect(filter).toBe(
+			"[1:a]atrim=start=0.000:end=2.000,asetpts=PTS-STARTPTS[edited_audio_0];" +
+				"[edited_audio_0]anull[aout]",
+		);
+	});
+
 	it("returns null when the edited-track filtergraph inputs are incomplete", () => {
 		expect(buildEditedTrackSourceAudioFilter([], 44_100)).toBeNull();
 		expect(

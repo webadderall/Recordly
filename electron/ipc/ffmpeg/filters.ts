@@ -1,6 +1,7 @@
 import type { AudioSyncAdjustment, PauseSegment } from "../types";
 
 const MAX_AUDIO_SYNC_DELAY_MS = 15000;
+export const ATEMPO_FILTER_EPSILON = 0.0005;
 
 export function buildAtempoFilters(tempoRatio: number): string[] {
 	if (!Number.isFinite(tempoRatio) || tempoRatio <= 0) {
@@ -20,7 +21,7 @@ export function buildAtempoFilters(tempoRatio: number): string[] {
 		remaining /= 2.0;
 	}
 
-	if (Math.abs(remaining - 1) > 0.0005) {
+	if (Math.abs(remaining - 1) > ATEMPO_FILTER_EPSILON) {
 		filters.push(`atempo=${remaining.toFixed(6)}`);
 	}
 
