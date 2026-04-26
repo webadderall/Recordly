@@ -21,4 +21,11 @@ describe("timelineLayout", () => {
 			TIMELINE_AXIS_HEIGHT_PX,
 		);
 	});
+
+	it("floors fractional row counts", () => {
+		expect(getTimelineRowsMinHeightPx(2.9)).toBe(2 * TIMELINE_ROW_MIN_HEIGHT_PX);
+		expect(getTimelineContentMinHeightPx(2.9)).toBe(
+			TIMELINE_AXIS_HEIGHT_PX + 2 * TIMELINE_ROW_MIN_HEIGHT_PX,
+		);
+	});
 });
