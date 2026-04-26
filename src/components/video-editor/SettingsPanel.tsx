@@ -1,4 +1,10 @@
-import { Palette, Trash as Trash2, UploadSimple as Upload, X } from "@phosphor-icons/react";
+import {
+	DownloadSimple as Download,
+	Palette,
+	Trash as Trash2,
+	UploadSimple as Upload,
+	X,
+} from "@phosphor-icons/react";
 import { AnimatePresence, LayoutGroup, motion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -12,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { useTheme } from "@/contexts/ThemeContext";
 import { getAssetPath, getRenderableAssetUrl, getWallpaperThumbnailUrl } from "@/lib/assetPath";
 import type { ExtensionSettingField } from "@/lib/extensions";
 import { extensionHost, type FrameInstance } from "@/lib/extensions";
@@ -27,7 +34,6 @@ import minimalCursorUrl from "../../../Minimal Cursor.svg";
 import { useI18n, useScopedT } from "../../contexts/I18nContext";
 import type { AppLocale } from "../../i18n/config";
 import { SUPPORTED_LOCALES } from "../../i18n/config";
-import { useTheme } from "@/contexts/ThemeContext";
 import { AnnotationSettingsPanel } from "./AnnotationSettingsPanel";
 import { loadEditorPreferences, saveEditorPreferences } from "./editorPreferences";
 import { SliderControl } from "./SliderControl";
@@ -51,9 +57,6 @@ import type {
 	ZoomTransitionEasing,
 } from "./types";
 import {
-	isZeroPadding,
-} from "./videoPlayback/layoutUtils";
-import {
 	DEFAULT_AUTO_CAPTION_SETTINGS,
 	DEFAULT_CROP_REGION,
 	DEFAULT_CURSOR_CLICK_BOUNCE,
@@ -76,6 +79,7 @@ import {
 	SPEED_OPTIONS,
 } from "./types";
 import { fromCursorSwaySliderValue, toCursorSwaySliderValue } from "./videoPlayback/cursorSway";
+import { isZeroPadding } from "./videoPlayback/layoutUtils";
 import {
 	cursorSetAssets,
 	getCursorStyleSizeMultiplier,
@@ -431,6 +435,7 @@ interface SettingsPanelProps {
 	onPickWhisperModel?: () => void;
 	onGenerateAutoCaptions?: () => void;
 	onClearAutoCaptions?: () => void;
+	onExportCaptions?: (format: "srt" | "vtt") => void;
 	onDownloadWhisperSmallModel?: () => void;
 	onDeleteWhisperSmallModel?: () => void;
 	selectedSpeedId?: string | null;
@@ -786,6 +791,7 @@ export function SettingsPanel({
 	onPickWhisperModel,
 	onGenerateAutoCaptions,
 	onClearAutoCaptions,
+	onExportCaptions,
 	onDownloadWhisperSmallModel,
 	onDeleteWhisperSmallModel,
 	selectedSpeedId,
@@ -2156,6 +2162,28 @@ export function SettingsPanel({
 								? tSettings("captions.regenerateFull", "Regenerate Captions")
 								: tSettings("captions.generateFull", "Generate Captions")}
 					</Button>
+					<div className="grid grid-cols-2 gap-2">
+						<Button
+							type="button"
+							variant="outline"
+							onClick={() => onExportCaptions?.("srt")}
+							disabled={captionCueCount === 0}
+							className="h-9 gap-1.5 rounded-xl border-foreground/10 bg-foreground/5 px-3 text-xs text-foreground hover:bg-foreground/10 hover:text-foreground disabled:opacity-50"
+						>
+							<Download className="h-3 w-3" />
+							{tSettings("captions.exportSrt", "Export SRT")}
+						</Button>
+						<Button
+							type="button"
+							variant="outline"
+							onClick={() => onExportCaptions?.("vtt")}
+							disabled={captionCueCount === 0}
+							className="h-9 gap-1.5 rounded-xl border-foreground/10 bg-foreground/5 px-3 text-xs text-foreground hover:bg-foreground/10 hover:text-foreground disabled:opacity-50"
+						>
+							<Download className="h-3 w-3" />
+							{tSettings("captions.exportVtt", "Export VTT")}
+						</Button>
+					</div>
 					{isGeneratingCaptions ? (
 						<div className="space-y-1">
 							<div className="text-xs text-muted-foreground">
