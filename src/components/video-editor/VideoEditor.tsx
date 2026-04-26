@@ -3262,7 +3262,11 @@ export default function VideoEditor() {
 			return;
 		}
 
-		const nextVolume = Number.isFinite(volume) ? Math.max(0, Math.min(1, volume)) : 1;
+		if (!Number.isFinite(volume)) {
+			return;
+		}
+
+		const nextVolume = Math.max(0, Math.min(1, volume));
 		setAudioRegions((prev) =>
 			prev.map((region) =>
 				region.id === selectedAudioId ? { ...region, volume: nextVolume } : region,
