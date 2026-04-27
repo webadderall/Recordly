@@ -59,6 +59,7 @@ import {
 	type GifSizePreset,
 	isValidMp4FrameRate,
 	ModernVideoExporter,
+	NativeFastVideoExporter,
 	probeSupportedMp4Dimensions,
 	type SupportedMp4Dimensions,
 	VideoExporter,
@@ -224,6 +225,7 @@ type SmokeExportConfig = {
 	projectPath?: string | null;
 	quality?: ExportQuality;
 	fps?: ExportMp4FrameRate;
+	sourceOnly?: boolean;
 };
 
 async function writeSmokeExportReport(
@@ -361,6 +363,7 @@ function getSmokeExportConfig(search: string): SmokeExportConfig {
 		projectPath: enabled ? params.get("smokeProject") : null,
 		quality: enabled ? parseSmokeExportQuality(params.get("smokeQuality")) : undefined,
 		fps: enabled ? parseSmokeExportFps(params.get("smokeFps")) : undefined,
+		sourceOnly: enabled ? params.get("smokeSourceOnly") === "1" : false,
 	};
 }
 
@@ -522,6 +525,10 @@ export default function VideoEditor() {
 	const [isPlaying, setIsPlaying] = useState(false);
 	const [currentTime, setCurrentTime] = useState(0);
 	const [duration, setDuration] = useState(0);
+	const [sourceVideoDimensions, setSourceVideoDimensions] = useState<{
+		width: number;
+		height: number;
+	} | null>(null);
 	const [wallpaper, setWallpaper] = useState<string>(initialEditorPreferences.wallpaper);
 	const [shadowIntensity, setShadowIntensity] = useState(
 		initialEditorPreferences.shadowIntensity,
@@ -697,6 +704,28 @@ export default function VideoEditor() {
 	const smokeExportStartedRef = useRef(false);
 	const [historyVersion, setHistoryVersion] = useState(0);
 	const timelineRef = useRef<TimelineEditorHandle>(null);
+
+	const updateSourceVideoDimensionsFromRef = useCallback(() => {
+		const video = videoPlaybackRef.current?.video;
+		if (!video || video.videoWidth <= 0 || video.videoHeight <= 0) {
+			return;
+		}
+
+		setSourceVideoDimensions((current) => {
+			if (current?.width === video.videoWidth && current.height === video.videoHeight) {
+				return current;
+			}
+			return { width: video.videoWidth, height: video.videoHeight };
+		});
+	}, []);
+
+	const handleDurationChange = useCallback(
+		(nextDuration: number) => {
+			setDuration(nextDuration);
+			updateSourceVideoDimensionsFromRef();
+		},
+		[updateSourceVideoDimensionsFromRef],
+	);
 
 	function formatTime(seconds: number) {
 		if (!isFinite(seconds) || isNaN(seconds) || seconds < 0) return "0:00";
@@ -1018,22 +1047,26 @@ export default function VideoEditor() {
 	const gifOutputDimensions = useMemo(
 		() =>
 			calculateOutputDimensions(
-				videoPlaybackRef.current?.video?.videoWidth || 1920,
-				videoPlaybackRef.current?.video?.videoHeight || 1080,
+				sourceVideoDimensions?.width || videoPlaybackRef.current?.video?.videoWidth || 1920,
+				sourceVideoDimensions?.height ||
+					videoPlaybackRef.current?.video?.videoHeight ||
+					1080,
 				gifSizePreset,
 				GIF_SIZE_PRESETS,
 			),
-		[gifSizePreset],
+		[gifSizePreset, sourceVideoDimensions?.height, sourceVideoDimensions?.width],
 	);
 
 	const desiredMp4SourceDimensions = useMemo(
 		() =>
 			calculateMp4SourceDimensions(
-				videoPlaybackRef.current?.video?.videoWidth || 1920,
-				videoPlaybackRef.current?.video?.videoHeight || 1080,
+				sourceVideoDimensions?.width || videoPlaybackRef.current?.video?.videoWidth || 1920,
+				sourceVideoDimensions?.height ||
+					videoPlaybackRef.current?.video?.videoHeight ||
+					1080,
 				aspectRatio,
 			),
-		[aspectRatio],
+		[aspectRatio, sourceVideoDimensions?.height, sourceVideoDimensions?.width],
 	);
 
 	const mp4OutputDimensions = useMemo(() => {
@@ -1560,6 +1593,7 @@ export default function VideoEditor() {
 			setIsPlaying(false);
 			setCurrentTime(0);
 			setDuration(0);
+			setSourceVideoDimensions(null);
 
 			setError(null);
 			setVideoSourcePath(sourcePath);
@@ -1845,6 +1879,17 @@ export default function VideoEditor() {
 					setCurrentProjectPath(null);
 					setLastSavedSnapshot(null);
 					pendingFreshRecordingAutoZoomPathRef.current = null;
+					if (smokeExportConfig.sourceOnly) {
+						setShadowIntensity(0);
+						setBackgroundBlur(0);
+						setBorderRadius(0);
+						setPadding({ top: 0, bottom: 0, left: 0, right: 0, linked: true });
+						setFrame(null);
+						setShowCursor(false);
+						setZoomRegions([]);
+						setAnnotationRegions([]);
+						setAutoCaptions([]);
+					}
 					setWebcam((prev) => ({
 						...prev,
 						enabled: !!smokeWebcamSourcePath,
@@ -1950,6 +1995,7 @@ export default function VideoEditor() {
 		smokeExportConfig.webcamInputPath,
 		smokeExportConfig.webcamShadow,
 		smokeExportConfig.webcamSize,
+		smokeExportConfig.sourceOnly,
 	]);
 
 	useEffect(() => {
@@ -3257,22 +3303,25 @@ export default function VideoEditor() {
 		);
 	}, []);
 
-	const handleAudioVolumeChange = useCallback((volume: number) => {
-		if (!selectedAudioId) {
-			return;
-		}
+	const handleAudioVolumeChange = useCallback(
+		(volume: number) => {
+			if (!selectedAudioId) {
+				return;
+			}
 
-		if (!Number.isFinite(volume)) {
-			return;
-		}
+			if (!Number.isFinite(volume)) {
+				return;
+			}
 
-		const nextVolume = Math.max(0, Math.min(1, volume));
-		setAudioRegions((prev) =>
-			prev.map((region) =>
-				region.id === selectedAudioId ? { ...region, volume: nextVolume } : region,
-			),
-		);
-	}, [selectedAudioId]);
+			const nextVolume = Math.max(0, Math.min(1, volume));
+			setAudioRegions((prev) =>
+				prev.map((region) =>
+					region.id === selectedAudioId ? { ...region, volume: nextVolume } : region,
+				),
+			);
+		},
+		[selectedAudioId],
+	);
 
 	const handleAudioDelete = useCallback(
 		(id: string) => {
@@ -4150,16 +4199,32 @@ export default function VideoEditor() {
 						},
 					};
 
+					const nativeFastExporter = new NativeFastVideoExporter({
+						...exporterConfig,
+						sourceWidth:
+							sourceVideoDimensions?.width ||
+							videoPlaybackRef.current?.video?.videoWidth ||
+							supportedSourceDimensions.width,
+						sourceHeight:
+							sourceVideoDimensions?.height ||
+							videoPlaybackRef.current?.video?.videoHeight ||
+							supportedSourceDimensions.height,
+						sourceDurationMs: Math.max(0, Math.round(duration * 1000)),
+					});
+					exporterRef.current = nativeFastExporter;
+					const fastResult = await nativeFastExporter.exportIfEligible();
 					const exporter =
-						pipelineModel === "modern"
-							? new ModernVideoExporter({
-									...exporterConfig,
-									backendPreference,
-								})
-							: new VideoExporter(exporterConfig);
+						fastResult === null
+							? pipelineModel === "modern"
+								? new ModernVideoExporter({
+										...exporterConfig,
+										backendPreference,
+									})
+								: new VideoExporter(exporterConfig)
+							: null;
 
 					exporterRef.current = exporter;
-					const result = await exporter.export();
+					const result = fastResult ?? (await exporter!.export());
 					const smokeExportElapsedMs =
 						smokeExportStartedAt !== null
 							? Math.round(performance.now() - smokeExportStartedAt)
@@ -4415,6 +4480,9 @@ export default function VideoEditor() {
 			smokeExportConfig.encodingMode,
 			smokeExportConfig.fps,
 			smokeExportConfig.quality,
+			duration,
+			sourceVideoDimensions?.height,
+			sourceVideoDimensions?.width,
 		],
 	);
 
@@ -4430,7 +4498,12 @@ export default function VideoEditor() {
 			return;
 		}
 
-		if (!videoPath || loading) {
+		if (
+			!videoPath ||
+			loading ||
+			duration <= 0 ||
+			(smokeExportConfig.sourceOnly && !sourceVideoDimensions)
+		) {
 			return;
 		}
 
@@ -4454,12 +4527,15 @@ export default function VideoEditor() {
 		});
 	}, [
 		cursorTelemetrySourcePath,
+		duration,
 		error,
 		handleExport,
 		loading,
 		smokeExportConfig.enabled,
 		smokeExportConfig.encodingMode,
 		smokeExportConfig.projectPath,
+		smokeExportConfig.sourceOnly,
+		sourceVideoDimensions,
 		videoPath,
 		videoSourcePath,
 	]);
@@ -5409,7 +5485,7 @@ export default function VideoEditor() {
 												aspectRatio={aspectRatio}
 												ref={videoPlaybackRef}
 												videoPath={videoPath || ""}
-												onDurationChange={setDuration}
+												onDurationChange={handleDurationChange}
 												onPreviewReadyChange={setIsPreviewReady}
 												onTimeUpdate={setCurrentTime}
 												currentTime={currentTime}
