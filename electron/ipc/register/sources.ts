@@ -5,7 +5,7 @@ import { ALLOW_RECORDLY_WINDOW_CAPTURE } from "../constants";
 import { selectedSource, setSelectedSource } from "../state";
 import type { SelectedSource } from "../types";
 import { getScreen, parseWindowId } from "../utils";
-import { getDisplayBoundsForSource } from "../recording/ffmpeg";
+import { getDisplayBoundsForSource, getDisplayWorkAreaForSource } from "../recording/ffmpeg";
 import {
 	getNativeMacWindowSources,
 	resolveMacWindowBounds,
@@ -337,7 +337,10 @@ export function registerSourceHandlers({
 			let bounds: { x: number; y: number; width: number; height: number } | null = null;
 
 			if (source.id?.startsWith("screen:")) {
-				bounds = getDisplayBoundsForSource(source);
+				bounds =
+					process.platform === "darwin"
+						? getDisplayWorkAreaForSource(source)
+						: getDisplayBoundsForSource(source);
 			} else if (isWindow) {
 				if (process.platform === "darwin") {
 					bounds = await resolveMacWindowBounds(source);
@@ -363,7 +366,12 @@ export function registerSourceHandlers({
 			const resolvedBounds = bounds;
 
 			// ── 3. Show traveling wave highlight ──
-			const pad = 6;
+			// On macOS, screen highlights use workArea and no outward padding —
+			// macOS clamps window positions below the menu bar so outward
+			// padding only works on the left/top while right/bottom run off-screen.
+			const isScreen = source.id?.startsWith("screen:");
+			const isMacScreen = isScreen && process.platform === "darwin";
+			const pad = isMacScreen ? 0 : 6;
 			const highlightWin = new BrowserWindow({
 				x: resolvedBounds.x - pad,
 				y: resolvedBounds.y - pad,
@@ -381,13 +389,18 @@ export function registerSourceHandlers({
 
 			highlightWin.setIgnoreMouseEvents(true);
 
+			const borderRadius = isMacScreen ? 0 : 10;
+			const glowInset = isMacScreen ? 0 : -4;
+			const glowRadius = isMacScreen ? 0 : 14;
+			const glowPad = isMacScreen ? 3 : 6;
+
 			const html = `<!DOCTYPE html>
 <html><head><style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:transparent;overflow:hidden;width:100vw;height:100vh}
 
 .border-wrap{
-  position:fixed;inset:0;border-radius:10px;padding:3px;
+  position:fixed;inset:0;border-radius:${borderRadius}px;padding:3px;
   background:conic-gradient(from var(--angle,0deg),
     transparent 0%,
     transparent 60%,
@@ -405,7 +418,7 @@ body{background:transparent;overflow:hidden;width:100vw;height:100vh}
 }
 
 .glow-wrap{
-  position:fixed;inset:-4px;border-radius:14px;padding:6px;
+  position:fixed;inset:${glowInset}px;border-radius:${glowRadius}px;padding:${glowPad}px;
   background:conic-gradient(from var(--angle,0deg),
     transparent 0%,
     transparent 65%,

@@ -24,7 +24,6 @@ import type {
 	ZoomTransitionEasing,
 } from "@/components/video-editor/types";
 import { getDefaultCaptionFontFamily, ZOOM_DEPTH_SCALES } from "@/components/video-editor/types";
-import { computePaddedLayout } from "@/components/video-editor/videoPlayback/layoutUtils";
 import { DEFAULT_FOCUS } from "@/components/video-editor/videoPlayback/constants";
 import {
 	type CursorFollowCameraState,
@@ -37,6 +36,7 @@ import {
 	PixiCursorOverlay,
 	preloadCursorAssets,
 } from "@/components/video-editor/videoPlayback/cursorRenderer";
+import { computePaddedLayout } from "@/components/video-editor/videoPlayback/layoutUtils";
 import {
 	createSpringState,
 	getZoomSpringConfig,
@@ -44,6 +44,7 @@ import {
 	type SpringState,
 	stepSpringValue,
 } from "@/components/video-editor/videoPlayback/motionSmoothing";
+import { getWebcamMediaTargetTimeSeconds } from "@/components/video-editor/videoPlayback/webcamSync";
 import { findDominantRegion } from "@/components/video-editor/videoPlayback/zoomRegionUtils";
 import {
 	applyZoomTransform,
@@ -56,7 +57,7 @@ import {
 	getWebcamOverlayPosition,
 	getWebcamOverlaySizePx,
 } from "@/components/video-editor/webcamOverlay";
-import { getAssetPath, getRenderableAssetUrl } from "@/lib/assetPath";
+import { getAssetPath, getExportableVideoUrl, getRenderableAssetUrl } from "@/lib/assetPath";
 import { extensionHost } from "@/lib/extensions";
 import {
 	mapCursorToCanvasNormalized,
@@ -331,6 +332,8 @@ export class FrameRenderer {
 	private backgroundForwardFrameSource: ForwardFrameSource | null = null;
 	private backgroundDecodedFrame: VideoFrame | null = null;
 	private backgroundVideoElement: HTMLVideoElement | null = null;
+	private backgroundSeekPromise: Promise<void> | null = null;
+	private cleanupBackgroundSource: (() => void) | null = null;
 	private videoShadowLayers: ShadowLayer[] = [];
 	private webcamShadowLayers: ShadowLayer[] = [];
 	private webcamSprite: Sprite | null = null;
@@ -343,6 +346,8 @@ export class FrameRenderer {
 	private webcamFrameCacheCtx: CanvasRenderingContext2D | null = null;
 	private sceneVideoFrameStagingCanvas: HTMLCanvasElement | null = null;
 	private sceneVideoFrameStagingCtx: CanvasRenderingContext2D | null = null;
+	private backgroundVideoFrameStagingCanvas: HTMLCanvasElement | null = null;
+	private backgroundVideoFrameStagingCtx: CanvasRenderingContext2D | null = null;
 	private webcamVideoFrameStagingCanvas: HTMLCanvasElement | null = null;
 	private webcamVideoFrameStagingCtx: CanvasRenderingContext2D | null = null;
 	private captionMeasureCanvas: HTMLCanvasElement | null = null;
@@ -707,7 +712,7 @@ export class FrameRenderer {
 	}
 
 	private ensureVideoFrameStagingCanvas(
-		kind: "scene" | "webcam",
+		kind: "scene" | "background" | "webcam",
 		width: number,
 		height: number,
 	): { canvas: HTMLCanvasElement; context: CanvasRenderingContext2D } | null {
@@ -716,9 +721,15 @@ export class FrameRenderer {
 		const currentCanvas =
 			kind === "scene"
 				? this.sceneVideoFrameStagingCanvas
-				: this.webcamVideoFrameStagingCanvas;
+				: kind === "background"
+					? this.backgroundVideoFrameStagingCanvas
+					: this.webcamVideoFrameStagingCanvas;
 		const currentContext =
-			kind === "scene" ? this.sceneVideoFrameStagingCtx : this.webcamVideoFrameStagingCtx;
+			kind === "scene"
+				? this.sceneVideoFrameStagingCtx
+				: kind === "background"
+					? this.backgroundVideoFrameStagingCtx
+					: this.webcamVideoFrameStagingCtx;
 
 		if (
 			currentCanvas &&
@@ -740,6 +751,9 @@ export class FrameRenderer {
 		if (kind === "scene") {
 			this.sceneVideoFrameStagingCanvas = canvas;
 			this.sceneVideoFrameStagingCtx = context;
+		} else if (kind === "background") {
+			this.backgroundVideoFrameStagingCanvas = canvas;
+			this.backgroundVideoFrameStagingCtx = context;
 		} else {
 			this.webcamVideoFrameStagingCanvas = canvas;
 			this.webcamVideoFrameStagingCtx = context;
@@ -750,7 +764,7 @@ export class FrameRenderer {
 
 	private stageVideoFrameForTexture(
 		frame: VideoFrame,
-		kind: "scene" | "webcam",
+		kind: "scene" | "background" | "webcam",
 		fallbackWidth: number,
 		fallbackHeight: number,
 	): CanvasImageSource | VideoFrame {
@@ -813,6 +827,8 @@ export class FrameRenderer {
 		void this.backgroundForwardFrameSource?.destroy();
 		this.backgroundForwardFrameSource = null;
 		this.closeBackgroundDecodedFrame();
+		this.cleanupBackgroundSource?.();
+		this.cleanupBackgroundSource = null;
 
 		if (this.backgroundVideoElement) {
 			this.backgroundVideoElement.pause();
@@ -847,25 +863,49 @@ export class FrameRenderer {
 					const frameSource = new ForwardFrameSource();
 					await frameSource.initialize(videoSrc);
 					this.backgroundForwardFrameSource = frameSource;
+					this.backgroundVideoElement = null;
+					this.backgroundSeekPromise = null;
 					return;
 				} catch (error) {
 					console.warn(
-						"[FrameRenderer] Decoder-backed wallpaper source unavailable during export; falling back to media element sync:",
+						"[FrameRenderer] Decoder-backed video wallpaper unavailable during export; falling back to media element sync:",
 						error,
 					);
 				}
+
+				const backgroundSource = await resolveMediaElementSource(videoSrc);
+				this.cleanupBackgroundSource = backgroundSource.revoke;
 
 				const video = document.createElement("video");
 				video.muted = true;
 				video.loop = true;
 				video.playsInline = true;
 				video.preload = "auto";
-				video.src = videoSrc;
+				video.src = backgroundSource.src;
+				video.load();
 
 				await new Promise<void>((resolve, reject) => {
-					video.onloadeddata = () => resolve();
-					video.onerror = () =>
+					const onReady = () => {
+						if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+							return;
+						}
+						cleanup();
+						resolve();
+					};
+					const onError = () => {
+						cleanup();
 						reject(new Error(`Failed to load video wallpaper: ${wallpaper}`));
+					};
+					const cleanup = () => {
+						video.removeEventListener("loadeddata", onReady);
+						video.removeEventListener("canplay", onReady);
+						video.removeEventListener("error", onError);
+					};
+
+					video.addEventListener("loadeddata", onReady);
+					video.addEventListener("canplay", onReady);
+					video.addEventListener("error", onError);
+					onReady();
 				});
 
 				this.backgroundVideoElement = video;
@@ -1433,8 +1473,14 @@ export class FrameRenderer {
 			this.closeBackgroundDecodedFrame();
 			this.backgroundDecodedFrame = decodedFrame;
 			if (decodedFrame) {
-				this.ensureBackgroundSprite(
+				const resolvedBackgroundSource = this.stageVideoFrameForTexture(
 					decodedFrame,
+					"background",
+					decodedFrame.displayWidth,
+					decodedFrame.displayHeight,
+				);
+				this.ensureBackgroundSprite(
+					resolvedBackgroundSource,
 					decodedFrame.displayWidth,
 					decodedFrame.displayHeight,
 				);
@@ -1450,14 +1496,120 @@ export class FrameRenderer {
 		if (video.duration && Number.isFinite(video.duration)) {
 			const targetTime = timeSeconds % video.duration;
 			if (Math.abs(video.currentTime - targetTime) > 0.008) {
-				video.currentTime = targetTime;
-				await new Promise<void>((resolve) => {
-					const onSeeked = () => {
-						video.removeEventListener("seeked", onSeeked);
+				if (this.backgroundSeekPromise) {
+					await this.backgroundSeekPromise;
+				}
+
+				this.backgroundSeekPromise = new Promise<void>((resolve) => {
+					let settled = false;
+					let fallbackTimeout: number | null = null;
+					let animationFrameRequestId: number | null = null;
+					let videoFrameRequestId: number | null = null;
+
+					const finish = () => {
+						if (settled) {
+							return;
+						}
+						settled = true;
+						cleanup();
 						resolve();
 					};
-					video.addEventListener("seeked", onSeeked);
+
+					const waitForPresentedFrame = () => {
+						const requestVideoFrameCallback = (
+							video as HTMLVideoElement & {
+								requestVideoFrameCallback?: (
+									callback: (
+										now: DOMHighResTimeStamp,
+										metadata: VideoFrameCallbackMetadata,
+									) => void,
+								) => number;
+								cancelVideoFrameCallback?: (handle: number) => void;
+							}
+						).requestVideoFrameCallback;
+
+						animationFrameRequestId = requestAnimationFrame(() => {
+							animationFrameRequestId = null;
+							finish();
+						});
+
+						if (typeof requestVideoFrameCallback === "function") {
+							videoFrameRequestId = requestVideoFrameCallback.call(video, () => {
+								videoFrameRequestId = null;
+								finish();
+							});
+						}
+					};
+
+					const handleMediaReady = () => {
+						if (
+							!video.seeking &&
+							Math.abs(video.currentTime - targetTime) <= 0.01 &&
+							video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA
+						) {
+							waitForPresentedFrame();
+						}
+					};
+
+					const cleanup = () => {
+						video.removeEventListener("seeked", waitForPresentedFrame);
+						video.removeEventListener("loadeddata", handleMediaReady);
+						video.removeEventListener("canplay", handleMediaReady);
+						video.removeEventListener("error", finish);
+						if (animationFrameRequestId !== null) {
+							cancelAnimationFrame(animationFrameRequestId);
+							animationFrameRequestId = null;
+						}
+						if (
+							videoFrameRequestId !== null &&
+							typeof (
+								video as HTMLVideoElement & {
+									cancelVideoFrameCallback?: (handle: number) => void;
+								}
+							).cancelVideoFrameCallback === "function"
+						) {
+							(
+								video as HTMLVideoElement & {
+									cancelVideoFrameCallback: (handle: number) => void;
+								}
+							).cancelVideoFrameCallback(videoFrameRequestId);
+							videoFrameRequestId = null;
+						}
+						if (fallbackTimeout !== null) {
+							window.clearTimeout(fallbackTimeout);
+						}
+					};
+
+					video.addEventListener("seeked", waitForPresentedFrame, { once: true });
+					video.addEventListener("loadeddata", handleMediaReady, { once: true });
+					video.addEventListener("canplay", handleMediaReady, { once: true });
+					video.addEventListener("error", finish, { once: true });
+
+					fallbackTimeout = window.setTimeout(() => {
+						finish();
+					}, 50);
+
+					try {
+						video.currentTime = targetTime;
+					} catch {
+						finish();
+						return;
+					}
+
+					if (
+						!video.seeking &&
+						Math.abs(video.currentTime - targetTime) <= 0.001 &&
+						video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA
+					) {
+						waitForPresentedFrame();
+					}
 				});
+
+				try {
+					await this.backgroundSeekPromise;
+				} finally {
+					this.backgroundSeekPromise = null;
+				}
 			}
 		}
 
@@ -1484,6 +1636,10 @@ export class FrameRenderer {
 	private async resolveWallpaperForExport(wallpaper: string): Promise<string> {
 		if (!wallpaper) {
 			return wallpaper;
+		}
+
+		if (isVideoWallpaperSource(wallpaper)) {
+			return getExportableVideoUrl(wallpaper);
 		}
 
 		if (
@@ -1850,8 +2006,13 @@ export class FrameRenderer {
 	}
 
 	private async syncWebcamFrame(targetTime: number): Promise<void> {
-		const webcamTimeOffsetSec = (this.config.webcam?.timeOffsetMs ?? 0) / 1000;
-		const webcamTargetTime = Math.max(0, targetTime + webcamTimeOffsetSec);
+		const webcamTargetTime = getWebcamMediaTargetTimeSeconds({
+			currentTime: targetTime,
+			webcamDuration: Number.isFinite(this.webcamVideoElement?.duration)
+				? this.webcamVideoElement?.duration
+				: null,
+			timeOffsetMs: this.config.webcam?.timeOffsetMs,
+		});
 
 		if (this.webcamForwardFrameSource) {
 			const clampedTime = clampMediaTimeToDuration(webcamTargetTime, null);

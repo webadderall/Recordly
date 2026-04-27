@@ -12,7 +12,13 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { getAssetPath, getRenderableAssetUrl, getWallpaperThumbnailUrl } from "@/lib/assetPath";
+import { useTheme } from "@/contexts/ThemeContext";
+import {
+	getAssetPath,
+	getRenderableAssetUrl,
+	getRenderableVideoUrl,
+	getWallpaperThumbnailUrl,
+} from "@/lib/assetPath";
 import type { ExtensionSettingField } from "@/lib/extensions";
 import { extensionHost, type FrameInstance } from "@/lib/extensions";
 import { cn } from "@/lib/utils";
@@ -24,11 +30,9 @@ import {
 } from "@/lib/wallpapers";
 import { type AspectRatio } from "@/utils/aspectRatioUtils";
 import minimalCursorUrl from "../../../Minimal Cursor.svg";
-import tahoeCursorUrl from "../../assets/cursors/Cursor=Default.svg";
 import { useI18n, useScopedT } from "../../contexts/I18nContext";
 import type { AppLocale } from "../../i18n/config";
 import { SUPPORTED_LOCALES } from "../../i18n/config";
-import { useTheme } from "@/contexts/ThemeContext";
 import { AnnotationSettingsPanel } from "./AnnotationSettingsPanel";
 import { loadEditorPreferences, saveEditorPreferences } from "./editorPreferences";
 import { SliderControl } from "./SliderControl";
@@ -52,9 +56,6 @@ import type {
 	ZoomTransitionEasing,
 } from "./types";
 import {
-	isZeroPadding,
-} from "./videoPlayback/layoutUtils";
-import {
 	DEFAULT_AUTO_CAPTION_SETTINGS,
 	DEFAULT_CROP_REGION,
 	DEFAULT_CURSOR_CLICK_BOUNCE,
@@ -77,11 +78,16 @@ import {
 	SPEED_OPTIONS,
 } from "./types";
 import { fromCursorSwaySliderValue, toCursorSwaySliderValue } from "./videoPlayback/cursorSway";
+import { isZeroPadding } from "./videoPlayback/layoutUtils";
 import {
-	UPLOADED_CURSOR_SAMPLE_SIZE,
-	uploadedCursorAssets,
+	cursorSetAssets,
+	getCursorStyleSizeMultiplier,
 } from "./videoPlayback/uploadedCursorAssets";
 import { getWebcamPositionForPreset, resolveWebcamCorner } from "./webcamOverlay";
+
+const tahoeCursorUrl = cursorSetAssets.tahoe.arrow.url;
+const BUILTIN_CURSOR_PREVIEW_SIZE = 28;
+const BUILTIN_CURSOR_PREVIEW_FRAME_SIZE = 48;
 
 const GRADIENTS = [
 	"linear-gradient( 111.6deg,  rgba(114,167,232,1) 9.4%, rgba(253,129,82,1) 43.9%, rgba(253,129,82,1) 54.8%, rgba(249,202,86,1) 86.3% )",
@@ -143,6 +149,48 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 		<p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
 			{children}
 		</p>
+	);
+}
+
+function WallpaperVideoPreview({ src }: { src: string }) {
+	const [resolvedSrc, setResolvedSrc] = useState(src);
+
+	useEffect(() => {
+		let cancelled = false;
+		setResolvedSrc(src);
+
+		void (async () => {
+			try {
+				const nextSrc = await getRenderableVideoUrl(src);
+				if (!cancelled) {
+					setResolvedSrc(nextSrc);
+				}
+			} catch {
+				if (!cancelled) {
+					setResolvedSrc(src);
+				}
+			}
+		})();
+
+		return () => {
+			cancelled = true;
+		};
+	}, [src]);
+
+	return (
+		<video
+			src={resolvedSrc}
+			muted
+			playsInline
+			preload="metadata"
+			className="h-full w-full select-none object-cover [transform:translateZ(0)]"
+			draggable={false}
+			onMouseEnter={(e) => e.currentTarget.play().catch(() => undefined)}
+			onMouseLeave={(e) => {
+				e.currentTarget.pause();
+				e.currentTarget.currentTime = 0;
+			}}
+		/>
 	);
 }
 
@@ -345,6 +393,10 @@ interface SettingsPanelProps {
 	onClipSpeedChange?: (speed: number) => void;
 	onClipMutedChange?: (muted: boolean) => void;
 	onClipDelete?: (id: string) => void;
+	selectedAudioId?: string | null;
+	selectedAudioVolume?: number | null;
+	onAudioVolumeChange?: (volume: number) => void;
+	onAudioDelete?: (id: string) => void;
 	shadowIntensity?: number;
 	onShadowChange?: (intensity: number) => void;
 	backgroundBlur?: number;
@@ -470,10 +522,11 @@ type WallpaperTile = {
 };
 
 const BUILTIN_CURSOR_STYLE_OPTIONS: CursorStyleOption[] = [
+	{ value: "macos", label: "macOS" },
 	{ value: "tahoe", label: "Tahoe" },
+	{ value: "tahoe-inverted", label: "Tahoe Inverted" },
 	{ value: "dot", label: "Dot" },
 	{ value: "figma", label: "Minimal" },
-	{ value: "mono", label: "Inverted" },
 ];
 
 const CAPTION_LANGUAGE_OPTIONS = [
@@ -646,22 +699,37 @@ function CursorStylePreview({
 	previewUrls: Partial<Record<string, string>>;
 }) {
 	const previewSrc =
-		style === "tahoe"
-			? (previewUrls.tahoe ?? tahoeCursorUrl)
-			: style === "figma"
-				? (previewUrls.figma ?? minimalCursorUrl)
-				: style === "mono"
-					? (previewUrls.mono ?? tahoeCursorUrl)
-					: previewUrls[style];
+		style === "macos"
+			? (previewUrls.macos ?? tahoeCursorUrl)
+			: style === "tahoe"
+				? (previewUrls.tahoe ?? tahoeCursorUrl)
+				: style === "figma"
+					? (previewUrls.figma ?? minimalCursorUrl)
+					: style === "tahoe-inverted"
+						? (previewUrls["tahoe-inverted"] ?? tahoeCursorUrl)
+						: previewUrls[style];
 
-	if (style === "tahoe") {
+	if (style === "macos" || style === "tahoe" || style === "tahoe-inverted") {
+		const previewSize = BUILTIN_CURSOR_PREVIEW_SIZE * getCursorStyleSizeMultiplier(style);
 		return (
-			<img
-				src={previewSrc}
-				alt=""
-				className="h-7 w-7 object-contain drop-shadow-[0_8px_12px_rgba(15,23,42,0.18)]"
-				draggable={false}
-			/>
+			<div
+				className="flex items-center justify-center"
+				style={{
+					width: `${BUILTIN_CURSOR_PREVIEW_FRAME_SIZE}px`,
+					height: `${BUILTIN_CURSOR_PREVIEW_FRAME_SIZE}px`,
+				}}
+			>
+				<img
+					src={previewSrc ?? tahoeCursorUrl}
+					alt=""
+					className="max-w-none object-contain drop-shadow-[0_8px_12px_rgba(15,23,42,0.18)]"
+					draggable={false}
+					style={{
+						width: `${previewSize}px`,
+						height: `${previewSize}px`,
+					}}
+				/>
+			</div>
 		);
 	}
 
@@ -704,6 +772,10 @@ export function SettingsPanel({
 	onClipSpeedChange,
 	onClipMutedChange,
 	onClipDelete,
+	selectedAudioId,
+	selectedAudioVolume,
+	onAudioVolumeChange,
+	onAudioDelete,
 	shadowIntensity = 0.67,
 	onShadowChange,
 	backgroundBlur = 0,
@@ -824,7 +896,7 @@ export function SettingsPanel({
 						const assetUrl = await getAssetPath(wallpaper.relativePath);
 						// Use tiny thumbnails for the grid; full-res loads on selection
 						if (isVideoWallpaperSource(wallpaper.publicPath)) {
-							return getRenderableAssetUrl(assetUrl);
+							return getRenderableVideoUrl(assetUrl);
 						}
 						return getWallpaperThumbnailUrl(assetUrl);
 					}),
@@ -994,30 +1066,26 @@ export function SettingsPanel({
 
 		void (async () => {
 			try {
-				const tahoeAsset = uploadedCursorAssets.arrow;
-				const tahoePreview = tahoeAsset
-					? await createTrimmedSvgPreview(
-							tahoeAsset.url,
-							UPLOADED_CURSOR_SAMPLE_SIZE,
-							tahoeAsset.trim,
-						)
-					: tahoeCursorUrl;
+				const macosPreview = cursorSetAssets.macos.arrow.url;
+				const tahoePreview = cursorSetAssets.tahoe.arrow.url;
 				const minimalPreview = await createTrimmedSvgPreview(minimalCursorUrl, 512);
 				const invertedPreview = await createInvertedPreview(tahoePreview);
 
 				if (!cancelled) {
 					setBuiltInCursorPreviewUrls({
+						macos: macosPreview,
 						tahoe: tahoePreview,
 						figma: minimalPreview,
-						mono: invertedPreview,
+						"tahoe-inverted": invertedPreview,
 					});
 				}
 			} catch {
 				if (!cancelled) {
 					setBuiltInCursorPreviewUrls({
+						macos: tahoeCursorUrl,
 						tahoe: tahoeCursorUrl,
 						figma: minimalCursorUrl,
-						mono: tahoeCursorUrl,
+						"tahoe-inverted": tahoeCursorUrl,
 					});
 				}
 			}
@@ -1241,19 +1309,7 @@ export function SettingsPanel({
 		>
 			<div className="absolute inset-[1px] overflow-hidden rounded-[8px] bg-editor-dialog">
 				{isVideoWallpaperSource(wallpaperUrl) ? (
-					<video
-						src={wallpaperUrl}
-						muted
-						playsInline
-						preload="metadata"
-						className="h-full w-full select-none object-cover [transform:translateZ(0)]"
-						draggable={false}
-						onMouseEnter={(e) => e.currentTarget.play().catch(() => undefined)}
-						onMouseLeave={(e) => {
-							e.currentTarget.pause();
-							e.currentTarget.currentTime = 0;
-						}}
-					/>
+					<WallpaperVideoPreview src={wallpaperUrl} />
 				) : (
 					<img
 						src={wallpaperUrl}
@@ -1835,9 +1891,7 @@ export function SettingsPanel({
 				/>
 				<div className="flex flex-col gap-1.5 pt-0.5">
 					<div className="flex items-center justify-between">
-						<span className="text-[10px] text-muted-foreground">
-							{tSettings("effects.padding")}
-						</span>
+						<SectionLabel>{tSettings("effects.padding")}</SectionLabel>
 						<button
 							type="button"
 							onClick={togglePaddingLink}
@@ -3020,7 +3074,7 @@ export function SettingsPanel({
 			<div
 				className={cn(
 					"flex-shrink-0 border-t border-foreground/10 bg-editor-header p-4 pt-3",
-					!selectedTrimId && !selectedSpeedId && "hidden",
+					!selectedTrimId && !selectedSpeedId && !selectedAudioId && "hidden",
 				)}
 			>
 				{selectedTrimId && (
@@ -3080,6 +3134,39 @@ export function SettingsPanel({
 						>
 							<Trash2 className="h-3 w-3" />
 							{tSettings("speed.deleteRegion")}
+						</Button>
+					</div>
+				)}
+
+				{selectedAudioId && (
+					<div>
+						<div className="mb-3 flex items-center justify-between">
+							<span className="text-sm font-medium text-foreground">
+								{tSettings("audio.volumeTitle", "Audio Volume")}
+							</span>
+							<span className="rounded-full bg-[#2563EB]/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-[#2563EB]">
+								{Math.round((selectedAudioVolume ?? 1) * 100)}%
+							</span>
+						</div>
+						<SliderControl
+							label={tSettings("audio.volume", "Volume")}
+							value={selectedAudioVolume ?? 1}
+							defaultValue={1}
+							min={0}
+							max={1}
+							step={0.01}
+							onChange={(v) => onAudioVolumeChange?.(v)}
+							formatValue={(v) => `${Math.round(v * 100)}%`}
+							parseInput={(text) => parseFloat(text.replace(/%$/, "")) / 100}
+						/>
+						<Button
+							onClick={() => selectedAudioId && onAudioDelete?.(selectedAudioId)}
+							variant="destructive"
+							size="sm"
+							className="mt-2 h-8 w-full gap-2 border border-red-500/20 bg-red-500/10 text-xs text-red-400 transition-all hover:border-red-500/30 hover:bg-red-500/20"
+						>
+							<Trash2 className="h-3 w-3" />
+							{tSettings("audio.deleteRegion", "Delete Audio")}
 						</Button>
 					</div>
 				)}

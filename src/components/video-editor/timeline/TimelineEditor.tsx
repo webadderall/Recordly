@@ -60,6 +60,12 @@ import Item from "./Item";
 import KeyframeMarkers from "./KeyframeMarkers";
 import Row from "./Row";
 import TimelineWrapper from "./TimelineWrapper";
+import {
+	getTimelineContentMinHeightPx,
+	getTimelineRowsMinHeightPx,
+	getTimelineViewportStretchFactor,
+	TIMELINE_AXIS_HEIGHT_PX,
+} from "./timelineLayout";
 import { type AudioPeaksData, useAudioPeaks } from "./useAudioPeaks";
 import { buildInteractionZoomSuggestions } from "./zoomSuggestionUtils";
 
@@ -702,12 +708,19 @@ function Timeline({
 			).sort((left, right) => getAnnotationTrackIndex(left) - getAnnotationTrackIndex(right)),
 		[annotationItems],
 	);
+	const timelineRowCount = 2 + annotationRowIds.length + audioRowIds.length;
+	const timelineRowsMinHeightPx = getTimelineRowsMinHeightPx(timelineRowCount);
+	const timelineContentMinHeightPx = getTimelineContentMinHeightPx(timelineRowCount);
+	const timelineViewportStretchFactor = getTimelineViewportStretchFactor(timelineRowCount);
 
 	return (
 		<div
 			ref={setRefs}
-			style={style}
-			className="select-none bg-editor-bg h-full min-h-0 relative cursor-pointer group flex flex-col"
+			style={{
+				...style,
+				height: `max(100%, ${timelineContentMinHeightPx}px, calc(${TIMELINE_AXIS_HEIGHT_PX}px + (100% - ${TIMELINE_AXIS_HEIGHT_PX}px) * ${timelineViewportStretchFactor}))`,
+			}}
+			className="select-none bg-editor-bg relative cursor-pointer group flex flex-col"
 			onClick={handleTimelineClick}
 		>
 			<div className="absolute inset-0 bg-[linear-gradient(to_right,hsl(var(--foreground)/0.03)_1px,transparent_1px)] bg-[length:20px_100%] pointer-events-none" />
@@ -720,7 +733,10 @@ function Timeline({
 				keyframes={keyframes}
 			/>
 
-			<div className="relative z-10 flex flex-1 min-h-0 flex-col">
+			<div
+				className="relative z-10 flex flex-1 min-h-0 flex-col"
+				style={{ minHeight: timelineRowsMinHeightPx }}
+			>
 				<Row id={CLIP_ROW_ID} isEmpty={clipItems.length === 0} hint="Press C to split clip">
 					{audioPeaks && <AudioWaveform peaks={audioPeaks} />}
 					<ClipMarkerOverlay videoDurationMs={videoDurationMs} />
@@ -2046,7 +2062,7 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 		}
 
 		return (
-			<div className="flex-1 min-h-0 flex flex-col bg-editor-bg overflow-auto">
+			<div className="flex-1 min-h-0 flex flex-col bg-editor-bg overflow-hidden">
 				{hideToolbar ? null : (
 					<div className="flex items-center gap-2 px-4 py-2 border-b border-foreground/10 bg-editor-panel">
 						<div className="flex items-center gap-1">

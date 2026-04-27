@@ -11,6 +11,47 @@ function ensureTrailingSlash(value: string): string {
 	return value.endsWith("/") ? value : `${value}/`;
 }
 
+const WINDOWS_ABSOLUTE_PATH_PATTERN = /^[A-Za-z]:[\\/]/;
+const WINDOWS_UNC_PATH_PATTERN = /^\\\\[^\\]+\\[^\\]+/;
+
+function encodeFilePathSegments(pathname: string, keepWindowsDrive = false): string {
+	return pathname
+		.split("/")
+		.map((segment, index) => {
+			if (!segment) return "";
+			if (keepWindowsDrive && index === 1 && /^[A-Za-z]:$/.test(segment)) {
+				return segment;
+			}
+			return encodeURIComponent(segment);
+		})
+		.join("/");
+}
+
+function toFileUrl(filePath: string): string {
+	const normalized = filePath.replace(/\\/g, "/");
+
+	if (WINDOWS_ABSOLUTE_PATH_PATTERN.test(normalized)) {
+		return `file://${encodeFilePathSegments(`/${normalized}`, true)}`;
+	}
+
+	if (normalized.startsWith("//")) {
+		const [host, ...pathParts] = normalized.replace(/^\/+/, "").split("/");
+		const encodedPath = pathParts.map((part) => encodeURIComponent(part)).join("/");
+		return encodedPath ? `file://${host}/${encodedPath}` : `file://${host}/`;
+	}
+
+	const absolutePath = normalized.startsWith("/") ? normalized : `/${normalized}`;
+	return `file://${encodeFilePathSegments(absolutePath)}`;
+}
+
+export function isAbsoluteLocalAssetPath(asset: string): boolean {
+	return (
+		asset.startsWith("/") ||
+		WINDOWS_ABSOLUTE_PATH_PATTERN.test(asset) ||
+		WINDOWS_UNC_PATH_PATTERN.test(asset)
+	);
+}
+
 export async function getAssetPath(relativePath: string): Promise<string> {
 	const encodedRelativePath = encodeRelativeAssetPath(relativePath);
 	const isWebContext =
@@ -119,6 +160,69 @@ export async function getRenderableAssetUrl(asset: string): Promise<string> {
 	} catch {
 		return resolvedAsset;
 	}
+}
+
+async function resolveLocalMediaUrl(filePath: string): Promise<string> {
+	if (typeof window !== "undefined" && window.electronAPI?.getLocalMediaUrl) {
+		try {
+			const result = await window.electronAPI.getLocalMediaUrl(filePath);
+			if (result.success && result.url) {
+				return result.url;
+			}
+		} catch {
+			// Fall through to a file URL when the media server is unavailable.
+		}
+	}
+
+	return toFileUrl(filePath);
+}
+
+function isBundledAssetPath(asset: string): boolean {
+	return asset.startsWith("/wallpapers/") || asset.startsWith("/app-icons/");
+}
+
+export async function getRenderableVideoUrl(asset: string): Promise<string> {
+	if (
+		!asset ||
+		asset.startsWith("blob:") ||
+		asset.startsWith("data:") ||
+		asset.startsWith("file://") ||
+		asset.startsWith("http")
+	) {
+		return asset;
+	}
+
+	if (isAbsoluteLocalAssetPath(asset) && !isBundledAssetPath(asset)) {
+		return resolveLocalMediaUrl(asset);
+	}
+
+	if (asset.startsWith("/") && !asset.startsWith("//")) {
+		return getAssetPath(asset.replace(/^\/+/, ""));
+	}
+
+	return asset;
+}
+
+export async function getExportableVideoUrl(asset: string): Promise<string> {
+	if (
+		!asset ||
+		asset.startsWith("blob:") ||
+		asset.startsWith("data:") ||
+		asset.startsWith("file://") ||
+		asset.startsWith("http")
+	) {
+		return asset;
+	}
+
+	if (isAbsoluteLocalAssetPath(asset) && !isBundledAssetPath(asset)) {
+		return toFileUrl(asset);
+	}
+
+	if (asset.startsWith("/") && !asset.startsWith("//")) {
+		return getAssetPath(asset.replace(/^\/+/, ""));
+	}
+
+	return asset;
 }
 
 // ---------------------------------------------------------------------------

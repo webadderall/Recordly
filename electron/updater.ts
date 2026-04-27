@@ -292,15 +292,6 @@ export function getUpdateStatusSummary() {
 	return updateStatusSummary;
 }
 
-async function showNoUpdatesDialog(getMainWindow: () => BrowserWindow | null) {
-	await showMessageBox(getMainWindow, {
-		type: "info",
-		title: "No Updates Available",
-		message: "Recordly is up to date.",
-		detail: `You are running version ${app.getVersion()}.`,
-	});
-}
-
 async function showUpdateErrorDialog(getMainWindow: () => BrowserWindow | null, error: unknown) {
 	await showMessageBox(getMainWindow, {
 		type: "error",
@@ -647,13 +638,6 @@ export async function checkForAppUpdates(
 
 	if (updateCheckInProgress) {
 		writeUpdaterLog("Skipped update check because a previous check is still running.");
-		if (options?.manual) {
-			await showMessageBox(getMainWindow, {
-				type: "info",
-				title: "Update Check In Progress",
-				message: "Recordly is already checking for updates.",
-			});
-		}
 		return;
 	}
 
@@ -758,11 +742,7 @@ export function setupAutoUpdates(
 			detail: `Recordly ${app.getVersion()} is up to date.`,
 		});
 		clearVisibleUpdateToast(sendToRenderer);
-		const shouldReport = manualCheckRequested;
 		manualCheckRequested = false;
-		if (shouldReport) {
-			void showNoUpdatesDialog(getMainWindow);
-		}
 	});
 
 	autoUpdater.on("download-progress", (progress) => {

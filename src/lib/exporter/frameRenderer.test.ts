@@ -1,6 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_WEBCAM_OVERLAY } from "../../components/video-editor/types";
 
+const { initializeForwardFrameSourceMock, resolveMediaElementSourceMock } = vi.hoisted(() => ({
+	initializeForwardFrameSourceMock: vi.fn(async () => undefined),
+	resolveMediaElementSourceMock: vi.fn(async () => ({
+		src: "blob:background",
+		revoke: vi.fn(),
+	})),
+}));
+
 vi.mock("pixi.js", () => ({
 	Application: vi.fn(),
 	Container: vi.fn(),
@@ -18,6 +26,7 @@ vi.mock("pixi-filters/motion-blur", () => ({
 
 vi.mock("@/lib/assetPath", () => ({
 	getAssetPath: vi.fn(async (value: string) => value),
+	getExportableVideoUrl: vi.fn(async (value: string) => value),
 	getRenderableAssetUrl: vi.fn((value: string) => value),
 }));
 
@@ -55,6 +64,16 @@ vi.mock("@/components/video-editor/videoPlayback/cursorRenderer", () => ({
 		sway: 0,
 	},
 	preloadCursorAssets: vi.fn(async () => undefined),
+}));
+
+vi.mock("./forwardFrameSource", () => ({
+	ForwardFrameSource: class {
+		initialize = initializeForwardFrameSourceMock;
+	},
+}));
+
+vi.mock("./localMediaSource", () => ({
+	resolveMediaElementSource: resolveMediaElementSourceMock,
 }));
 
 import { FrameRenderer } from "./frameRenderer";
@@ -278,6 +297,24 @@ describe("FrameRenderer webcam export path", () => {
 		expect(renderer.webcamSeekPromise).toBeNull();
 	});
 
+	it("subtracts stored webcam offsets during export sync", async () => {
+		const renderer = createRenderer() as unknown as FrameRendererTestAccess & {
+			config: { webcam?: { timeOffsetMs?: number } };
+		};
+		const webcamVideo = new FakeVideoElement({ duration: 10, currentTime: 0.25 });
+		renderer.webcamVideoElement = webcamVideo;
+		renderer.config.webcam = {
+			...(renderer.config.webcam ?? {}),
+			timeOffsetMs: 250,
+		};
+
+		await renderer.syncWebcamFrame(2);
+
+		expect(webcamVideo.currentTime).toBe(1.75);
+		expect(renderer.lastSyncedWebcamTime).toBe(1.75);
+		expect(renderer.webcamSeekPromise).toBeNull();
+	});
+
 	it("falls back to animation frame when requestVideoFrameCallback does not fire", async () => {
 		const renderer = createRenderer() as unknown as FrameRendererTestAccess;
 		const webcamVideo = new FakeVideoElement({
@@ -404,5 +441,37 @@ describe("FrameRenderer webcam export path", () => {
 		renderer.drawWebcamOverlay(outputContext as unknown as CanvasRenderingContext2D, 1280, 720);
 
 		expect(createdCanvases).toHaveLength(2);
+	});
+
+	it("prefers decoder-backed video wallpapers during export", async () => {
+		const renderer = new FrameRenderer({
+			width: 1920,
+			height: 1080,
+			wallpaper: "/wallpapers/wispysky.mp4",
+			zoomRegions: [],
+			showShadow: false,
+			shadowIntensity: 0,
+			backgroundBlur: 0,
+			cropRegion: { x: 0, y: 0, width: 1, height: 1 },
+			webcam: {
+				...DEFAULT_WEBCAM_OVERLAY,
+				enabled: false,
+			},
+			videoWidth: 1920,
+			videoHeight: 1080,
+		}) as unknown as {
+			setupBackground: () => Promise<void>;
+			backgroundForwardFrameSource: unknown;
+			backgroundVideoElement: FakeVideoElement | null;
+			backgroundSprite: MockCanvas | null;
+		};
+
+		await renderer.setupBackground();
+
+		expect(initializeForwardFrameSourceMock).toHaveBeenCalledWith("wallpapers/wispysky.mp4");
+		expect(resolveMediaElementSourceMock).not.toHaveBeenCalled();
+		expect(renderer.backgroundForwardFrameSource).toBeTruthy();
+		expect(renderer.backgroundVideoElement).toBeNull();
+		expect(renderer.backgroundSprite).toBeTruthy();
 	});
 });

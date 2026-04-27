@@ -23,6 +23,7 @@
 	}
 
 	:root {
+		--app-font-sans: "SF Pro Display", "SF Pro Text", Helvetica, sans-serif;
 		--brand-accent: #2563eb;
 		--brand-accent-rgb: 37, 99, 235;
 		--background: 0 0% 100%;
@@ -124,7 +125,7 @@
 
 		-webkit-user-select: none;
 		user-select: none;
-		font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+		font-family: var(--app-font-sans);
 	}
 
 	button,
@@ -134,13 +135,9 @@
 		font: inherit;
 	}
 
-	[data-platform="macos"] body {
-		font-family: "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, sans-serif;
-	}
-
-	[data-platform="macos"] body .font-mono,
-	[data-platform="macos"] body kbd {
-		font-family: "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif;
+	body .font-mono,
+	body kbd {
+		font-family: var(--app-font-sans);
 	}
 }
 

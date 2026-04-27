@@ -167,7 +167,7 @@ export function UpdateToastWindow() {
 		border: "1px solid rgba(37, 99, 235, 0.24)",
 		boxShadow: "0 20px 48px rgba(2, 6, 23, 0.5), inset 0 1px 0 rgba(148, 163, 184, 0.08)",
 		color: "#ffffff",
-		fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif',
+		fontFamily: "var(--app-font-sans)",
 	} as const;
 	const iconBoxStyle = {
 		width: 42,

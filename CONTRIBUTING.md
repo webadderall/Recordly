@@ -3,7 +3,6 @@
 Thank you for considering contributing to this project! By contributing, you help make this project better for everyone. Please take a moment to review these guidelines to ensure a smooth contribution process.
 
 Areas where help is especially valuable:
-
 - Export optimisations
 - Native screen recording for Linux
 - Wallpaper submissions
@@ -17,7 +16,7 @@ Areas where help is especially valuable:
 2. **Clone Your Fork**
    - Clone your forked repository to your local machine:
      ```bash
-   git clone https://github.com/your-username/Recordly.git
+     git clone https://github.com/your-username/Recordly.git
      ```
 
 3. **Create a New Branch**

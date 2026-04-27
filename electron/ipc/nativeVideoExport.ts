@@ -1,4 +1,8 @@
+import { ATEMPO_FILTER_EPSILON, buildAtempoFilters } from "./ffmpeg/filters";
+
 const NATIVE_EXPORT_INPUT_BYTES_PER_PIXEL = 4;
+const MIN_EDITED_TRACK_TEMPO_SPEED = 0.5;
+const MAX_EDITED_TRACK_TEMPO_SPEED = 2;
 
 export type NativeExportEncodingMode = "fast" | "balanced" | "quality";
 
@@ -207,7 +211,11 @@ export function buildEditedTrackSourceAudioFilter(
 
 		const label = `edited_audio_${index}`;
 		const speed = segment.speed;
-		if (!Number.isFinite(speed) || speed <= 0) {
+		if (
+			!Number.isFinite(speed) ||
+			speed < MIN_EDITED_TRACK_TEMPO_SPEED ||
+			speed > MAX_EDITED_TRACK_TEMPO_SPEED
+		) {
 			hasInvalidSegment = true;
 			return;
 		}
@@ -217,17 +225,12 @@ export function buildEditedTrackSourceAudioFilter(
 			"asetpts=PTS-STARTPTS",
 		];
 
-		if (Math.abs(speed - 1) > 0.0001) {
-			const adjustedSampleRate = Math.round(normalizedSourceSampleRate * speed);
-			if (!Number.isSafeInteger(adjustedSampleRate) || adjustedSampleRate < 1) {
-				hasInvalidSegment = true;
-				return;
-			}
-
-			segmentFilter.push(
-				`asetrate=${adjustedSampleRate}`,
-				`aresample=${normalizedSourceSampleRate}`,
-			);
+		const tempoFilters = buildAtempoFilters(speed);
+		if (tempoFilters.length > 0) {
+			segmentFilter.push(...tempoFilters);
+		} else if (Math.abs(speed - 1) > ATEMPO_FILTER_EPSILON) {
+			hasInvalidSegment = true;
+			return;
 		}
 
 		filterParts.push(`${segmentFilter.join(",")}[${label}]`);

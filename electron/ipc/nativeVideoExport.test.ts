@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { ATEMPO_FILTER_EPSILON } from "./ffmpeg/filters";
 import {
 	buildEditedTrackSourceAudioFilter,
 	buildTrimmedSourceAudioFilter,
@@ -20,7 +21,7 @@ describe("buildTrimmedSourceAudioFilter", () => {
 });
 
 describe("buildEditedTrackSourceAudioFilter", () => {
-	it("builds a concat filtergraph that pitch-shifts via asetrate for speed changes", () => {
+	it("builds a concat filtergraph that applies tempo filters for speed changes", () => {
 		const filter = buildEditedTrackSourceAudioFilter(
 			[
 				{ startMs: 0, endMs: 2_000, speed: 1 },
@@ -31,21 +32,47 @@ describe("buildEditedTrackSourceAudioFilter", () => {
 
 		expect(filter).toBe(
 			"[1:a]atrim=start=0.000:end=2.000,asetpts=PTS-STARTPTS[edited_audio_0];" +
-				"[1:a]atrim=start=2.000:end=6.000,asetpts=PTS-STARTPTS,asetrate=66150,aresample=44100[edited_audio_1];" +
+				"[1:a]atrim=start=2.000:end=6.000,asetpts=PTS-STARTPTS,atempo=1.500000[edited_audio_1];" +
 				"[edited_audio_0][edited_audio_1]concat=n=2:v=0:a=1[aout]",
 		);
 	});
 
-	it("builds a filtergraph for slowdown segments by lowering then resampling the source rate", () => {
+	it("builds a filtergraph for slowdown segments with a tempo filter", () => {
 		const filter = buildEditedTrackSourceAudioFilter(
 			[{ startMs: 0, endMs: 2_000, speed: 0.5 }],
 			44_100,
 		);
 
 		expect(filter).toBe(
-			"[1:a]atrim=start=0.000:end=2.000,asetpts=PTS-STARTPTS,asetrate=22050,aresample=44100[edited_audio_0];" +
+			"[1:a]atrim=start=0.000:end=2.000,asetpts=PTS-STARTPTS,atempo=0.500000[edited_audio_0];" +
 				"[edited_audio_0]anull[aout]",
 		);
+	});
+
+	it("treats near-unity speed changes as unchanged audio", () => {
+		const filter = buildEditedTrackSourceAudioFilter(
+			[{ startMs: 0, endMs: 2_000, speed: 1.0002 }],
+			44_100,
+		);
+
+		expect(filter).toBe(
+			"[1:a]atrim=start=0.000:end=2.000,asetpts=PTS-STARTPTS[edited_audio_0];" +
+				"[edited_audio_0]anull[aout]",
+		);
+	});
+
+	it("treats exact epsilon speed changes as unchanged audio", () => {
+		for (const speed of [1 - ATEMPO_FILTER_EPSILON, 1 + ATEMPO_FILTER_EPSILON]) {
+			const filter = buildEditedTrackSourceAudioFilter(
+				[{ startMs: 0, endMs: 2_000, speed }],
+				44_100,
+			);
+
+			expect(filter).toBe(
+				"[1:a]atrim=start=0.000:end=2.000,asetpts=PTS-STARTPTS[edited_audio_0];" +
+					"[edited_audio_0]anull[aout]",
+			);
+		}
 	});
 
 	it("returns null when the edited-track filtergraph inputs are incomplete", () => {

@@ -50,7 +50,7 @@ export interface CursorVisualSettings {
 	style: CursorStyle;
 }
 
-export type CursorStyle = "tahoe" | "dot" | "figma" | "mono" | (string & {}); // extension-contributed cursor styles
+export type CursorStyle = "macos" | "tahoe" | "tahoe-inverted" | "dot" | "figma" | (string & {}); // extension-contributed cursor styles
 export const DEFAULT_CURSOR_STYLE: CursorStyle = "tahoe";
 
 export type EditorEffectSection =
@@ -266,19 +266,11 @@ export interface AnnotationTextStyle {
 }
 
 function getDefaultAnnotationFontFamily() {
-	if (typeof navigator !== "undefined" && /mac/i.test(navigator.platform)) {
-		return '"SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, sans-serif';
-	}
-
-	return "Inter, system-ui, sans-serif";
+	return '"SF Pro Display", "SF Pro Text", Helvetica, sans-serif';
 }
 
 export function getDefaultCaptionFontFamily() {
-	if (typeof navigator !== "undefined" && /mac/i.test(navigator.platform)) {
-		return '"SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif';
-	}
-
-	return '"Helvetica Neue", Helvetica, Arial, sans-serif';
+	return '"SF Pro Text", "SF Pro Display", Helvetica, sans-serif';
 }
 
 export interface AnnotationRegion {

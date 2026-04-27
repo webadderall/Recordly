@@ -16,6 +16,14 @@ export function getDisplayBoundsForSource(source: SelectedSource) {
 	).bounds;
 }
 
+export function getDisplayWorkAreaForSource(source: SelectedSource) {
+	const allDisplays = getScreen().getAllDisplays();
+	const primaryDisplay = getScreen().getPrimaryDisplay();
+	const { displayId } = resolveWindowsCaptureDisplay(source, allDisplays, primaryDisplay);
+	const matched = allDisplays.find((d) => d.id === displayId) ?? primaryDisplay;
+	return matched.workArea;
+}
+
 export async function buildFfmpegCaptureArgs(source: SelectedSource, outputPath: string) {
 	const commonOutputArgs = [
 		"-an",

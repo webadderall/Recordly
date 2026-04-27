@@ -73,7 +73,20 @@ Optional repository variables:
 1. Bump `package.json` to the version you want to ship.
 2. Commit and push that version.
 3. Create a Git tag in the form `vX.Y.Z`.
-4. In GitHub, create and publish a release for that tag.
+4. Create and publish a GitHub release for that tag. Prefer the helper so custom notes are prepended while GitHub still generates the contributor section:
+
+```bash
+npm run release:create -- --tag v1.2.3 --title "v1.2.3" --notes-file ./release-notes.md
+```
+
+For prereleases:
+
+```bash
+npm run release:create -- --tag v1.2.0-beta.2 --title "v1.2.0 beta-2" --prerelease --notes-file ./release-notes.md
+```
+
+This uses `gh release create --generate-notes`, which keeps GitHub's generated change summary and contributor list instead of replacing it with a fully manual release body.
+
 5. The `Publish Release` workflow builds, signs, notarizes, uploads, and publishes update metadata.
 
 That is the normal path if you want “click new release and let CI do the rest.”

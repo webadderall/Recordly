@@ -1,6 +1,6 @@
 import { clampMediaTimeToDuration } from "@/lib/mediaTiming";
 
-export function getWebcamPreviewTargetTimeSeconds({
+export function getWebcamMediaTargetTimeSeconds({
 	currentTime,
 	webcamDuration,
 	timeOffsetMs,
@@ -10,6 +10,8 @@ export function getWebcamPreviewTargetTimeSeconds({
 	timeOffsetMs?: number | null;
 }): number {
 	const safeOffsetMs = Number.isFinite(timeOffsetMs) ? (timeOffsetMs ?? 0) : 0;
-	const shiftedTime = currentTime + safeOffsetMs / 1000;
+	const shiftedTime = currentTime - safeOffsetMs / 1000;
 	return clampMediaTimeToDuration(shiftedTime, webcamDuration);
 }
+
+export const getWebcamPreviewTargetTimeSeconds = getWebcamMediaTargetTimeSeconds;

@@ -72,6 +72,7 @@ const COUNTDOWN_OPTIONS = [0, 3, 5, 10];
 const WEBCAM_PREVIEW_DRAG_THRESHOLD = 6;
 const DEFAULT_WEBCAM_PREVIEW_OFFSET = { x: 0, y: 0 };
 const DEFAULT_RECORDING_HUD_OFFSET = { x: 0, y: 0 };
+const SHOW_DEV_UPDATE_PREVIEW = import.meta.env.DEV;
 
 function IconButton({
 	onClick,
@@ -1472,6 +1473,24 @@ export function LaunchWindow() {
 									>
 										{t("recording.openProject")}
 									</DropdownItem>
+									{SHOW_DEV_UPDATE_PREVIEW ? (
+										<DropdownItem
+											icon={<RefreshCw size={16} />}
+											onClick={() => {
+												setActiveDropdown("none");
+												void window.electronAPI
+													.previewUpdateToast()
+													.catch((error) => {
+														console.warn(
+															"Failed to preview update toast:",
+															error,
+														);
+													});
+											}}
+										>
+											{t("recording.previewUpdateUi", "Preview Update UI")}
+										</DropdownItem>
+									) : null}
 									<div className={styles.ddLabel} style={{ marginTop: 4 }}>
 										{t("recording.language")}
 									</div>

@@ -29,10 +29,11 @@
 		"loopCursor": "Loop do cursor",
 		"cursorStyle": "Estilo do cursor",
 		"cursorStyleOptions": {
+			"macos": "macOS",
 			"tahoe": "Tahoe",
+			"tahoe-inverted": "Tahoe invertido",
 			"dot": "Dot",
 			"figma": "Minimal",
-			"mono": "Inverted",
 			"lavender": "Lavender",
 			"parched": "Parched",
 			"chooper": "Chooper",
@@ -91,6 +92,12 @@
 		"radius": "Raio",
 		"roundness": "Arredondamento",
 		"padding": "Espaçamento",
+		"paddingLinked": "Vinculado (uniforme)",
+		"paddingUnlinked": "Não vinculado (assimétrico)",
+		"paddingTop": "Superior",
+		"paddingBottom": "Inferior",
+		"paddingLeft": "Esquerdo",
+		"paddingRight": "Direito",
 		"removeBackground": "Remover fundo"
 	},
 	"sections": {

@@ -4,6 +4,12 @@ name: Build Electron App
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+  artifact-metadata: write
+
 jobs:
   build-windows:
     runs-on: windows-latest
@@ -19,6 +25,13 @@ jobs:
       - name: Install dependencies
         run: npm ci --ignore-scripts
 
+      - name: Install bundled FFmpeg binary
+        run: node node_modules/ffmpeg-static/install.js
+
+      - name: Verify bundled FFmpeg binary
+        run: |
+          node -e "const fs=require('node:fs'); const ffmpeg=require('ffmpeg-static'); if (typeof ffmpeg !== 'string' || !fs.existsSync(ffmpeg)) { throw new Error('Bundled ffmpeg-static binary is missing: ' + ffmpeg); } console.log('Using bundled ffmpeg binary: ' + ffmpeg);"
+
       - name: Install app dependencies
         run: npx electron-builder install-app-deps
 
@@ -28,17 +41,43 @@ jobs:
           npm run build:platform-native-helpers
           npx tsc
           npx vite build
-          npx electron-builder --win nsis --x64 --publish never
+          npx electron-builder --win dir nsis --x64 --publish never
+
+      - name: Smoke test packaged Windows paths
+        run: npm run smoke:packaged-binaries
+
+      - name: Generate Windows artifact checksums
+        run: npm run checksums:release -- SHA256SUMS-windows.txt
+
+      - name: Attest Windows artifacts
+        uses: actions/attest@v4
+        with:
+          subject-checksums: release/SHA256SUMS-windows.txt
 
       - name: Upload Windows build
         uses: actions/upload-artifact@v4
         with:
-          name: windows-installer
-          path: release/**/*.exe
+          name: windows-x64-release
+          path: |
+            release/*.exe
+            release/*.blockmap
+            release/latest*.yml
+            release/SHA256SUMS*.txt
+          if-no-files-found: error
           retention-days: 30
 
   build-macos:
-    runs-on: macos-latest
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            arch_tag: darwin-x64
+            runner: macos-15-intel
+          - arch: arm64
+            arch_tag: darwin-arm64
+            runner: macos-14
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -56,6 +95,13 @@ jobs:
       - name: Install dependencies
         run: npm ci --ignore-scripts
 
+      - name: Install bundled FFmpeg binary
+        run: node node_modules/ffmpeg-static/install.js
+
+      - name: Verify bundled FFmpeg binary
+        run: |
+          node -e "const fs=require('node:fs'); const ffmpeg=require('ffmpeg-static'); if (typeof ffmpeg !== 'string' || !fs.existsSync(ffmpeg)) { throw new Error('Bundled ffmpeg-static binary is missing: ' + ffmpeg); } console.log('Using bundled ffmpeg binary: ' + ffmpeg);"
+
       - name: Install app dependencies
         run: npx electron-builder install-app-deps
 
@@ -64,16 +110,32 @@ jobs:
           npm run build:platform-native-helpers
           npx tsc
           npx vite build
-          npx electron-builder --mac dmg zip --publish never
+          npx electron-builder --mac dir dmg zip --${{ matrix.arch }} --publish never
+
+      - name: Smoke test packaged macOS paths
+        env:
+          PACKAGED_SMOKE_ARCH_TAGS: ${{ matrix.arch_tag }}
+        run: npm run smoke:packaged-binaries
+
+      - name: Generate macOS artifact checksums
+        run: npm run checksums:release -- SHA256SUMS-macos-${{ matrix.arch }}.txt
+
+      - name: Attest macOS artifacts
+        uses: actions/attest@v4
+        with:
+          subject-checksums: release/SHA256SUMS-macos-${{ matrix.arch }}.txt
 
       - name: Upload macOS build
         uses: actions/upload-artifact@v4
         with:
-          name: macos-installer
+          name: macos-${{ matrix.arch }}-release
           path: |
             release/**/*.dmg
             release/**/*.zip
+            release/**/*.blockmap
             release/latest-mac.yml
+            release/SHA256SUMS*.txt
+          if-no-files-found: error
           retention-days: 30
 
   build-linux:
@@ -89,6 +151,13 @@ jobs:
 
       - name: Install dependencies
         run: npm ci --ignore-scripts
+
+      - name: Install bundled FFmpeg binary
+        run: node node_modules/ffmpeg-static/install.js
+
+      - name: Verify bundled FFmpeg binary
+        run: |
+          node -e "const fs=require('node:fs'); const ffmpeg=require('ffmpeg-static'); if (typeof ffmpeg !== 'string' || !fs.existsSync(ffmpeg)) { throw new Error('Bundled ffmpeg-static binary is missing: ' + ffmpeg); } console.log('Using bundled ffmpeg binary: ' + ffmpeg);"
 
       - name: Install Linux native build dependencies
         run: |
@@ -106,15 +175,27 @@ jobs:
           npm run build:platform-native-helpers
           npx tsc
           npx vite build
-          npx electron-builder --linux AppImage --x64 --publish never
+          npx electron-builder --linux dir AppImage --x64 --publish never
+
+      - name: Smoke test packaged Linux paths
+        run: npm run smoke:packaged-binaries
+
+      - name: Generate Linux artifact checksums
+        run: npm run checksums:release -- SHA256SUMS-linux.txt
+
+      - name: Attest Linux artifacts
+        uses: actions/attest@v4
+        with:
+          subject-checksums: release/SHA256SUMS-linux.txt
 
       - name: Upload Linux build
         uses: actions/upload-artifact@v4
         with:
-          name: linux-installer
+          name: linux-x64-release
           path: |
             release/**/*.AppImage
+            release/**/*.blockmap
             release/latest-linux.yml
+            release/SHA256SUMS*.txt
+          if-no-files-found: error
           retention-days: 30
-
-
