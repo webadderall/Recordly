@@ -73,10 +73,14 @@ async function getOptionalCommandOutput(command: string, args: string[]) {
 }
 
 /**
- * A helper that resolves as soon as the first promise in the array succeeds,
- * mimicking Promise.any for environments targeting older ES versions.
+ * A helper that resolves as soon as the first promise in the array succeeds.
+ * Used as a replacement for Promise.any for environments targeting older ES versions.
  */
 function firstSuccess<T>(promises: Promise<T>[]): Promise<T> {
+	if (promises.length === 0) {
+		return Promise.reject(new Error("No promises provided"));
+	}
+
 	return new Promise((resolve, reject) => {
 		let rejectedCount = 0;
 		for (const p of promises) {
@@ -89,6 +93,7 @@ function firstSuccess<T>(promises: Promise<T>[]): Promise<T> {
 		}
 	});
 }
+
 
 /**
  * Probes the Linux system to determine if the ScreenCast portal is available.
@@ -110,6 +115,7 @@ async function probeLinuxScreenCastPortal() {
 		return linuxScreenCastPortalAvailablePromise;
 	}
 
+	linuxScreenCastPortalProbeTimestamp = now;
 	linuxScreenCastPortalAvailablePromise = (async () => {
 		try {
 			// Probing multiple introspection tools in parallel to reduce worst-case blocking time.
@@ -151,9 +157,7 @@ async function probeLinuxScreenCastPortal() {
 				throw new Error("portal missing");
 			};
 
-			const result = await firstSuccess([probeGdbus(), probeBusctl(), probeDbusSend()]);
-			linuxScreenCastPortalProbeTimestamp = Date.now();
-			return result;
+			return await firstSuccess([probeGdbus(), probeBusctl(), probeDbusSend()]);
 		} catch {
 			// If all probes fail, we don't cache the result permanently so we can try again later.
 			linuxScreenCastPortalAvailablePromise = null;
@@ -205,8 +209,8 @@ export function registerSettingsHandlers() {
 			portalSource: prefersPortalSelection
 				? {
 						id: LINUX_PORTAL_SOURCE_ID,
-						name: "Entire screen",
-						display_id: "linux-portal",
+						name: "recording.portalEntireScreen",
+						display_id: "",
 						thumbnail: null,
 						appIcon: null,
 						sourceType: "screen" as const,

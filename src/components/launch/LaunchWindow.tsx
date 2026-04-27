@@ -25,7 +25,7 @@ import {
 import { LINUX_PORTAL_SOURCE_ID } from "@/lib/constants";
 import { AnimatePresence, motion } from "motion/react";
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RxDragHandleDots2 } from "react-icons/rx";
 import { useI18n } from "@/contexts/I18nContext";
 import type { AppLocale } from "@/i18n/config";
@@ -282,18 +282,22 @@ export function LaunchWindow() {
 	const showSourceSelector = supportsManualSourceSelection || supportsPortalSourceSelection;
 	const shouldUsePortalSourceSelection =
 		captureCapabilities?.preferredSourceSelectionMode === "portal";
-	const portalSource = captureCapabilities?.portalSource
-		? {
-				id: captureCapabilities.portalSource.id,
-				name: captureCapabilities.portalSource.name,
-				thumbnail: captureCapabilities.portalSource.thumbnail,
-				display_id: captureCapabilities.portalSource.display_id,
-				appIcon: captureCapabilities.portalSource.appIcon,
-				sourceType: captureCapabilities.portalSource.sourceType,
-				appName: captureCapabilities.portalSource.appName,
-				windowTitle: captureCapabilities.portalSource.windowTitle,
-			}
-		: null;
+	const portalSource = useMemo(() => {
+		if (!captureCapabilities?.portalSource) {
+			return null;
+		}
+
+		return {
+			id: captureCapabilities.portalSource.id,
+			name: captureCapabilities.portalSource.name,
+			thumbnail: captureCapabilities.portalSource.thumbnail,
+			display_id: captureCapabilities.portalSource.display_id,
+			appIcon: captureCapabilities.portalSource.appIcon,
+			sourceType: captureCapabilities.portalSource.sourceType,
+			appName: captureCapabilities.portalSource.appName,
+			windowTitle: captureCapabilities.portalSource.windowTitle,
+		};
+	}, [captureCapabilities?.portalSource]);
 
 	useEffect(() => {
 		if (!selectedDeviceId) {
@@ -1133,7 +1137,9 @@ export function LaunchWindow() {
 					>
 						<Monitor size={16} />
 						<ContentClamp className={styles.sourceLabel} truncateLength={36}>
-							{selectedSource}
+							{selectedSource.startsWith("recording.")
+								? t(selectedSource as any)
+								: selectedSource}
 						</ContentClamp>
 						<ChevronUp
 							size={10}
@@ -1279,7 +1285,9 @@ export function LaunchWindow() {
 												selected={selectedSource === portalSource.name}
 												onClick={() => handleSourceSelect(portalSource)}
 											>
-												{portalSource.name}
+												{portalSource.id === LINUX_PORTAL_SOURCE_ID
+													? t(portalSource.name as any)
+													: portalSource.name}
 											</DropdownItem>
 										</>
 									) : (
