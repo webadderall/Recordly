@@ -22,14 +22,14 @@ import {
 	SpeakerX as VolumeX,
 	X,
 } from "@phosphor-icons/react";
-import { LINUX_PORTAL_SOURCE_ID } from "@/lib/constants";
 import { AnimatePresence, motion } from "motion/react";
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { RxDragHandleDots2 } from "react-icons/rx";
 import { useI18n } from "@/contexts/I18nContext";
 import type { AppLocale } from "@/i18n/config";
 import { SUPPORTED_LOCALES } from "@/i18n/config";
+import { LINUX_PORTAL_SOURCE_ID } from "@/lib/constants";
 import { useScopedT } from "../../contexts/I18nContext";
 import { useAudioLevelMeter } from "../../hooks/useAudioLevelMeter";
 import { useMicrophoneDevices } from "../../hooks/useMicrophoneDevices";
@@ -74,6 +74,17 @@ const WEBCAM_PREVIEW_DRAG_THRESHOLD = 6;
 const DEFAULT_WEBCAM_PREVIEW_OFFSET = { x: 0, y: 0 };
 const DEFAULT_RECORDING_HUD_OFFSET = { x: 0, y: 0 };
 const SHOW_DEV_UPDATE_PREVIEW = import.meta.env.DEV;
+
+const PORTAL_LABEL_KEY = "recording.portalEntireScreen" as const;
+type PortalLabelKey = typeof PORTAL_LABEL_KEY;
+
+/**
+ * Type guard to check if a value is a valid i18n key for the portal source label.
+ * @param value The value to check
+ */
+function isLaunchKey(value: string): value is PortalLabelKey {
+	return value === PORTAL_LABEL_KEY;
+}
 
 function IconButton({
 	onClick,
@@ -277,27 +288,14 @@ export function LaunchWindow() {
 
 	const supportsHudCaptureProtection = platform !== "linux";
 	// Drive the launcher UI from runtime capture capabilities instead of a coarse platform check.
-	const supportsManualSourceSelection = captureCapabilities?.supportsManualSourceSelection === true;
-	const supportsPortalSourceSelection = captureCapabilities?.supportsPortalSourceSelection === true;
+	const supportsManualSourceSelection =
+		captureCapabilities?.supportsManualSourceSelection === true;
+	const supportsPortalSourceSelection =
+		captureCapabilities?.supportsPortalSourceSelection === true;
 	const showSourceSelector = supportsManualSourceSelection || supportsPortalSourceSelection;
 	const shouldUsePortalSourceSelection =
 		captureCapabilities?.preferredSourceSelectionMode === "portal";
-	const portalSource = useMemo(() => {
-		if (!captureCapabilities?.portalSource) {
-			return null;
-		}
-
-		return {
-			id: captureCapabilities.portalSource.id,
-			name: captureCapabilities.portalSource.name,
-			thumbnail: captureCapabilities.portalSource.thumbnail,
-			display_id: captureCapabilities.portalSource.display_id,
-			appIcon: captureCapabilities.portalSource.appIcon,
-			sourceType: captureCapabilities.portalSource.sourceType,
-			appName: captureCapabilities.portalSource.appName,
-			windowTitle: captureCapabilities.portalSource.windowTitle,
-		};
-	}, [captureCapabilities?.portalSource]);
+	const portalSource = captureCapabilities?.portalSource;
 
 	useEffect(() => {
 		if (!selectedDeviceId) {
@@ -1036,7 +1034,10 @@ export function LaunchWindow() {
 			return;
 		}
 
-		if (hasSelectedSource || (shouldUsePortalSourceSelection && !supportsManualSourceSelection)) {
+		if (
+			hasSelectedSource ||
+			(shouldUsePortalSourceSelection && !supportsManualSourceSelection)
+		) {
 			toggleRecording();
 			return;
 		}
@@ -1137,9 +1138,7 @@ export function LaunchWindow() {
 					>
 						<Monitor size={16} />
 						<ContentClamp className={styles.sourceLabel} truncateLength={36}>
-							{selectedSource.startsWith("recording.")
-								? t(selectedSource as any)
-								: selectedSource}
+							{isLaunchKey(selectedSource) ? t(selectedSource) : selectedSource}
 						</ContentClamp>
 						<ChevronUp
 							size={10}
@@ -1186,7 +1185,11 @@ export function LaunchWindow() {
 				className={`${styles.recBtn} ${styles.electronNoDrag}`}
 				onClick={handleRecordButtonClick}
 				disabled={countdownActive || captureCapabilities === null}
-				title={captureCapabilities === null ? t("recording.detectingCapabilities") : t("recording.record")}
+				title={
+					captureCapabilities === null
+						? t("recording.detectingCapabilities")
+						: t("recording.record")
+				}
 			>
 				<div className={styles.recDot} />
 			</button>
@@ -1279,14 +1282,20 @@ export function LaunchWindow() {
 										</div>
 									) : shouldUsePortalSourceSelection && portalSource ? (
 										<>
-											<div className={styles.ddLabel}>{t("recording.screens")}</div>
+											<div className={styles.ddLabel}>
+												{t("recording.screens")}
+											</div>
 											<DropdownItem
 												icon={<Monitor size={16} />}
 												selected={selectedSource === portalSource.name}
-												onClick={() => handleSourceSelect(portalSource)}
+												onClick={() =>
+													handleSourceSelect(
+														portalSource as DesktopSource,
+													)
+												}
 											>
-												{portalSource.id === LINUX_PORTAL_SOURCE_ID
-													? t(portalSource.name as any)
+												{isLaunchKey(portalSource.name)
+													? t(portalSource.name)
 													: portalSource.name}
 											</DropdownItem>
 										</>
