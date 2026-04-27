@@ -223,7 +223,7 @@ function ExtensionSettingsSection({
 									}}
 									className="w-20 h-1 accent-[#2563EB]"
 								/>
-								<span className="text-[10px] text-muted-foreground/70 w-8 text-right font-mono">
+								<span className="text-[10px] text-muted-foreground/70 w-8 text-end font-mono">
 									{(typeof value === "number"
 										? value
 										: (field.defaultValue as number)
@@ -503,6 +503,7 @@ const APP_LANGUAGE_LABELS: Record<AppLocale, string> = {
 	ko: "한국어",
 	"pt-BR": "Português",
 	"zh-CN": "中文",
+	ar: "العربية",
 };
 
 function loadPreviewImage(url: string) {
@@ -1595,7 +1596,7 @@ export function SettingsPanel({
 														onClick={(e) =>
 															handleRemoveCustomImage(imageUrl, e)
 														}
-														className="absolute top-0.5 right-0.5 w-3 h-3 bg-red-500/90 hover:bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
+														className="absolute top-0.5 end-0.5 w-3 h-3 bg-red-500/90 hover:bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
 													>
 														<X className="w-2 h-2 text-white" />
 													</button>
@@ -1655,7 +1656,7 @@ export function SettingsPanel({
 																		e,
 																	)
 																}
-																className="absolute top-0.5 right-0.5 w-3 h-3 bg-red-500/90 hover:bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
+																className="absolute top-0.5 end-0.5 w-3 h-3 bg-red-500/90 hover:bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
 															>
 																<X className="w-2 h-2 text-white" />
 															</button>
@@ -2692,7 +2693,7 @@ export function SettingsPanel({
 											title={option.label}
 											aria-label={option.label}
 											className={cn(
-												"group aspect-square h-auto min-w-0 rounded-[10px] border border-foreground/10 bg-foreground/[0.03] p-3 text-left text-foreground shadow-none transition-all hover:border-foreground/20 hover:bg-foreground/[0.06]",
+												"group aspect-square h-auto min-w-0 rounded-[10px] border border-foreground/10 bg-foreground/[0.03] p-3 text-start text-foreground shadow-none transition-all hover:border-foreground/20 hover:bg-foreground/[0.06]",
 												"data-[state=on]:border-[#2563EB]/70 data-[state=on]:bg-[#2563EB]/12 data-[state=on]:text-foreground",
 											)}
 										>

@@ -4791,7 +4791,7 @@ export default function VideoEditor() {
 					</Button>
 					<DiscordLinkButton />
 					<FeedbackDialog />
-					<div className="ml-1 h-5 w-px bg-foreground/10" />
+					<div className="ms-1 h-5 w-px bg-foreground/10" />
 					<Button
 						type="button"
 						variant="ghost"
@@ -4873,7 +4873,7 @@ export default function VideoEditor() {
 					)}
 				</div>
 				<div
-					className="flex items-center gap-2 justify-self-end pr-3"
+					className="flex items-center gap-2 justify-self-end pe-3"
 					style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
 				>
 					<DropdownMenu
@@ -5124,7 +5124,7 @@ export default function VideoEditor() {
 												)}
 											</motion.span>
 										</motion.button>
-										<div className="ml-1.5 h-1.5 w-1.5 flex-shrink-0">
+										<div className="ms-1.5 h-1.5 w-1.5 flex-shrink-0">
 											{isActive && (
 												<motion.span
 													layoutId="rail-active-dot"
@@ -5564,7 +5564,7 @@ export default function VideoEditor() {
 							{/* Playback controls - centered */}
 							<div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
 								<div className="flex items-center gap-1.5 pointer-events-auto">
-									<span className="mr-1 text-[10px] font-medium tabular-nums text-muted-foreground">
+									<span className="me-1 text-[10px] font-medium tabular-nums text-muted-foreground">
 										{formatTime(timelinePlayheadTime)}
 									</span>
 									<Button
@@ -5585,7 +5585,7 @@ export default function VideoEditor() {
 											);
 										}}
 									>
-										<SkipBack className="w-3.5 h-3.5" weight="fill" />
+										<SkipBack className="w-3.5 h-3.5 rtl:rotate-180" weight="fill" />
 									</Button>
 									<Button
 										variant="ghost"
@@ -5616,15 +5616,15 @@ export default function VideoEditor() {
 											);
 										}}
 									>
-										<SkipForward className="w-3.5 h-3.5" weight="fill" />
+										<SkipForward className="w-3.5 h-3.5 rtl:rotate-180" weight="fill" />
 									</Button>
-									<span className="text-[10px] font-medium text-muted-foreground/70 tabular-nums ml-1">
+									<span className="text-[10px] font-medium text-muted-foreground/70 tabular-nums ms-1">
 										{formatTime(duration)}
 									</span>
 								</div>
 							</div>
 							{/* Right: collapse + volume */}
-							<div className="z-10 ml-auto flex items-center gap-2">
+							<div className="z-10 ms-auto flex items-center gap-2">
 								<Button
 									variant="ghost"
 									size="icon"
@@ -5663,7 +5663,7 @@ export default function VideoEditor() {
 									</button>
 									<div className="relative flex h-7 w-24 select-none items-center overflow-hidden rounded-full border border-foreground/[0.06] bg-editor-bg/80 shadow-[inset_0_1px_0_hsl(var(--foreground)/0.06)]">
 										<div
-											className="absolute inset-y-[3px] left-[3px] right-auto rounded-[10px] bg-foreground/[0.08]"
+											className="absolute inset-y-[3px] start-[3px] end-auto rounded-[10px] bg-foreground/[0.08]"
 											style={{
 												width:
 													previewVolume > 0
@@ -5673,9 +5673,9 @@ export default function VideoEditor() {
 										/>
 										<div
 											className="pointer-events-none absolute bottom-[18%] top-[18%] z-10 w-[2px] rounded-full bg-foreground/95 shadow-[0_0_10px_rgba(37,99,235,0.28)]"
-											style={{ left: `calc(${previewVolume * 100}% - 8px)` }}
+											style={{ insetInlineStart: `calc(${previewVolume * 100}% - 8px)` }}
 										/>
-										<span className="pointer-events-none relative z-10 pl-2 text-[10px] font-medium text-muted-foreground">
+										<span className="pointer-events-none relative z-10 ps-2 text-[10px] font-medium text-muted-foreground">
 											{Math.round(previewVolume * 100)}%
 										</span>
 										<input

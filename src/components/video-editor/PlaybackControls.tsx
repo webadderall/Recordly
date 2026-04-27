@@ -41,7 +41,7 @@ export default function PlaybackControls({
 	const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
 	return (
-		<div className="flex items-center gap-2 px-1.5 pr-3 py-0.5 rounded-full bg-black/75 backdrop-blur-md border border-white/10 transition-colors duration-300 hover:bg-black/80 hover:border-white/20">
+		<div className="flex items-center gap-2 px-1.5 pe-3 py-0.5 rounded-full bg-black/75 backdrop-blur-md border border-white/10 transition-colors duration-300 hover:bg-black/80 hover:border-white/20">
 			<Button
 				onClick={onTogglePlayPause}
 				size="icon"
@@ -60,7 +60,7 @@ export default function PlaybackControls({
 				)}
 			</Button>
 
-			<span className="text-[9px] font-medium text-muted-foreground tabular-nums w-[30px] text-right">
+			<span className="text-[9px] font-medium text-muted-foreground tabular-nums w-[30px] text-end">
 				{formatTime(currentTime)}
 			</span>
 
@@ -68,7 +68,7 @@ export default function PlaybackControls({
 				{/* Custom Track Background */}
 				<div className="absolute left-0 right-0 h-0.5 bg-foreground/10 rounded-full overflow-hidden">
 					<div
-						className="h-full bg-[#2563EB] rounded-full"
+						className="absolute inset-y-0 start-0 h-full bg-[#2563EB] rounded-full"
 						style={{ width: `${progress}%` }}
 					/>
 				</div>
@@ -86,10 +86,9 @@ export default function PlaybackControls({
 
 				{/* Custom Thumb (visual only, follows progress) */}
 				<div
-					className="absolute w-2.5 h-2.5 bg-foreground rounded-full pointer-events-none group-hover:scale-125 transition-transform duration-100"
+					className="absolute w-2.5 h-2.5 bg-foreground rounded-full pointer-events-none group-hover:scale-125 transition-transform duration-100 -translate-x-1/2 rtl:translate-x-1/2"
 					style={{
-						left: `${progress}%`,
-						transform: "translateX(-50%)",
+						insetInlineStart: `${progress}%`,
 					}}
 				/>
 			</div>
@@ -98,7 +97,7 @@ export default function PlaybackControls({
 				{formatTime(duration)}
 			</span>
 
-			<div className="flex items-center gap-1.5 pl-1">
+			<div className="flex items-center gap-1.5 ps-1">
 				{volume <= 0.001 ? (
 					<VolumeX className="h-3.5 w-3.5 text-muted-foreground" />
 				) : (
@@ -107,7 +106,7 @@ export default function PlaybackControls({
 				<div className="group relative flex h-6 w-20 items-center">
 					<div className="absolute left-0 right-0 h-0.5 rounded-full bg-foreground/10 overflow-hidden">
 						<div
-							className="h-full rounded-full bg-foreground/70"
+							className="absolute inset-y-0 start-0 h-full rounded-full bg-foreground/70"
 							style={{ width: `${volume * 100}%` }}
 						/>
 					</div>
@@ -121,8 +120,8 @@ export default function PlaybackControls({
 						className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
 					/>
 					<div
-						className="pointer-events-none absolute h-2.5 w-2.5 rounded-full bg-foreground transition-transform duration-100 group-hover:scale-125"
-						style={{ left: `${volume * 100}%`, transform: "translateX(-50%)" }}
+						className="pointer-events-none absolute h-2.5 w-2.5 rounded-full bg-foreground transition-transform duration-100 group-hover:scale-125 -translate-x-1/2 rtl:translate-x-1/2"
+						style={{ insetInlineStart: `${volume * 100}%` }}
 					/>
 				</div>
 			</div>

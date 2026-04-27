@@ -1,19 +1,21 @@
-import {
-	createContext,
-	type ReactNode,
-	useCallback,
-	useContext,
-	useEffect,
-	useMemo,
-	useState,
-} from "react";
+import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from "react";
+import { DirectionProvider } from "@/components/ui/direction";
 import {
 	type AppLocale,
 	DEFAULT_LOCALE,
 	I18N_NAMESPACES,
 	type I18nNamespace,
+	isRtlLocale,
 	SUPPORTED_LOCALES,
 } from "@/i18n/config";
+import arCommon from "@/i18n/locales/ar/common.json";
+import arDialogs from "@/i18n/locales/ar/dialogs.json";
+import arEditor from "@/i18n/locales/ar/editor.json";
+import arExtensions from "@/i18n/locales/ar/extensions.json";
+import arLaunch from "@/i18n/locales/ar/launch.json";
+import arSettings from "@/i18n/locales/ar/settings.json";
+import arShortcuts from "@/i18n/locales/ar/shortcuts.json";
+import arTimeline from "@/i18n/locales/ar/timeline.json";
 import enCommon from "@/i18n/locales/en/common.json";
 import enDialogs from "@/i18n/locales/en/dialogs.json";
 import enEditor from "@/i18n/locales/en/editor.json";
@@ -146,6 +148,16 @@ const messages: Record<AppLocale, LocaleBundle> = {
 		shortcuts: zhCNShortcuts,
 		extensions: zhCNExtensions,
 	},
+	ar: {
+		common: arCommon,
+		launch: arLaunch,
+		editor: arEditor,
+		timeline: arTimeline,
+		settings: arSettings,
+		dialogs: arDialogs,
+		shortcuts: arShortcuts,
+		extensions: arExtensions,
+	},
 } as const;
 
 interface I18nContextValue {
@@ -253,18 +265,23 @@ function translateForLocale(
 }
 
 export function I18nProvider({ children }: { children: ReactNode }) {
-	const [locale, setLocaleState] = useState<AppLocale>(getInitialLocale);
+	const [locale, setLocaleState] = useState<AppLocale>(() => {
+		const initial = getInitialLocale();
+		if (typeof window !== "undefined") {
+			document.documentElement.dir = isRtlLocale(initial) ? "rtl" : "ltr";
+			document.documentElement.lang = initial;
+		}
+		return initial;
+	});
 
 	const setLocale = useCallback((nextLocale: AppLocale) => {
-		setLocaleState(nextLocale);
 		if (typeof window !== "undefined") {
+			document.documentElement.dir = isRtlLocale(nextLocale) ? "rtl" : "ltr";
+			document.documentElement.lang = nextLocale;
 			window.localStorage.setItem(LOCALE_STORAGE_KEY, nextLocale);
 		}
+		setLocaleState(nextLocale);
 	}, []);
-
-	useEffect(() => {
-		document.documentElement.lang = locale;
-	}, [locale]);
 
 	const t = useCallback(
 		(key: string, fallback?: string, vars?: Record<string, string | number>) => {
@@ -282,7 +299,13 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 		[locale, setLocale, t],
 	);
 
-	return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
+	const dir = isRtlLocale(locale) ? "rtl" : "ltr";
+
+	return (
+		<I18nContext.Provider value={value}>
+			<DirectionProvider dir={dir}>{children}</DirectionProvider>
+		</I18nContext.Provider>
+	);
 }
 
 export function useI18n() {

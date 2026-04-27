@@ -1,3 +1,4 @@
+@import "@fontsource-variable/noto-sans-arabic";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -138,6 +139,10 @@
 	body .font-mono,
 	body kbd {
 		font-family: var(--app-font-sans);
+	}
+
+	[dir="rtl"] body {
+		font-family: "Noto Sans Arabic Variable", "Helvetica Neue", Helvetica, Arial, sans-serif;
 	}
 }
 
