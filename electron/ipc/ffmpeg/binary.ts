@@ -32,8 +32,8 @@ export function resolveSystemFfmpegBinaryPath(): string | null {
 	if (result.status === 0) {
 		const candidate = result.stdout
 			.split(/\r?\n/)
-.map((line: string) => line.trim())
-		.find((line: string) => line.length > 0);
+			.map((line: string) => line.trim())
+			.find((line: string) => line.length > 0);
 
 		if (candidate) {
 			return candidate;

@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { constants as fsConstants } from "node:fs";
 import fs from "node:fs/promises";
 import { BrowserWindow } from "electron";
-import type { CursorVisualType } from "../types";
+import { ensureNativeCursorMonitorBinary, getCursorMonitorExePath } from "../paths/binaries";
 import {
 	currentCursorVisualType,
 	nativeCursorMonitorOutputBuffer,
@@ -11,7 +11,7 @@ import {
 	setNativeCursorMonitorOutputBuffer,
 	setNativeCursorMonitorProcess,
 } from "../state";
-import { getCursorMonitorExePath, ensureNativeCursorMonitorBinary } from "../paths/binaries";
+import type { CursorVisualType } from "../types";
 
 export function emitCursorStateChanged(cursorType: CursorVisualType) {
 	BrowserWindow.getAllWindows().forEach((window) => {

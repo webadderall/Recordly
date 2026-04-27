@@ -4,10 +4,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 import { app } from "electron";
-import {
-	nativeHelperMigrationPromise,
-	setNativeHelperMigrationPromise,
-} from "../state";
+import { nativeHelperMigrationPromise, setNativeHelperMigrationPromise } from "../state";
 
 const execFileAsync = promisify(execFile);
 
@@ -122,7 +119,11 @@ export function getCursorMonitorExePath(): string {
 async function migrateLegacyNativeHelperBinaries(): Promise<void> {
 	const legacyToCurrentPaths: Array<[string, string]> = [
 		[
-			path.join(app.getPath("userData"), "native-tools", "openscreen-screencapturekit-helper"),
+			path.join(
+				app.getPath("userData"),
+				"native-tools",
+				"openscreen-screencapturekit-helper",
+			),
 			getNativeCaptureHelperBinaryPath(),
 		],
 		[

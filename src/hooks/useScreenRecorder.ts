@@ -1,9 +1,9 @@
 import { fixWebmDuration } from "@fix-webm-duration/fix";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { LINUX_PORTAL_SOURCE_ID } from "@/lib/constants";
 import { getEffectiveRecordingDurationMs } from "@/lib/mediaTiming";
 import { selectRecordingMimeType } from "./recordingMimeType";
-import { LINUX_PORTAL_SOURCE_ID } from "@/lib/constants";
 
 const TARGET_FRAME_RATE = 60;
 const TARGET_WIDTH = 3840;

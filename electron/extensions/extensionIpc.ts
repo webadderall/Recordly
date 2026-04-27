@@ -6,6 +6,7 @@
  */
 
 import { BrowserWindow, dialog, ipcMain, shell } from "electron";
+import { getErrorMessage } from "./errorUtils";
 import {
 	discoverExtensions,
 	getExtension,
@@ -23,7 +24,6 @@ import {
 	submitExtensionForReview,
 	updateReviewStatus,
 } from "./extensionMarketplace";
-import { getErrorMessage } from "./errorUtils";
 import type { ExtensionInfo, MarketplaceReviewStatus } from "./extensionTypes";
 
 /**

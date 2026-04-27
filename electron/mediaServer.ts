@@ -90,7 +90,10 @@ async function handleMediaRequest(
 				// Suffix range: bytes=-500
 				const suffixLength = Number.parseInt(match[2], 10);
 				if (Number.isNaN(suffixLength) || suffixLength <= 0) {
-					response.writeHead(416, { ...corsHeaders, "Content-Range": `bytes */${fileSize}` });
+					response.writeHead(416, {
+						...corsHeaders,
+						"Content-Range": `bytes */${fileSize}`,
+					});
 					response.end();
 					return;
 				}
@@ -101,7 +104,13 @@ async function handleMediaRequest(
 				end = match[2] ? Number.parseInt(match[2], 10) : fileSize - 1;
 			}
 
-			if (Number.isNaN(start) || Number.isNaN(end) || start > end || start >= fileSize || end >= fileSize) {
+			if (
+				Number.isNaN(start) ||
+				Number.isNaN(end) ||
+				start > end ||
+				start >= fileSize ||
+				end >= fileSize
+			) {
 				response.writeHead(416, { ...corsHeaders, "Content-Range": `bytes */${fileSize}` });
 				response.end();
 				return;

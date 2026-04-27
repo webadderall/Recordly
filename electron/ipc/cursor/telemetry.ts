@@ -1,24 +1,24 @@
 import fs from "node:fs/promises";
-import { getTelemetryPathForVideo, getScreen } from "../utils";
 import {
+	CURSOR_SAMPLE_INTERVAL_MS,
 	CURSOR_TELEMETRY_VERSION,
 	MAX_CURSOR_SAMPLES,
-	CURSOR_SAMPLE_INTERVAL_MS,
 } from "../constants";
-import type { CursorVisualType, CursorInteractionType, CursorTelemetryPoint } from "../types";
 import {
-	cursorCaptureInterval,
-	setCursorCaptureInterval,
-	cursorCaptureStartTimeMs,
 	activeCursorSamples,
-	pendingCursorSamples,
-	setPendingCursorSamples,
-	isCursorCaptureActive,
 	currentCursorVisualType,
+	cursorCaptureInterval,
+	cursorCaptureStartTimeMs,
+	isCursorCaptureActive,
 	linuxCursorScreenPoint,
+	pendingCursorSamples,
 	selectedSource,
 	selectedWindowBounds,
+	setCursorCaptureInterval,
+	setPendingCursorSamples,
 } from "../state";
+import type { CursorInteractionType, CursorTelemetryPoint, CursorVisualType } from "../types";
+import { getScreen, getTelemetryPathForVideo } from "../utils";
 
 export function clamp(value: number, min: number, max: number) {
 	return Math.min(max, Math.max(min, value));
@@ -78,7 +78,16 @@ export function getNormalizedCursorPoint() {
 }
 
 export function getHookCursorScreenPoint(
-	event: { x?: number; y?: number; data?: { x?: number; y?: number; screenX?: number; screenY?: number }; screenX?: number; screenY?: number } | null | undefined,
+	event:
+		| {
+				x?: number;
+				y?: number;
+				data?: { x?: number; y?: number; screenX?: number; screenY?: number };
+				screenX?: number;
+				screenY?: number;
+		  }
+		| null
+		| undefined,
 ): { x: number; y: number } | null {
 	const rawX = event?.x ?? event?.data?.x ?? event?.screenX ?? event?.data?.screenX;
 	const rawY = event?.y ?? event?.data?.y ?? event?.screenY ?? event?.data?.screenY;
@@ -184,6 +193,6 @@ export function startCursorSampling() {
 	setCursorCaptureInterval(setTimeout(tick, CURSOR_SAMPLE_INTERVAL_MS));
 }
 
+export { CURSOR_SAMPLE_INTERVAL_MS } from "../constants";
 // Re-export for consumers that use it from this module
 export { getTelemetryPathForVideo } from "../utils";
-export { CURSOR_SAMPLE_INTERVAL_MS } from "../constants";

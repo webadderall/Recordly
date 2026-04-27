@@ -1,35 +1,29 @@
-import { constants as fsConstants } from "node:fs";
-import { existsSync } from "node:fs";
+import { existsSync, constants as fsConstants } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { app } from "electron";
 import { RECORDINGS_DIR, USER_DATA_PATH } from "../../appPaths";
 import { isSupportedLocalMediaPath } from "../../mediaTypes";
 import {
-	PROJECT_FILE_EXTENSION,
 	LEGACY_PROJECT_FILE_EXTENSIONS,
-	PROJECTS_DIRECTORY_NAME,
-	PROJECT_THUMBNAIL_SUFFIX,
-	RECENT_PROJECTS_FILE,
 	MAX_RECENT_PROJECTS,
+	PROJECT_FILE_EXTENSION,
+	PROJECT_THUMBNAIL_SUFFIX,
+	PROJECTS_DIRECTORY_NAME,
+	RECENT_PROJECTS_FILE,
 	RECORDINGS_SETTINGS_FILE,
 } from "../constants";
-import type { ProjectLibraryEntry, RecordingSessionData } from "../types";
 import {
+	approvedLocalReadPaths,
 	currentProjectPath,
 	setCurrentProjectPath,
-	setCurrentVideoPath,
 	setCurrentRecordingSession,
-	approvedLocalReadPaths,
+	setCurrentVideoPath,
 	setCustomRecordingsDir,
 	setRecordingsDirLoaded,
 } from "../state";
-import {
-	normalizePath,
-	normalizeVideoSourcePath,
-	getRecordingsDir,
-} from "../utils";
-
+import type { ProjectLibraryEntry, RecordingSessionData } from "../types";
+import { getRecordingsDir, normalizePath, normalizeVideoSourcePath } from "../utils";
 
 export { normalizePath, normalizeVideoSourcePath };
 
@@ -51,7 +45,12 @@ export function isPathInsideDirectory(candidatePath: string, directoryPath: stri
 }
 
 export function isAllowedLocalReadPath(candidatePath: string) {
-	const allowedPrefixes = [RECORDINGS_DIR, USER_DATA_PATH, getAssetRootPath(), app.getPath("temp")];
+	const allowedPrefixes = [
+		RECORDINGS_DIR,
+		USER_DATA_PATH,
+		getAssetRootPath(),
+		app.getPath("temp"),
+	];
 	const normalizedCandidatePath = normalizePath(candidatePath);
 
 	return (
@@ -105,12 +104,16 @@ export async function resolveApprovedLocalMediaPath(candidatePath: string): Prom
 	return realPath;
 }
 
-export async function replaceApprovedSessionLocalReadPaths(filePaths: Array<string | null | undefined>) {
+export async function replaceApprovedSessionLocalReadPaths(
+	filePaths: Array<string | null | undefined>,
+) {
 	approvedLocalReadPaths.clear();
 	await Promise.all(filePaths.map((filePath) => rememberApprovedLocalReadPath(filePath)));
 }
 
-export async function resolveProjectMediaSources(project: unknown): Promise<
+export async function resolveProjectMediaSources(
+	project: unknown,
+): Promise<
 	| { success: true; videoPath: string; webcamPath: string | null }
 	| { success: false; message: string }
 > {
@@ -269,10 +272,15 @@ export async function buildProjectLibraryEntry(
 
 		return {
 			path: normalizedPath,
-			name: path.basename(normalizedPath).replace(
-			new RegExp(`\\.(${[PROJECT_FILE_EXTENSION, ...LEGACY_PROJECT_FILE_EXTENSIONS].join("|")})$`, "i"),
-			"",
-		),
+			name: path
+				.basename(normalizedPath)
+				.replace(
+					new RegExp(
+						`\\.(${[PROJECT_FILE_EXTENSION, ...LEGACY_PROJECT_FILE_EXTENSIONS].join("|")})$`,
+						"i",
+					),
+					"",
+				),
 			updatedAt: stats.mtimeMs,
 			thumbnailPath: thumbnailExists ? thumbnailPath : null,
 			isCurrent: Boolean(
@@ -383,4 +391,3 @@ export function isTrustedProjectPath(filePath?: string | null): boolean {
 	if (!filePath || !currentProjectPath) return false;
 	return normalizePath(filePath) === normalizePath(currentProjectPath);
 }
-

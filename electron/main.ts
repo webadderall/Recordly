@@ -14,6 +14,7 @@ import {
 	systemPreferences,
 	Tray,
 } from "electron";
+import { LINUX_PORTAL_SOURCE_ID } from "../src/lib/constants";
 import { RECORDINGS_DIR } from "./appPaths";
 import { showCursor } from "./cursorHider";
 import { registerExtensionIpcHandlers } from "./extensions/extensionIpc";
@@ -25,7 +26,6 @@ import {
 	killWindowsCaptureProcess,
 	registerIpcHandlers,
 } from "./ipc/handlers";
-import { LINUX_PORTAL_SOURCE_ID } from "../src/lib/constants";
 import { ensureMediaServer } from "./mediaServer";
 import { ensurePackagedRendererServer } from "./rendererServer";
 import type { UpdateToastPayload } from "./updater";

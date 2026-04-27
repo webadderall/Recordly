@@ -1,14 +1,14 @@
+import { execFile, spawnSync } from "node:child_process";
 import { constants as fsConstants } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { execFile, spawnSync } from "node:child_process";
 import { promisify } from "node:util";
 import { app } from "electron";
 import { getFfmpegBinaryPath } from "../ffmpeg/binary";
 import { getBundledWhisperExecutableCandidates } from "../paths/binaries";
-import { parseWhisperJsonCues, parseSrtCues, shouldRetryWhisperWithoutJson } from "./parser";
-import { normalizeVideoSourcePath } from "../utils";
 import { resolveRecordingSession } from "../project/session";
+import { normalizeVideoSourcePath } from "../utils";
+import { parseSrtCues, parseWhisperJsonCues, shouldRetryWhisperWithoutJson } from "./parser";
 
 const execFileAsync = promisify(execFile);
 

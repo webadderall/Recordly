@@ -15,7 +15,9 @@ export function getRecordingSessionManifestPath(videoPath: string) {
 	return path.join(path.dirname(videoPath), `${baseName}${RECORDING_SESSION_MANIFEST_SUFFIX}`);
 }
 
-export async function persistRecordingSessionManifest(session: RecordingSessionData): Promise<void> {
+export async function persistRecordingSessionManifest(
+	session: RecordingSessionData,
+): Promise<void> {
 	const normalizedVideoPath = normalizeVideoSourcePath(session.videoPath);
 	if (!normalizedVideoPath) {
 		return;
@@ -137,5 +139,3 @@ export async function resolveRecordingSession(
 		webcamPath: linkedWebcamPath,
 	};
 }
-
-

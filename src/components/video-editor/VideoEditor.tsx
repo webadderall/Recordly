@@ -3257,22 +3257,25 @@ export default function VideoEditor() {
 		);
 	}, []);
 
-	const handleAudioVolumeChange = useCallback((volume: number) => {
-		if (!selectedAudioId) {
-			return;
-		}
+	const handleAudioVolumeChange = useCallback(
+		(volume: number) => {
+			if (!selectedAudioId) {
+				return;
+			}
 
-		if (!Number.isFinite(volume)) {
-			return;
-		}
+			if (!Number.isFinite(volume)) {
+				return;
+			}
 
-		const nextVolume = Math.max(0, Math.min(1, volume));
-		setAudioRegions((prev) =>
-			prev.map((region) =>
-				region.id === selectedAudioId ? { ...region, volume: nextVolume } : region,
-			),
-		);
-	}, [selectedAudioId]);
+			const nextVolume = Math.max(0, Math.min(1, volume));
+			setAudioRegions((prev) =>
+				prev.map((region) =>
+					region.id === selectedAudioId ? { ...region, volume: nextVolume } : region,
+				),
+			);
+		},
+		[selectedAudioId],
+	);
 
 	const handleAudioDelete = useCallback(
 		(id: string) => {

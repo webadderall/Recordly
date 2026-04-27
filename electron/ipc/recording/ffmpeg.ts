@@ -1,12 +1,10 @@
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import { access } from "node:fs/promises";
+import { resolveLinuxWindowBounds } from "../cursor/bounds";
+import { ffmpegCaptureOutputBuffer } from "../state";
 import type { SelectedSource } from "../types";
-import {
-	ffmpegCaptureOutputBuffer,
-} from "../state";
 import { getScreen, parseWindowId } from "../utils";
 import { resolveWindowsCaptureDisplay } from "../windowsCaptureSelection";
-import { resolveLinuxWindowBounds } from "../cursor/bounds";
 
 export function getDisplayBoundsForSource(source: SelectedSource) {
 	return resolveWindowsCaptureDisplay(
@@ -169,7 +167,10 @@ export function waitForFfmpegCaptureStart(process: ChildProcessWithoutNullStream
 	});
 }
 
-export function waitForFfmpegCaptureStop(process: ChildProcessWithoutNullStreams, outputPath: string) {
+export function waitForFfmpegCaptureStop(
+	process: ChildProcessWithoutNullStreams,
+	outputPath: string,
+) {
 	return new Promise<string>((resolve, reject) => {
 		const onClose = async (code: number | null) => {
 			cleanup();

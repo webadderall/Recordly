@@ -1,21 +1,22 @@
 import { createRequire } from "node:module";
-import type { HookMouseEvent, UiohookLike, UiohookModuleNamespace, CursorInteractionType } from "../types";
 import {
-	isCursorCaptureActive,
 	cursorCaptureStartTimeMs,
-	interactionCaptureCleanup,
-	setInteractionCaptureCleanup,
 	hasLoggedInteractionHookFailure,
-	setHasLoggedInteractionHookFailure,
+	interactionCaptureCleanup,
+	isCursorCaptureActive,
 	lastLeftClick,
+	setHasLoggedInteractionHookFailure,
+	setInteractionCaptureCleanup,
 	setLastLeftClick,
 	setLinuxCursorScreenPoint,
 } from "../state";
-import {
-	getNormalizedCursorPoint,
-	getHookCursorScreenPoint,
-	pushCursorSample,
-} from "./telemetry";
+import type {
+	CursorInteractionType,
+	HookMouseEvent,
+	UiohookLike,
+	UiohookModuleNamespace,
+} from "../types";
+import { getHookCursorScreenPoint, getNormalizedCursorPoint, pushCursorSample } from "./telemetry";
 
 const nodeRequire = createRequire(import.meta.url);
 

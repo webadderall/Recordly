@@ -1,15 +1,15 @@
-import { createRequire } from "node:module";
 import fs from "node:fs/promises";
+import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { app } from "electron";
 import { RECORDINGS_DIR } from "../appPaths";
-import { RECORDINGS_SETTINGS_FILE, AUTO_RECORDING_PREFIX } from "./constants";
+import { AUTO_RECORDING_PREFIX, RECORDINGS_SETTINGS_FILE } from "./constants";
 import {
 	approvedLocalReadPaths,
 	customRecordingsDir,
-	setCustomRecordingsDir,
 	recordingsDirLoaded,
+	setCustomRecordingsDir,
 	setRecordingsDirLoaded,
 } from "./state";
 
@@ -121,4 +121,3 @@ export function approveUserPath(filePath: string | null | undefined): void {
 		// Ignore invalid paths; later reads will surface the underlying error.
 	}
 }
-

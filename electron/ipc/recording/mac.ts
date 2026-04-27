@@ -10,22 +10,22 @@ import {
 import { getFfmpegBinaryPath } from "../ffmpeg/binary";
 import { appendSyncedAudioFilter, getAudioSyncAdjustment } from "../ffmpeg/filters";
 import {
-	nativeScreenRecordingActive,
-	setNativeScreenRecordingActive,
-	setNativeCaptureProcess,
-	nativeCaptureOutputBuffer,
-	nativeCaptureTargetPath,
-	setNativeCaptureTargetPath,
-	nativeCaptureStopRequested,
-	setNativeCaptureStopRequested,
-	nativeCaptureSystemAudioPath,
-	setNativeCaptureSystemAudioPath,
-	nativeCaptureMicrophonePath,
-	setNativeCaptureMicrophonePath,
 	lastNativeCaptureDiagnostics,
-	setCurrentVideoPath,
-	setCurrentProjectPath,
+	nativeCaptureMicrophonePath,
+	nativeCaptureOutputBuffer,
+	nativeCaptureStopRequested,
+	nativeCaptureSystemAudioPath,
+	nativeCaptureTargetPath,
+	nativeScreenRecordingActive,
 	selectedSource,
+	setCurrentProjectPath,
+	setCurrentVideoPath,
+	setNativeCaptureMicrophonePath,
+	setNativeCaptureProcess,
+	setNativeCaptureStopRequested,
+	setNativeCaptureSystemAudioPath,
+	setNativeCaptureTargetPath,
+	setNativeScreenRecordingActive,
 } from "../state";
 import type { AudioSyncAdjustment } from "../types";
 import { isAutoRecordingPath, moveFileWithOverwrite } from "../utils";

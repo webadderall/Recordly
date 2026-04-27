@@ -1020,7 +1020,8 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 				: clampMediaTimeToDuration(clipTimelineTime, videoDuration);
 
 			const activeSpeedRegion = speedRegionsRef.current.find(
-				(region) => currentTime * 1000 >= region.startMs && currentTime * 1000 < region.endMs,
+				(region) =>
+					currentTime * 1000 >= region.startMs && currentTime * 1000 < region.endMs,
 			);
 			const targetPlaybackRate = activeSpeedRegion ? activeSpeedRegion.speed : 1;
 			const syncedPlaybackRate = getMediaSyncPlaybackRate({
