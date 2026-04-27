@@ -554,12 +554,13 @@ jobs:
           name: linux-x64-release
           path: release-assets/linux-x64
 
-      - name: Generate release asset checksums
+      - name: Stage release assets
         shell: bash
         run: |
           set -euo pipefail
           shopt -s nullglob
 
+          mkdir -p release-assets/upload
           assets=(
             release-assets/macos-x64/*.dmg
             release-assets/macos-x64/*.zip
@@ -581,17 +582,27 @@ jobs:
             exit 1
           fi
 
-          : > release-assets/SHA256SUMS.txt
           for file in "${assets[@]}"; do
-            digest="$(sha256sum "$file" | awk '{print $1}')"
-            printf '%s  %s\n' "$digest" "$(basename "$file")" >> release-assets/SHA256SUMS.txt
+            target="release-assets/upload/$(basename "$file")"
+            if [ -e "$target" ]; then
+              echo "Duplicate release asset name: $(basename "$file")"
+              exit 1
+            fi
+            cp "$file" "$target"
           done
-          sort -k2,2 release-assets/SHA256SUMS.txt -o release-assets/SHA256SUMS.txt
+
+      - name: Generate release asset checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd release-assets/upload
+          sha256sum * | sort -k2,2 > SHA256SUMS.txt
+          sha256sum -c SHA256SUMS.txt
 
       - name: Attest release assets
         uses: actions/attest@v4
         with:
-          subject-checksums: release-assets/SHA256SUMS.txt
+          subject-checksums: release-assets/upload/SHA256SUMS.txt
 
       - name: Upload release assets to GitHub
         shell: bash
@@ -600,20 +611,7 @@ jobs:
           shopt -s nullglob
 
           assets=(
-            release-assets/macos-x64/*.dmg
-            release-assets/macos-x64/*.zip
-            release-assets/macos-x64/*.blockmap
-            release-assets/macos-arm64/*.dmg
-            release-assets/macos-arm64/*.zip
-            release-assets/macos-arm64/*.blockmap
-            release-assets/macos-merged/latest-mac.yml
-            release-assets/windows-x64/*.exe
-            release-assets/windows-x64/*.blockmap
-            release-assets/windows-x64/latest*.yml
-            release-assets/linux-x64/*.AppImage
-            release-assets/linux-x64/*.blockmap
-            release-assets/linux-x64/latest-linux.yml
-            release-assets/SHA256SUMS.txt
+            release-assets/upload/*
           )
 
           if [ ${#assets[@]} -eq 0 ]; then
