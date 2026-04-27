@@ -9,6 +9,7 @@
 		"countdownDelay": "Countdown delay",
 		"noDelay": "No delay",
 		"record": "Record",
+		"detectingCapabilities": "Detecting system capabilities...",
 		"recordingFolder": "Recordings Path: {{path}}",
 		"chooseRecordingsFolder": "Choose recordings path",
 		"folderPath": "Path: /{{name}}/",

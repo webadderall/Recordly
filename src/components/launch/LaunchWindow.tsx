@@ -1180,7 +1180,7 @@ export function LaunchWindow() {
 				className={`${styles.recBtn} ${styles.electronNoDrag}`}
 				onClick={handleRecordButtonClick}
 				disabled={countdownActive || captureCapabilities === null}
-				title={t("recording.record")}
+				title={captureCapabilities === null ? t("recording.detectingCapabilities") : t("recording.record")}
 			>
 				<div className={styles.recDot} />
 			</button>

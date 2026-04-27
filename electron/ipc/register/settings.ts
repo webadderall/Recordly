@@ -24,6 +24,8 @@ import {
 const execFileAsync = promisify(execFile);
 // Cache the portal probe so repeated renderer requests do not keep spawning D-Bus tools.
 let linuxScreenCastPortalAvailablePromise: Promise<boolean> | null = null;
+let linuxScreenCastPortalProbeTimestamp: number | null = null;
+const LINUX_PORTAL_PROBE_CACHE_TTL_MS = 60000; // 1 minute
 
 /**
  * Normalizes a given window system environment variable into "wayland" or "x11".
@@ -71,6 +73,24 @@ async function getOptionalCommandOutput(command: string, args: string[]) {
 }
 
 /**
+ * A helper that resolves as soon as the first promise in the array succeeds,
+ * mimicking Promise.any for environments targeting older ES versions.
+ */
+function firstSuccess<T>(promises: Promise<T>[]): Promise<T> {
+	return new Promise((resolve, reject) => {
+		let rejectedCount = 0;
+		for (const p of promises) {
+			p.then(resolve).catch(() => {
+				rejectedCount++;
+				if (rejectedCount === promises.length) {
+					reject(new Error("All probes failed"));
+				}
+			});
+		}
+	});
+}
+
+/**
  * Probes the Linux system to determine if the ScreenCast portal is available.
  * On Wayland, we only prefer the portal capture flow if the ScreenCast portal is actually present.
  * Uses `gdbus`, `busctl`, and `dbus-send` in order to introspect the D-Bus interfaces.
@@ -81,41 +101,66 @@ async function probeLinuxScreenCastPortal() {
 		return false;
 	}
 
-	if (!linuxScreenCastPortalAvailablePromise) {
-		linuxScreenCastPortalAvailablePromise = (async () => {
-			const gdbusOutput = await getOptionalCommandOutput("gdbus", [
-				"introspect",
-				"--session",
-				"--dest",
-				"org.freedesktop.portal.Desktop",
-				"--object-path",
-				"/org/freedesktop/portal/desktop",
-			]);
-			if (gdbusOutput?.includes("org.freedesktop.portal.ScreenCast")) {
-				return true;
-			}
-
-			const busctlOutput = await getOptionalCommandOutput("busctl", [
-				"--user",
-				"introspect",
-				"org.freedesktop.portal.Desktop",
-				"/org/freedesktop/portal/desktop",
-			]);
-			if (busctlOutput?.includes("org.freedesktop.portal.ScreenCast")) {
-				return true;
-			}
-
-			const dbusSendOutput = await getOptionalCommandOutput("dbus-send", [
-				"--session",
-				"--dest=org.freedesktop.portal.Desktop",
-				"--type=method_call",
-				"--print-reply",
-				"/org/freedesktop/portal/desktop",
-				"org.freedesktop.DBus.Introspectable.Introspect",
-			]);
-			return dbusSendOutput?.includes("org.freedesktop.portal.ScreenCast") ?? false;
-		})();
+	const now = Date.now();
+	if (
+		linuxScreenCastPortalAvailablePromise &&
+		linuxScreenCastPortalProbeTimestamp &&
+		now - linuxScreenCastPortalProbeTimestamp < LINUX_PORTAL_PROBE_CACHE_TTL_MS
+	) {
+		return linuxScreenCastPortalAvailablePromise;
 	}
+
+	linuxScreenCastPortalAvailablePromise = (async () => {
+		try {
+			// Probing multiple introspection tools in parallel to reduce worst-case blocking time.
+			// Each probe is capped at 2.5s; the fastest success wins.
+			const probeGdbus = async () => {
+				const output = await getOptionalCommandOutput("gdbus", [
+					"introspect",
+					"--session",
+					"--dest",
+					"org.freedesktop.portal.Desktop",
+					"--object-path",
+					"/org/freedesktop/portal/desktop",
+				]);
+				if (output?.includes("org.freedesktop.portal.ScreenCast")) return true;
+				throw new Error("portal missing");
+			};
+
+			const probeBusctl = async () => {
+				const output = await getOptionalCommandOutput("busctl", [
+					"--user",
+					"introspect",
+					"org.freedesktop.portal.Desktop",
+					"/org/freedesktop/portal/desktop",
+				]);
+				if (output?.includes("org.freedesktop.portal.ScreenCast")) return true;
+				throw new Error("portal missing");
+			};
+
+			const probeDbusSend = async () => {
+				const output = await getOptionalCommandOutput("dbus-send", [
+					"--session",
+					"--dest=org.freedesktop.portal.Desktop",
+					"--type=method_call",
+					"--print-reply",
+					"/org/freedesktop/portal/desktop",
+					"org.freedesktop.DBus.Introspectable.Introspect",
+				]);
+				if (output?.includes("org.freedesktop.portal.ScreenCast")) return true;
+				throw new Error("portal missing");
+			};
+
+			const result = await firstSuccess([probeGdbus(), probeBusctl(), probeDbusSend()]);
+			linuxScreenCastPortalProbeTimestamp = Date.now();
+			return result;
+		} catch {
+			// If all probes fail, we don't cache the result permanently so we can try again later.
+			linuxScreenCastPortalAvailablePromise = null;
+			linuxScreenCastPortalProbeTimestamp = null;
+			return false;
+		}
+	})();
 
 	return linuxScreenCastPortalAvailablePromise;
 }
@@ -165,6 +210,8 @@ export function registerSettingsHandlers() {
 						thumbnail: null,
 						appIcon: null,
 						sourceType: "screen" as const,
+						appName: null,
+						windowTitle: null,
 					}
 				: null,
 		};
