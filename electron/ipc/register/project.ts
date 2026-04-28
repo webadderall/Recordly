@@ -225,7 +225,7 @@ export function registerProjectHandlers() {
 				return { success: true, message: "Could not reveal item, but opened directory." };
 			} catch (openError) {
 				console.error(`Error opening directory: ${path.dirname(filePath)}`, openError);
-				return { success: false, error: String(error) };
+				return { success: false, error: String(openError) };
 			}
 		}
 	});
@@ -592,10 +592,11 @@ export function registerProjectHandlers() {
 	ipcMain.handle(
 		"set-current-video-path",
 		async (_, path: string, options?: { preserveProjectPath?: boolean }) => {
-			setCurrentVideoPath(normalizeVideoSourcePath(path) ?? path);
-			approveUserPath(currentVideoPath);
-			const resolvedSession = (await resolveRecordingSession(currentVideoPath)) ?? {
-				videoPath: currentVideoPath!,
+			const normalizedPath = normalizeVideoSourcePath(path) ?? path;
+			setCurrentVideoPath(normalizedPath);
+			approveUserPath(normalizedPath);
+			const resolvedSession = (await resolveRecordingSession(normalizedPath)) ?? {
+				videoPath: normalizedPath,
 				webcamPath: null,
 				timeOffsetMs: 0,
 			};
@@ -631,14 +632,15 @@ export function registerProjectHandlers() {
 				webcamPath: normalizeVideoSourcePath(session.webcamPath ?? null),
 				timeOffsetMs: normalizeRecordingTimeOffsetMs(session.timeOffsetMs),
 			});
+			const session = currentRecordingSession;
 			await replaceApprovedSessionLocalReadPaths([
-				currentRecordingSession!.videoPath,
-				currentRecordingSession!.webcamPath,
+				session!.videoPath,
+				session!.webcamPath,
 			]);
 			if (!options?.preserveProjectPath) {
 				setCurrentProjectPath(null);
 			}
-			await persistRecordingSessionManifest(currentRecordingSession!);
+			await persistRecordingSessionManifest(session!);
 			return { success: true };
 		},
 	);
