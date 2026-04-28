@@ -405,12 +405,15 @@ interface Window {
 			message?: string;
 			error?: string;
 		}>;
-		setCurrentVideoPath: (path: string) => Promise<{ success: boolean }>;
+		setCurrentVideoPath: (
+			path: string,
+			options?: { preserveProjectPath?: boolean },
+		) => Promise<{ success: boolean; webcamPath: string | null }>;
 		setCurrentRecordingSession: (session: {
 			videoPath: string;
 			webcamPath?: string | null;
 			timeOffsetMs?: number;
-		}) => Promise<{ success: boolean }>;
+		}, options?: { preserveProjectPath?: boolean }) => Promise<{ success: boolean }>;
 		getCurrentRecordingSession: () => Promise<{
 			success: boolean;
 			session?: { videoPath: string; webcamPath?: string | null; timeOffsetMs?: number };

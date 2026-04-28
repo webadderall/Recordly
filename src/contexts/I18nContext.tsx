@@ -70,6 +70,14 @@ import zhCNLaunch from "@/i18n/locales/zh-CN/launch.json";
 import zhCNSettings from "@/i18n/locales/zh-CN/settings.json";
 import zhCNShortcuts from "@/i18n/locales/zh-CN/shortcuts.json";
 import zhCNTimeline from "@/i18n/locales/zh-CN/timeline.json";
+import zhTWCommon from "@/i18n/locales/zh-TW/common.json";
+import zhTWDialogs from "@/i18n/locales/zh-TW/dialogs.json";
+import zhTWEditor from "@/i18n/locales/zh-TW/editor.json";
+import zhTWExtensions from "@/i18n/locales/zh-TW/extensions.json";
+import zhTWLaunch from "@/i18n/locales/zh-TW/launch.json";
+import zhTWSettings from "@/i18n/locales/zh-TW/settings.json";
+import zhTWShortcuts from "@/i18n/locales/zh-TW/shortcuts.json";
+import zhTWTimeline from "@/i18n/locales/zh-TW/timeline.json";
 
 const LOCALE_STORAGE_KEY = "recordly.locale";
 
@@ -145,6 +153,16 @@ const messages: Record<AppLocale, LocaleBundle> = {
 		dialogs: zhCNDialogs,
 		shortcuts: zhCNShortcuts,
 		extensions: zhCNExtensions,
+	},
+		"zh-TW": {
+		common: zhTWCommon,
+		launch: zhTWLaunch,
+		editor: zhTWEditor,
+		timeline: zhTWTimeline,
+		settings: zhTWSettings,
+		dialogs: zhTWDialogs,
+		shortcuts: zhTWShortcuts,
+		extensions: zhTWExtensions,
 	},
 } as const;
 

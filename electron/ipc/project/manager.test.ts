@@ -81,12 +81,13 @@ describe("local media path policy", () => {
 		const videoPath = path.join(downloadsPath, "external-video.mp4");
 		await fs.mkdir(downloadsPath, { recursive: true });
 		await fs.writeFile(videoPath, "test-video");
+		const resolvedVideoPath = await fs.realpath(videoPath);
 
 		const { resolveApprovedLocalMediaPath } = await import("./manager");
 		const { isAllowedMediaPath } = await import("../../mediaServer");
 
 		expect(isAllowedMediaPath(videoPath)).toBe(false);
-		await expect(resolveApprovedLocalMediaPath(videoPath)).resolves.toBe(videoPath);
+		await expect(resolveApprovedLocalMediaPath(videoPath)).resolves.toBe(resolvedVideoPath);
 		expect(isAllowedMediaPath(videoPath)).toBe(true);
 	});
 
@@ -101,5 +102,19 @@ describe("local media path policy", () => {
 
 		await expect(resolveApprovedLocalMediaPath(textPath)).resolves.toBeNull();
 		expect(isAllowedMediaPath(textPath)).toBe(false);
+	});
+
+	it("preserves an existing project thumbnail when no replacement is provided", async () => {
+		const projectPath = path.join(tempRoot, "Projects", "demo.recordly");
+		const thumbnailDataUrl = `data:image/png;base64,${Buffer.from("png-thumbnail").toString("base64")}`;
+		await fs.mkdir(path.dirname(projectPath), { recursive: true });
+
+		const { getProjectThumbnailPath, saveProjectThumbnail } = await import("./manager");
+		const thumbnailPath = getProjectThumbnailPath(projectPath);
+
+		await saveProjectThumbnail(projectPath, thumbnailDataUrl);
+		await saveProjectThumbnail(projectPath, undefined);
+
+		await expect(fs.readFile(thumbnailPath, "utf8")).resolves.toBe("png-thumbnail");
 	});
 });

@@ -9,158 +9,39 @@ const IMAGE_FILE_PATTERN = /\.(avif|gif|jpe?g|png|svg|webp)$/i;
 const VIDEO_FILE_PATTERN = /\.(avi|m4v|mkv|mov|mp4|webm)$/i;
 
 export const BUILT_IN_WALLPAPERS: BuiltInWallpaper[] = [
-	{
-		id: "wallpaper-1",
-		label: "Wallpaper 1",
-		relativePath: "wallpapers/wallpaper1.jpg",
-		publicPath: "/wallpapers/wallpaper1.jpg",
-	},
-	{
-		id: "wallpaper-2",
-		label: "Wallpaper 2",
-		relativePath: "wallpapers/wallpaper2.jpg",
-		publicPath: "/wallpapers/wallpaper2.jpg",
-	},
-	{
-		id: "wallpaper-3",
-		label: "Wallpaper 3",
-		relativePath: "wallpapers/wallpaper3.jpg",
-		publicPath: "/wallpapers/wallpaper3.jpg",
-	},
-	{
-		id: "wallpaper-4",
-		label: "Wallpaper 4",
-		relativePath: "wallpapers/wallpaper4.jpg",
-		publicPath: "/wallpapers/wallpaper4.jpg",
-	},
-	{
-		id: "wallpaper-5",
-		label: "Wallpaper 5",
-		relativePath: "wallpapers/wallpaper5.jpg",
-		publicPath: "/wallpapers/wallpaper5.jpg",
-	},
-	{
-		id: "wallpaper-6",
-		label: "Wallpaper 6",
-		relativePath: "wallpapers/wallpaper6.jpg",
-		publicPath: "/wallpapers/wallpaper6.jpg",
-	},
-	{
-		id: "wallpaper-7",
-		label: "Wallpaper 7",
-		relativePath: "wallpapers/wallpaper7.jpg",
-		publicPath: "/wallpapers/wallpaper7.jpg",
-	},
-	{
-		id: "wallpaper-8",
-		label: "Wallpaper 8",
-		relativePath: "wallpapers/wallpaper8.jpg",
-		publicPath: "/wallpapers/wallpaper8.jpg",
-	},
-	{
-		id: "wallpaper-9",
-		label: "Wallpaper 9",
-		relativePath: "wallpapers/wallpaper9.jpg",
-		publicPath: "/wallpapers/wallpaper9.jpg",
-	},
-	{
-		id: "wallpaper-10",
-		label: "Wallpaper 10",
-		relativePath: "wallpapers/wallpaper10.jpg",
-		publicPath: "/wallpapers/wallpaper10.jpg",
-	},
-	{
-		id: "wallpaper-11",
-		label: "Wallpaper 11",
-		relativePath: "wallpapers/wallpaper11.jpg",
-		publicPath: "/wallpapers/wallpaper11.jpg",
-	},
-	{
-		id: "wallpaper-12",
-		label: "Wallpaper 12",
-		relativePath: "wallpapers/wallpaper12.jpg",
-		publicPath: "/wallpapers/wallpaper12.jpg",
-	},
-	{
-		id: "wallpaper-13",
-		label: "Wallpaper 13",
-		relativePath: "wallpapers/wallpaper13.jpg",
-		publicPath: "/wallpapers/wallpaper13.jpg",
-	},
-	{
-		id: "wallpaper-14",
-		label: "Wallpaper 14",
-		relativePath: "wallpapers/wallpaper14.jpg",
-		publicPath: "/wallpapers/wallpaper14.jpg",
-	},
-	{
-		id: "wallpaper-15",
-		label: "Wallpaper 15",
-		relativePath: "wallpapers/wallpaper15.jpg",
-		publicPath: "/wallpapers/wallpaper15.jpg",
-	},
-	{
-		id: "wallpaper-16",
-		label: "Wallpaper 16",
-		relativePath: "wallpapers/wallpaper16.jpg",
-		publicPath: "/wallpapers/wallpaper16.jpg",
-	},
-	{
-		id: "wallpaper-17",
-		label: "Wallpaper 17",
-		relativePath: "wallpapers/wallpaper17.jpg",
-		publicPath: "/wallpapers/wallpaper17.jpg",
-	},
-	{
-		id: "wallpaper-18",
-		label: "Wallpaper 18",
-		relativePath: "wallpapers/wallpaper18.jpg",
-		publicPath: "/wallpapers/wallpaper18.jpg",
-	},
-	{
-		id: "cityscape",
-		label: "Cityscape",
-		relativePath: "wallpapers/cityscape.jpg",
-		publicPath: "/wallpapers/cityscape.jpg",
-	},
-	{
-		id: "farmvalley",
-		label: "Farm Valley",
-		relativePath: "wallpapers/farmvalley.jpg",
-		publicPath: "/wallpapers/farmvalley.jpg",
-	},
-	{
-		id: "levels",
-		label: "Levels",
-		relativePath: "wallpapers/levels.jpg",
-		publicPath: "/wallpapers/levels.jpg",
-	},
-	{
-		id: "mountaintrees",
-		label: "Mountain Trees",
-		relativePath: "wallpapers/mountaintrees.jpg",
-		publicPath: "/wallpapers/mountaintrees.jpg",
-	},
-	{
-		id: "luisdelrio",
-		label: "Luis Del Rio",
-		relativePath: "wallpapers/luisdelrio.jpg",
-		publicPath: "/wallpapers/luisdelrio.jpg",
-	},
-	{
-		id: "wispysky",
-		label: "Wispy Sky",
-		relativePath: "wallpapers/wispysky.mp4",
-		publicPath: "/wallpapers/wispysky.mp4",
-	},
+	createWallpaperEntry("midnight-8.jpg", "Midnight 8"),
+	createWallpaperEntry("ipad-17-dark.jpg", "iPad 17 Dark"),
+	createWallpaperEntry("ipad-17-light.jpg", "iPad 17 Light"),
+	createWallpaperEntry("sequoia-blue.jpg", "Sequoia Blue"),
+	createWallpaperEntry("sequoia-blue-orange.jpg", "Sequoia Blue Orange"),
+	createWallpaperEntry("ventura.jpg", "Ventura"),
+	createWallpaperEntry("tahoe-light.jpg", "Tahoe Light"),
+	createWallpaperEntry("tahoe-dark.jpg", "Tahoe Dark"),
+	createWallpaperEntry("sonoma-clouds.jpg", "Sonoma Clouds"),
+	createWallpaperEntry("sonoma-light.jpg", "Sonoma Light"),
+	createWallpaperEntry("sonoma-dark.jpg", "Sonoma Dark"),
+	createWallpaperEntry("glassmorphism-3.jpg", "Glassmorphism 3"),
+	createWallpaperEntry("glassmorphism-4.jpg", "Glassmorphism 4"),
+	createWallpaperEntry("energy-19.jpg", "Energy 19"),
+	createWallpaperEntry("wallpaper3.jpg", "Wallpaper 3"),
+	createWallpaperEntry("wallpaper4.jpg", "Wallpaper 4"),
+	createWallpaperEntry("cityscape.jpg", "Cityscape"),
+	createWallpaperEntry("levels.jpg", "Levels"),
+	createWallpaperEntry("wallpaper10.jpg", "Wallpaper 10"),
+	createWallpaperEntry("ventura-dark.jpg", "Ventura Dark"),
+	createWallpaperEntry("sonoma-evening.jpg", "Sonoma Evening"),
+	createWallpaperEntry("sonoma-horizon.jpg", "Sonoma Horizon"),
+	createWallpaperEntry("iridescent-9.jpg", "Iridescent 9"),
+	createWallpaperEntry("energy-17.jpg", "Energy 17"),
+	createWallpaperEntry("wispysky.mp4", "Wispy Sky"),
 ];
 
 export const WALLPAPER_PATHS = BUILT_IN_WALLPAPERS.map((wallpaper) => wallpaper.publicPath);
 export const WALLPAPER_RELATIVE_PATHS = BUILT_IN_WALLPAPERS.map(
 	(wallpaper) => wallpaper.relativePath,
 );
-export const DEFAULT_WALLPAPER_PATH = "/wallpapers/wallpaper2.jpg";
-export const DEFAULT_WALLPAPER_RELATIVE_PATH = "wallpapers/wallpaper2.jpg";
+export const DEFAULT_WALLPAPER_PATH = "/wallpapers/midnight-8.jpg";
+export const DEFAULT_WALLPAPER_RELATIVE_PATH = "wallpapers/midnight-8.jpg";
 
 export function isVideoWallpaperSource(value: string): boolean {
 	if (!value) {
@@ -192,20 +73,14 @@ function toWallpaperLabel(fileName: string) {
 		.replace(/\b\w/g, (match) => match.toUpperCase());
 }
 
-function createWallpaperEntry(fileName: string): BuiltInWallpaper {
+function createWallpaperEntry(fileName: string, label = toWallpaperLabel(fileName)): BuiltInWallpaper {
 	const encodedFileName = encodeURIComponent(fileName);
 	return {
 		id: toWallpaperId(fileName) || `wallpaper-${encodedFileName.toLowerCase()}`,
-		label: toWallpaperLabel(fileName),
+		label,
 		relativePath: `wallpapers/${fileName}`,
 		publicPath: `/wallpapers/${encodedFileName}`,
 	};
-}
-
-function sortWallpaperFiles(fileNames: string[]) {
-	return [...fileNames].sort(
-		new Intl.Collator(undefined, { numeric: true, sensitivity: "base" }).compare,
-	);
 }
 
 export async function getAvailableWallpapers(): Promise<BuiltInWallpaper[]> {
@@ -221,18 +96,22 @@ export async function getAvailableWallpapers(): Promise<BuiltInWallpaper[]> {
 			return fallbackWallpapers;
 		}
 
-		const discoveredFiles = sortWallpaperFiles(
+		const discoveredFiles = new Set(
 			result.files.filter(
 				(fileName) =>
 					IMAGE_FILE_PATTERN.test(fileName) || VIDEO_FILE_PATTERN.test(fileName),
 			),
 		);
 
-		if (discoveredFiles.length === 0) {
+		if (discoveredFiles.size === 0) {
 			return fallbackWallpapers;
 		}
 
-		return discoveredFiles.map(createWallpaperEntry);
+		const curatedWallpapers = fallbackWallpapers.filter((wallpaper) =>
+			discoveredFiles.has(wallpaper.relativePath.replace(/^wallpapers\//, "")),
+		);
+
+		return curatedWallpapers.length > 0 ? curatedWallpapers : fallbackWallpapers;
 	} catch {
 		return fallbackWallpapers;
 	}

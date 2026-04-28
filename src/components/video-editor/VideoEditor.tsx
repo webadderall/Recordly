@@ -226,6 +226,13 @@ type SmokeExportConfig = {
 	fps?: ExportMp4FrameRate;
 };
 
+type SaveProjectOptions = {
+	silent?: boolean;
+	remountPreviewAfterSave?: boolean;
+	refreshLibraryAfterSave?: boolean;
+	captureThumbnail?: boolean;
+};
+
 async function writeSmokeExportReport(
 	outputPath: string | null,
 	report: Record<string, unknown>,
@@ -251,6 +258,7 @@ async function writeSmokeExportReport(
 
 const DEFAULT_MP4_EXPORT_FRAME_RATE: ExportMp4FrameRate = 30;
 const SOURCE_AUDIO_FALLBACK_TOAST_ID = "source-audio-fallback-error";
+const PROJECT_AUTOSAVE_DELAY_MS = 1000;
 
 function getEncodingModeBitrateMultiplier(encodingMode: ExportEncodingMode): number {
 	switch (encodingMode) {
@@ -695,6 +703,8 @@ export default function VideoEditor() {
 	const cropSnapshotRef = useRef<CropRegion | null>(null);
 	const mp4SupportRequestRef = useRef(0);
 	const smokeExportStartedRef = useRef(false);
+	const projectAutosaveTimeoutRef = useRef<number | null>(null);
+	const projectSaveQueueRef = useRef<Promise<unknown>>(Promise.resolve());
 	const [historyVersion, setHistoryVersion] = useState(0);
 	const timelineRef = useRef<TimelineEditorHandle>(null);
 
@@ -982,6 +992,19 @@ export default function VideoEditor() {
 		setPreviewVersion((version) => version + 1);
 	}, []);
 
+	const clearPendingProjectAutosave = useCallback(() => {
+		if (projectAutosaveTimeoutRef.current !== null) {
+			window.clearTimeout(projectAutosaveTimeoutRef.current);
+			projectAutosaveTimeoutRef.current = null;
+		}
+	}, []);
+
+	const queueProjectSave = useCallback((task: () => Promise<boolean>) => {
+		const run = projectSaveQueueRef.current.catch(() => undefined).then(task);
+		projectSaveQueueRef.current = run.catch(() => undefined);
+		return run;
+	}, []);
+
 	useEffect(() => {
 		return () => {
 			exporterRef.current?.cancel();
@@ -998,6 +1021,10 @@ export default function VideoEditor() {
 			if (pendingFreshRecordingAutoSuggestTimeoutRef.current !== null) {
 				window.clearTimeout(pendingFreshRecordingAutoSuggestTimeoutRef.current);
 				pendingFreshRecordingAutoSuggestTimeoutRef.current = null;
+			}
+			if (projectAutosaveTimeoutRef.current !== null) {
+				window.clearTimeout(projectAutosaveTimeoutRef.current);
+				projectAutosaveTimeoutRef.current = null;
 			}
 		};
 	}, []);
@@ -1561,20 +1588,24 @@ export default function VideoEditor() {
 			setCurrentTime(0);
 			setDuration(0);
 
-			setError(null);
-			setVideoSourcePath(sourcePath);
-			setVideoPath(await resolveVideoUrl(sourcePath));
-			setCurrentProjectPath(path ?? null);
-			pendingFreshRecordingAutoZoomPathRef.current = null;
-			if (normalizedEditor.webcam.sourcePath) {
-				await window.electronAPI.setCurrentRecordingSession?.({
-					videoPath: sourcePath,
-					webcamPath: normalizedEditor.webcam.sourcePath,
-					timeOffsetMs: normalizedEditor.webcam.timeOffsetMs,
-				});
-			} else {
-				await window.electronAPI.setCurrentVideoPath(sourcePath);
-			}
+				setError(null);
+				setVideoSourcePath(sourcePath);
+				setVideoPath(await resolveVideoUrl(sourcePath));
+				setCurrentProjectPath(path ?? null);
+				pendingFreshRecordingAutoZoomPathRef.current = null;
+				if (normalizedEditor.webcam.sourcePath) {
+					await window.electronAPI.setCurrentRecordingSession?.({
+						videoPath: sourcePath,
+						webcamPath: normalizedEditor.webcam.sourcePath,
+						timeOffsetMs: normalizedEditor.webcam.timeOffsetMs,
+					}, {
+						preserveProjectPath: Boolean(path),
+					});
+				} else {
+					await window.electronAPI.setCurrentVideoPath(sourcePath, {
+						preserveProjectPath: Boolean(path),
+					});
+				}
 
 			setWallpaper(normalizedEditor.wallpaper);
 			setShadowIntensity(normalizedEditor.shadowIntensity);
@@ -1711,9 +1742,11 @@ export default function VideoEditor() {
 						: webcamPath
 							? webcam.timeOffsetMs
 							: DEFAULT_WEBCAM_TIME_OFFSET_MS,
+			}, {
+				preserveProjectPath: Boolean(currentProjectPath),
 			});
 		},
-		[currentSourcePath, webcam.timeOffsetMs],
+		[currentProjectPath, currentSourcePath, webcam.timeOffsetMs],
 	);
 
 	const syncActiveVideoSource = useCallback(
@@ -1723,13 +1756,17 @@ export default function VideoEditor() {
 					videoPath: sourcePath,
 					webcamPath,
 					timeOffsetMs: webcam.timeOffsetMs,
+				}, {
+					preserveProjectPath: Boolean(currentProjectPath),
 				});
 				return;
 			}
 
-			await window.electronAPI.setCurrentVideoPath(sourcePath);
+			await window.electronAPI.setCurrentVideoPath(sourcePath, {
+				preserveProjectPath: Boolean(currentProjectPath),
+			});
 		},
-		[webcam.timeOffsetMs],
+		[currentProjectPath, webcam.timeOffsetMs],
 	);
 
 	const handleUploadWebcam = useCallback(async () => {
@@ -2237,83 +2274,106 @@ export default function VideoEditor() {
 	}, []);
 
 	const saveProject = useCallback(
-		async (forceSaveAs: boolean) => {
-			if (!currentSourcePath) {
-				toast.error("No video loaded");
-				return false;
-			}
+		async (forceSaveAs: boolean, options?: SaveProjectOptions) => {
+			clearPendingProjectAutosave();
+			return queueProjectSave(async () => {
+				if (!currentSourcePath) {
+					if (!options?.silent) {
+						toast.error("No video loaded");
+					}
+					return false;
+				}
 
-			try {
-				const projectData =
-					currentProjectSnapshot?.videoPath === currentSourcePath
-						? currentProjectSnapshot
-						: createProjectData(
-								currentSourcePath,
-								currentPersistedEditorState,
-								lastSavedSnapshot?.projectId ?? null,
-							);
+				const shouldCaptureThumbnail = options?.captureThumbnail ?? true;
+				const shouldRefreshLibrary = options?.refreshLibraryAfterSave ?? true;
+				const shouldRemountPreview = options?.remountPreviewAfterSave ?? true;
 
-				const fileNameBase =
-					currentSourcePath
-						.split(/[\\/]/)
-						.pop()
-						?.replace(/\.[^.]+$/, "") || `project-${Date.now()}`;
-				let targetProjectPath = forceSaveAs ? undefined : (currentProjectPath ?? undefined);
+				try {
+					const projectData =
+						currentProjectSnapshot?.videoPath === currentSourcePath
+							? currentProjectSnapshot
+							: createProjectData(
+									currentSourcePath,
+									currentPersistedEditorState,
+									lastSavedSnapshot?.projectId ?? null,
+								);
 
-				if (!forceSaveAs && !targetProjectPath) {
-					const activeProjectResult = await window.electronAPI.loadCurrentProjectFile();
-					if (activeProjectResult.success && activeProjectResult.path) {
-						targetProjectPath = activeProjectResult.path;
-						setCurrentProjectPath(activeProjectResult.path);
+					const fileNameBase =
+						currentSourcePath
+							.split(/[\\/]/)
+							.pop()
+							?.replace(/\.[^.]+$/, "") || `project-${Date.now()}`;
+					let targetProjectPath = forceSaveAs ? undefined : (currentProjectPath ?? undefined);
+
+					if (!forceSaveAs && !targetProjectPath) {
+						const activeProjectResult = await window.electronAPI.loadCurrentProjectFile();
+						if (activeProjectResult.success && activeProjectResult.path) {
+							targetProjectPath = activeProjectResult.path;
+							setCurrentProjectPath(activeProjectResult.path);
+						}
+					}
+
+					const thumbnailDataUrl = shouldCaptureThumbnail
+						? await captureProjectThumbnail()
+						: undefined;
+
+					const result = await window.electronAPI.saveProjectFile(
+						projectData,
+						fileNameBase,
+						targetProjectPath,
+						thumbnailDataUrl,
+					);
+
+					if (result.canceled) {
+						if (!options?.silent) {
+							toast.info("Project save canceled");
+						}
+						return false;
+					}
+
+					if (!result.success) {
+						if (!options?.silent) {
+							toast.error(result.message || "Failed to save project");
+						}
+						return false;
+					}
+
+					if (result.path) {
+						setCurrentProjectPath(result.path);
+					}
+					setLastSavedSnapshot(
+						cloneStructured(
+							createProjectData(
+								projectData.videoPath,
+								projectData.editor,
+								result.projectId ?? projectData.projectId ?? null,
+							),
+						),
+					);
+					if (shouldRefreshLibrary) {
+						await refreshProjectLibrary();
+					}
+
+					if (!options?.silent) {
+						toast.success(`Project saved to ${result.path}`);
+					}
+					return true;
+				} finally {
+					if (shouldRemountPreview) {
+						remountPreview();
 					}
 				}
-
-				const thumbnailDataUrl = await captureProjectThumbnail();
-
-				const result = await window.electronAPI.saveProjectFile(
-					projectData,
-					fileNameBase,
-					targetProjectPath,
-					thumbnailDataUrl,
-				);
-
-				if (result.canceled) {
-					toast.info("Project save canceled");
-					return false;
-				}
-
-				if (!result.success) {
-					toast.error(result.message || "Failed to save project");
-					return false;
-				}
-
-				if (result.path) {
-					setCurrentProjectPath(result.path);
-				}
-				setLastSavedSnapshot(
-					cloneStructured(
-						createProjectData(
-							projectData.videoPath,
-							projectData.editor,
-							result.projectId ?? projectData.projectId ?? null,
-						),
-					),
-				);
-				await refreshProjectLibrary();
-
-				toast.success(`Project saved to ${result.path}`);
-				return true;
-			} finally {
-				remountPreview();
-			}
+			});
 		},
 		[
 			captureProjectThumbnail,
+			clearPendingProjectAutosave,
 			currentSourcePath,
 			currentProjectPath,
 			currentProjectSnapshot,
 			currentPersistedEditorState,
 			lastSavedSnapshot?.projectId,
+			queueProjectSave,
 			refreshProjectLibrary,
 			remountPreview,
 		],
@@ -2341,6 +2401,27 @@ export default function VideoEditor() {
 			setProjectBrowserOpen(false);
 		}
 	}, [saveProject]);
+
+	useEffect(() => {
+		if (!currentProjectPath || !hasUnsavedChanges) {
+			clearPendingProjectAutosave();
+			return;
+		}
+
+		projectAutosaveTimeoutRef.current = window.setTimeout(() => {
+			projectAutosaveTimeoutRef.current = null;
+			void saveProject(false, {
+				silent: true,
+				remountPreviewAfterSave: false,
+				refreshLibraryAfterSave: false,
+				captureThumbnail: false,
+			});
+		}, PROJECT_AUTOSAVE_DELAY_MS);
+
+		return () => {
+			clearPendingProjectAutosave();
+		};
+	}, [clearPendingProjectAutosave, currentProjectPath, hasUnsavedChanges, saveProject]);
 
 	/**
 	 * Saves the current project directly into the projects library under a chosen name.

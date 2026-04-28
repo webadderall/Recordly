@@ -430,15 +430,15 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	}) => {
 		return ipcRenderer.invoke("generate-auto-captions", options);
 	},
-	setCurrentVideoPath: (path: string) => {
-		return ipcRenderer.invoke("set-current-video-path", path);
+	setCurrentVideoPath: (path: string, options?: { preserveProjectPath?: boolean }) => {
+		return ipcRenderer.invoke("set-current-video-path", path, options);
 	},
 	setCurrentRecordingSession: (session: {
 		videoPath: string;
 		webcamPath?: string | null;
 		timeOffsetMs?: number;
-	}) => {
-		return ipcRenderer.invoke("set-current-recording-session", session);
+	}, options?: { preserveProjectPath?: boolean }) => {
+		return ipcRenderer.invoke("set-current-recording-session", session, options);
 	},
 	getCurrentRecordingSession: () => {
 		return ipcRenderer.invoke("get-current-recording-session");

@@ -3,6 +3,7 @@ import { fromFileUrl, toFileUrl } from "@/components/video-editor/projectPersist
 const NOOP = () => undefined;
 const REMOTE_MEDIA_URL_PATTERN = /^(https?:|blob:|data:)/i;
 const LOOPBACK_MEDIA_HOSTS = new Set(["127.0.0.1", "localhost"]);
+const BUNDLED_ASSET_PATH_PREFIXES = ["/wallpapers/", "/app-icons/"];
 
 export function isAbsoluteLocalPath(resource: string) {
 	return (
@@ -10,6 +11,10 @@ export function isAbsoluteLocalPath(resource: string) {
 		/^[A-Za-z]:[\\/]/.test(resource) ||
 		/^\\\\[^\\]+\\[^\\]+/.test(resource)
 	);
+}
+
+function isBundledAssetPath(resource: string) {
+	return BUNDLED_ASSET_PATH_PREFIXES.some((prefix) => resource.startsWith(prefix));
 }
 
 function getLocalMediaServerPath(resource: string) {
@@ -42,6 +47,10 @@ export function getLocalFilePath(resource: string) {
 
 	if (/^file:\/\//i.test(resource)) {
 		return fromFileUrl(resource);
+	}
+
+	if (isBundledAssetPath(resource)) {
+		return null;
 	}
 
 	return isAbsoluteLocalPath(resource) ? resource : null;

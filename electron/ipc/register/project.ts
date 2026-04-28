@@ -580,14 +580,17 @@ export function registerProjectHandlers() {
 			};
 		}
 	});
-	ipcMain.handle("set-current-video-path", async (_, path: string) => {
-		setCurrentVideoPath(normalizeVideoSourcePath(path) ?? path);
-		approveUserPath(currentVideoPath);
-		const resolvedSession = (await resolveRecordingSession(currentVideoPath)) ?? {
-			videoPath: currentVideoPath!,
-			webcamPath: null,
-			timeOffsetMs: 0,
-		};
+
+	ipcMain.handle(
+		"set-current-video-path",
+		async (_, path: string, options?: { preserveProjectPath?: boolean }) => {
+			setCurrentVideoPath(normalizeVideoSourcePath(path) ?? path);
+			approveUserPath(currentVideoPath);
+			const resolvedSession = (await resolveRecordingSession(currentVideoPath)) ?? {
+				videoPath: currentVideoPath!,
+				webcamPath: null,
+				timeOffsetMs: 0,
+			};
 
 		setCurrentRecordingSession(resolvedSession);
 		await replaceApprovedSessionLocalReadPaths([
@@ -599,7 +602,9 @@ export function registerProjectHandlers() {
 			await persistRecordingSessionManifest(resolvedSession);
 		}
 
-		setCurrentProjectPath(null);
+		if (!options?.preserveProjectPath) {
+			setCurrentProjectPath(null);
+		}
 		return { success: true, webcamPath: resolvedSession.webcamPath ?? null };
 	});
 
@@ -608,6 +613,7 @@ export function registerProjectHandlers() {
 		async (
 			_,
 			session: { videoPath: string; webcamPath?: string | null; timeOffsetMs?: number },
+			options?: { preserveProjectPath?: boolean },
 		) => {
 			const normalizedVideoPath =
 				normalizeVideoSourcePath(session.videoPath) ?? session.videoPath;
@@ -621,7 +627,9 @@ export function registerProjectHandlers() {
 				currentRecordingSession!.videoPath,
 				currentRecordingSession!.webcamPath,
 			]);
-			setCurrentProjectPath(null);
+			if (!options?.preserveProjectPath) {
+				setCurrentProjectPath(null);
+			}
 			await persistRecordingSessionManifest(currentRecordingSession!);
 			return { success: true };
 		},

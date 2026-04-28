@@ -1,0 +1,26 @@
+{
+	"app": {
+		"name": "Recordly",
+		"editorTitle": "Recordly 編輯器",
+		"subtitle": "螢幕錄製與編輯",
+		"language": "語言",
+		"manageRecordings": "打開錄製影像文件夾"
+	},
+	"actions": {
+		"cancel": "取消",
+		"close": "關閉",
+		"export": "導出",
+		"load": "讀取",
+		"redo": "重做",
+		"reset": "重置",
+		"save": "保存",
+		"undo": "撤銷",
+		"delete": "刪除",
+		"done": "完成"
+	},
+	"errors": {
+		"invalidFileType": "無效的檔案類型",
+		"failedToUploadImage": "上傳圖片失敗",
+		"fileReadError": "讀取檔案時出錯。"
+	}
+}

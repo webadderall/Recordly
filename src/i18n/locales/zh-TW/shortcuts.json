@@ -1,0 +1,16 @@
+{
+	"actions": {
+		"addZoom": "新增縮放",
+		"addTrim": "新增修剪",
+		"addSpeed": "新增速度",
+		"addAnnotation": "新增註解",
+		"addKeyframe": "新增關鍵影格",
+		"deleteSelected": "刪除所選項目",
+		"playPause": "播放或暫停",
+		"cycleForward": "往前切換註解",
+		"cycleBackward": "往後切換註解",
+		"deleteSelectedAlt": "刪除所選項目（Alt）",
+		"panTimeline": "平移時間軸",
+		"zoomTimeline": "縮放時間軸"
+	}
+}

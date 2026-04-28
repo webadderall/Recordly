@@ -67,19 +67,36 @@ export async function isAllowedLocalMediaPath(candidatePath: string) {
 	return isAllowedLocalReadPath(normalizedCandidatePath);
 }
 
+async function collectApprovedLocalReadPaths(filePath?: string | null): Promise<string[]> {
+	const normalizedPath = normalizeVideoSourcePath(filePath);
+	if (!normalizedPath) {
+		return [];
+	}
+
+	const approvedPaths = [normalizePath(normalizedPath)];
+
+	try {
+		const realPath = await fs.realpath(approvedPaths[0]);
+		const normalizedRealPath = normalizePath(realPath);
+		if (!approvedPaths.includes(normalizedRealPath)) {
+			approvedPaths.push(normalizedRealPath);
+		}
+	} catch {
+		// Ignore missing files; the eventual read will surface the real error.
+	}
+
+	return approvedPaths;
+}
+
 export async function rememberApprovedLocalReadPath(filePath?: string | null) {
 	const normalizedPath = normalizeVideoSourcePath(filePath);
 	if (!normalizedPath) {
 		return;
 	}
 
-	const resolvedPath = normalizePath(normalizedPath);
-	approvedLocalReadPaths.add(resolvedPath);
-
-	try {
-		approvedLocalReadPaths.add(await fs.realpath(resolvedPath));
-	} catch {
-		// Ignore missing files; the eventual read will surface the real error.
+	const approvedPaths = await collectApprovedLocalReadPaths(normalizedPath);
+	for (const approvedPath of approvedPaths) {
+		approvedLocalReadPaths.add(approvedPath);
 	}
 }
 
@@ -100,15 +117,28 @@ export async function resolveApprovedLocalMediaPath(candidatePath: string): Prom
 		return null;
 	}
 
-	await rememberApprovedLocalReadPath(realPath);
+	await rememberApprovedLocalReadPath(candidatePath);
 	return realPath;
 }
 
 export async function replaceApprovedSessionLocalReadPaths(
 	filePaths: Array<string | null | undefined>,
 ) {
+	const nextApprovedPaths = new Set<string>();
+	const approvedPathLists = await Promise.all(
+		filePaths.map((filePath) => collectApprovedLocalReadPaths(filePath)),
+	);
+
+	for (const approvedPathList of approvedPathLists) {
+		for (const approvedPath of approvedPathList) {
+			nextApprovedPaths.add(approvedPath);
+		}
+	}
+
 	approvedLocalReadPaths.clear();
-	await Promise.all(filePaths.map((filePath) => rememberApprovedLocalReadPath(filePath)));
+	for (const approvedPath of nextApprovedPaths) {
+		approvedLocalReadPaths.add(approvedPath);
+	}
 }
 
 export async function resolveProjectMediaSources(
@@ -199,6 +229,10 @@ export function getProjectThumbnailPath(projectPath: string) {
 
 export async function saveProjectThumbnail(projectPath: string, thumbnailDataUrl?: string | null) {
 	const thumbnailPath = getProjectThumbnailPath(projectPath);
+	if (thumbnailDataUrl === undefined) {
+		return existsSync(thumbnailPath) ? thumbnailPath : null;
+	}
+
 	if (!thumbnailDataUrl) {
 		await fs.rm(thumbnailPath, { force: true }).catch(() => undefined);
 		return null;
