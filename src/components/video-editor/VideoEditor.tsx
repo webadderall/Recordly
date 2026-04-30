@@ -226,6 +226,57 @@ type SmokeExportConfig = {
 	fps?: ExportMp4FrameRate;
 };
 
+const EXPORT_BLOB_STREAM_CHUNK_BYTES = 16 * 1024 * 1024;
+
+async function streamExportBlobToTempFile(blob: Blob, extension: string): Promise<string | null> {
+	if (
+		typeof window === "undefined" ||
+		!window.electronAPI?.openExportStream ||
+		!window.electronAPI?.writeExportStreamChunk ||
+		!window.electronAPI?.closeExportStream
+	) {
+		return null;
+	}
+
+	const openResult = await window.electronAPI.openExportStream({ extension });
+	if (!openResult.success || !openResult.streamId || !openResult.tempPath) {
+		throw new Error(openResult.error || "Failed to open export stream");
+	}
+
+	const { streamId } = openResult;
+	let position = 0;
+
+	try {
+		while (position < blob.size) {
+			const chunk = blob.slice(position, position + EXPORT_BLOB_STREAM_CHUNK_BYTES);
+			const chunkBuffer = await chunk.arrayBuffer();
+			const writeResult = await window.electronAPI.writeExportStreamChunk(
+				streamId,
+				position,
+				new Uint8Array(chunkBuffer),
+			);
+			if (!writeResult.success) {
+				throw new Error(writeResult.error || "Failed to write export stream chunk");
+			}
+			position += chunkBuffer.byteLength;
+		}
+
+		const closeResult = await window.electronAPI.closeExportStream(streamId);
+		if (!closeResult.success || !closeResult.tempPath) {
+			throw new Error(closeResult.error || "Failed to close export stream");
+		}
+
+		return closeResult.tempPath;
+	} catch (error) {
+		try {
+			await window.electronAPI.closeExportStream(streamId, { abort: true });
+		} catch {
+			// Best-effort cleanup; preserve the original error below.
+		}
+		throw error;
+	}
+}
+
 type SaveProjectOptions = {
 	silent?: boolean;
 	remountPreviewAfterSave?: boolean;
@@ -1005,6 +1056,43 @@ export default function VideoEditor() {
 		return run;
 	}, []);
 
+	const saveBlobExport = useCallback(
+		async (blob: Blob, fileName: string, outputPath: string | null = null) => {
+			const extension = fileName.split(".").pop()?.toLowerCase() || "bin";
+
+			try {
+				const tempFilePath = await streamExportBlobToTempFile(blob, extension);
+				if (tempFilePath) {
+					return {
+						saveResult: await window.electronAPI.finalizeExportedVideo({
+							tempPath: tempFilePath,
+							fileName,
+							outputPath,
+						}),
+						pendingSave: {
+							fileName,
+							tempFilePath,
+						} satisfies PendingExportSave,
+					};
+				}
+			} catch (error) {
+				console.warn("[export] Falling back to in-memory blob save", error);
+			}
+
+			const arrayBuffer = await blob.arrayBuffer();
+			return {
+				saveResult: outputPath
+					? await window.electronAPI.writeExportedVideoToPath(arrayBuffer, outputPath)
+					: await window.electronAPI.saveExportedVideo(arrayBuffer, fileName),
+				pendingSave: {
+					fileName,
+					arrayBuffer,
+				} satisfies PendingExportSave,
+			};
+		},
+		[],
+	);
+
 	useEffect(() => {
 		return () => {
 			exporterRef.current?.cancel();
@@ -1398,6 +1486,7 @@ export default function VideoEditor() {
 				borderRadius,
 				padding,
 				frame,
+				cropRegion,
 				webcam,
 				zoomRegions,
 				trimRegions,
@@ -1446,6 +1535,7 @@ export default function VideoEditor() {
 			cursorSway,
 			borderRadius,
 			padding,
+			cropRegion,
 			webcam,
 			zoomRegions,
 			trimRegions,
@@ -4059,21 +4149,18 @@ export default function VideoEditor() {
 					const result = await gifExporter.export();
 
 					if (result.success && result.blob) {
-						const arrayBuffer = await result.blob.arrayBuffer();
 						const timestamp = Date.now();
 						const fileName = `export-${timestamp}.gif`;
 						markExportAsSaving();
 
-						const saveResult =
-							smokeExportConfig.enabled && smokeExportConfig.outputPath
-								? await window.electronAPI.writeExportedVideoToPath(
-										arrayBuffer,
-										smokeExportConfig.outputPath,
-									)
-								: await window.electronAPI.saveExportedVideo(arrayBuffer, fileName);
+						const { saveResult, pendingSave } = await saveBlobExport(
+							result.blob,
+							fileName,
+							smokeExportConfig.enabled ? smokeExportConfig.outputPath : null,
+						);
 
 						if (saveResult.canceled) {
-							pendingExportSaveRef.current = { arrayBuffer, fileName };
+							pendingExportSaveRef.current = pendingSave;
 							setHasPendingExportSave(true);
 							setExportError(
 								"Save dialog canceled. Click Save Again to save without re-rendering.",
@@ -4273,20 +4360,16 @@ export default function VideoEditor() {
 							});
 							pendingOnCancel = { fileName, tempFilePath: result.tempFilePath };
 						} else if (result.blob) {
-							// Legacy fallback: small exports may still surface a Blob (GIF,
-							// smoke tests in non-Electron environments, etc.).
-							const arrayBuffer = await result.blob.arrayBuffer();
-							saveResult =
-								smokeExportConfig.enabled && smokeExportConfig.outputPath
-									? await window.electronAPI.writeExportedVideoToPath(
-											arrayBuffer,
-											smokeExportConfig.outputPath,
-										)
-									: await window.electronAPI.saveExportedVideo(
-											arrayBuffer,
-											fileName,
-										);
-							pendingOnCancel = { fileName, arrayBuffer };
+							// Legacy fallback: some export paths still surface a Blob, but in
+							// Electron we stream it into a temp file first so save/finalize
+							// never requires a giant renderer ArrayBuffer.
+							const blobSave = await saveBlobExport(
+								result.blob,
+								fileName,
+								smokeExportConfig.enabled ? smokeExportConfig.outputPath : null,
+							);
+							saveResult = blobSave.saveResult;
+							pendingOnCancel = blobSave.pendingSave;
 						} else {
 							saveResult = { success: false, message: "Export produced no output" };
 							pendingOnCancel = { fileName };
