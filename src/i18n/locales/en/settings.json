@@ -120,6 +120,7 @@
 		"generateFull": "Generate Captions",
 		"regenerateFull": "Regenerate Captions",
 		"clearFull": "Clear Captions",
+		"editSaved": "Caption updated",
 		"fontSettings": "Font Settings",
 		"defaultFont": "Default",
 		"fontFamily": "Font",

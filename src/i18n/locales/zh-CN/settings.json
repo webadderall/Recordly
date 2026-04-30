@@ -120,6 +120,7 @@
 		"generateFull": "生成字幕",
 		"regenerateFull": "重新生成字幕",
 		"clearFull": "清除字幕",
+		"editSaved": "字幕已更新",
 		"fontSettings": "字体设置",
 		"defaultFont": "默认",
 		"fontFamily": "字体",
