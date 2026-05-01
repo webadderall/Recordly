@@ -9,15 +9,11 @@ Language: EN | [简中](README.zh-CN.md)
   <img src="https://img.shields.io/badge/open%20source-AGPL3.0-2563eb?style=for-the-badge" alt="AGPL 3.0 license" />
 </p>
 
-### Create polished, pro-grade screen recordings.
+### Create polished screen recordings without editing.
 [Recordly](https://www.recordly.dev) is an **open-source screen recorder** and editor for **walkthroughs, demos, product videos**, and more. 
 **Accepting PRs.** [Donate](https://ko-fi.com/webadderall/goal?g=0)
 
-<p align="center">
-  <img src="https://i.postimg.cc/8CrQtGJf/Screenshot-2026-04-30-at-5-11-52-pm.png" width="700" alt="Recordly recording interface screenshot">
-</p>
-
-https://github.com/user-attachments/assets/c328cb35-fbb3-46c1-8cb5-504f8910705f
+https://github.com/user-attachments/assets/9b66c71d-ac97-49ff-a0c9-63ac26edf2e4
 
 ---
 
