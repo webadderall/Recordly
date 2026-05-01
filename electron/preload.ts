@@ -293,6 +293,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	resumeNativeScreenRecording: () => {
 		return ipcRenderer.invoke("resume-native-screen-recording");
 	},
+	pauseCursorCapture: () => {
+		return ipcRenderer.invoke("pause-cursor-capture");
+	},
+	resumeCursorCapture: () => {
+		return ipcRenderer.invoke("resume-cursor-capture");
+	},
 	startFfmpegRecording: (source: ProcessedDesktopSource) => {
 		return ipcRenderer.invoke("start-ffmpeg-recording", source);
 	},

@@ -2,7 +2,6 @@ import { createRequire } from "node:module";
 import type { HookMouseEvent, UiohookLike, UiohookModuleNamespace, CursorInteractionType } from "../types";
 import {
 	isCursorCaptureActive,
-	cursorCaptureStartTimeMs,
 	interactionCaptureCleanup,
 	setInteractionCaptureCleanup,
 	hasLoggedInteractionHookFailure,
@@ -13,7 +12,9 @@ import {
 } from "../state";
 import {
 	getNormalizedCursorPoint,
+	getCursorCaptureElapsedMs,
 	getHookCursorScreenPoint,
+	isCursorCapturePaused,
 	pushCursorSample,
 } from "./telemetry";
 
@@ -119,7 +120,7 @@ export async function startInteractionCapture() {
 		}
 
 		const onMouseDown = (event: HookMouseEvent) => {
-			if (!isCursorCaptureActive) {
+			if (!isCursorCaptureActive || isCursorCapturePaused()) {
 				return;
 			}
 
@@ -128,7 +129,7 @@ export async function startInteractionCapture() {
 				return;
 			}
 
-			const timeMs = Date.now() - cursorCaptureStartTimeMs;
+			const timeMs = getCursorCaptureElapsedMs();
 			const button = getHookMouseButton(event);
 			let interactionType: CursorInteractionType = "click";
 
@@ -157,7 +158,7 @@ export async function startInteractionCapture() {
 		};
 
 		const onMouseUp = () => {
-			if (!isCursorCaptureActive) {
+			if (!isCursorCaptureActive || isCursorCapturePaused()) {
 				return;
 			}
 
@@ -166,12 +167,16 @@ export async function startInteractionCapture() {
 				return;
 			}
 
-			const timeMs = Date.now() - cursorCaptureStartTimeMs;
+			const timeMs = getCursorCaptureElapsedMs();
 			pushCursorSample(point.cx, point.cy, timeMs, "mouseup");
 		};
 
 		const onMouseMove = (event: HookMouseEvent) => {
-			if (process.platform !== "linux" || !isCursorCaptureActive) {
+			if (
+				process.platform !== "linux" ||
+				!isCursorCaptureActive ||
+				isCursorCapturePaused()
+			) {
 				return;
 			}
 

@@ -151,6 +151,16 @@ interface Window {
 			message?: string;
 			error?: string;
 		}>;
+		pauseCursorCapture: () => Promise<{
+			success: boolean;
+			message?: string;
+			error?: string;
+		}>;
+		resumeCursorCapture: () => Promise<{
+			success: boolean;
+			message?: string;
+			error?: string;
+		}>;
 		startFfmpegRecording: (
 			source: ProcessedDesktopSource,
 		) => Promise<{ success: boolean; path?: string; message?: string; error?: string }>;
