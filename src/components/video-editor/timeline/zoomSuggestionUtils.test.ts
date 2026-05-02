@@ -6,8 +6,13 @@ import {
 } from "./zoomSuggestionUtils";
 import type { CursorTelemetryPoint } from "../types";
 
-function makeClick(timeMs: number, cx = 0.5, cy = 0.5): CursorTelemetryPoint {
-	return { timeMs, cx, cy, interactionType: "click" };
+function makeClick(
+	timeMs: number,
+	cx = 0.5,
+	cy = 0.5,
+	interactionType: CursorTelemetryPoint["interactionType"] = "click",
+): CursorTelemetryPoint {
+	return { timeMs, cx, cy, interactionType };
 }
 
 function makeMove(timeMs: number, cx = 0.5, cy = 0.5): CursorTelemetryPoint {
@@ -56,6 +61,24 @@ describe("buildInteractionZoomSuggestions (click-cluster logic)", () => {
 		expect(result.status).toBe("ok");
 		expect(result.suggestions).toHaveLength(1);
 	});
+
+	it.each(["right-click", "middle-click"] as const)(
+		"accepts %s telemetry like a standard click",
+		(interactionType) => {
+			const result = buildInteractionZoomSuggestions({
+				cursorTelemetry: withMoves([makeClick(5_000, 0.5, 0.5, interactionType)], TOTAL_MS),
+				totalMs: TOTAL_MS,
+				defaultDurationMs: 3_000,
+			});
+
+			expect(result.status).toBe("ok");
+			expect(result.suggestions).toHaveLength(1);
+
+			const [suggestion] = result.suggestions;
+			expect(suggestion.start).toBe(5_000 - CLICK_CLUSTER_PAD_MS);
+			expect(suggestion.end).toBe(5_000 + CLICK_CLUSTER_PAD_MS);
+		},
+	);
 
 	it("merges two clicks within 2500ms into one zoom track", () => {
 		const telemetry = withMoves(

@@ -43,6 +43,18 @@ export interface InteractionZoomSuggestionResult {
 export const CLICK_CLUSTER_MERGE_GAP_MS = 2500;
 /** Padding added before the first click and after the last click in a cluster. */
 export const CLICK_CLUSTER_PAD_MS = 500;
+const EXPLICIT_CLICK_TYPES = new Set<NonNullable<CursorTelemetryPoint["interactionType"]>>([
+	"click",
+	"double-click",
+	"right-click",
+	"middle-click",
+]);
+
+function isExplicitClickType(
+	interactionType: CursorTelemetryPoint["interactionType"],
+): interactionType is NonNullable<CursorTelemetryPoint["interactionType"]> {
+	return typeof interactionType === "string" && EXPLICIT_CLICK_TYPES.has(interactionType);
+}
 
 function normalizeTelemetrySample(
 	sample: CursorTelemetryPoint,
@@ -188,9 +200,7 @@ export function detectInteractionCandidates(
 	samples: CursorTelemetryPoint[],
 ): CursorInteractionCandidate[] {
 	// --- Phase 1: Explicit interaction events (from uiohook telemetry) ---
-	const clickEvents = samples.filter(
-		(s) => s.interactionType && s.interactionType !== "move" && s.interactionType !== "mouseup",
-	);
+	const clickEvents = samples.filter((sample) => isExplicitClickType(sample.interactionType));
 
 	const explicitInteractionCandidates: CursorInteractionCandidate[] = [];
 
@@ -354,10 +364,7 @@ export function buildInteractionZoomSuggestions(params: {
 
 	if (
 		normalizedSamples.length === 1 &&
-		normalizedSamples[0].interactionType !== "click" &&
-		normalizedSamples[0].interactionType !== "double-click" &&
-		normalizedSamples[0].interactionType !== "right-click" &&
-		normalizedSamples[0].interactionType !== "middle-click"
+		!isExplicitClickType(normalizedSamples[0].interactionType)
 	) {
 		return { status: "no-telemetry", suggestions: [] };
 	}
