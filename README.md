@@ -167,7 +167,7 @@ Browse and install community extensions from the [Recordly Marketplace](https://
 
 Prebuilt releases are available at:
 
-https://github.com/webadderall/Recordly/releases
+https://github.com/webadderallorg/Recordly/releases
 
 ---
 
@@ -200,7 +200,7 @@ sudo apt install build-essential cmake libx11-dev libxtst-dev libxrandr-dev libx
 ### Steps
 
 ```bash
-git clone https://github.com/webadderall/Recordly.git recordly
+git clone https://github.com/webadderallorg/Recordly.git recordly
 cd recordly
 npm install
 npm run dev
@@ -357,7 +357,7 @@ See `CONTRIBUTING.md` for guidelines.
 
 Bug reports and feature requests:
 
-https://github.com/webadderall/Recordly/issues
+https://github.com/webadderallorg/Recordly/issues
 
 Pull requests are welcome.
 
