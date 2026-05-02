@@ -5,6 +5,14 @@ import electron from "vite-plugin-electron/simple";
 
 // https://vitejs.dev/config/
 export default defineConfig({
+	server: {
+		watch: {
+			awaitWriteFinish: {
+				stabilityThreshold: 300,
+				pollInterval: 100,
+			},
+		},
+	},
 	plugins: [
 		react(),
 		electron({
@@ -13,16 +21,8 @@ export default defineConfig({
 				entry: "electron/main.ts",
 				vite: {
 					build: {
-						lib: {
-							entry: "electron/main.ts",
-							formats: ["cjs"],
-						},
 						rollupOptions: {
 							external: ["ffmpeg-static", "uiohook-napi"],
-							output: {
-								entryFileNames: "[name].cjs",
-								chunkFileNames: "[name].cjs",
-							},
 						},
 					},
 				},
