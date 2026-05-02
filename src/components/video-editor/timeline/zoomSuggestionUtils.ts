@@ -38,8 +38,16 @@ export interface InteractionZoomSuggestionResult {
 	suggestions: SuggestedZoomRegion[];
 }
 
-const DEFAULT_SUGGESTION_SPACING_MS = 1800;
+const ZOOM_CLICK_LEAD_IN_MS = 500;
+const ZOOM_CLICK_TAIL_OUT_MS = 500;
+const ZOOM_CLICK_GROUP_GAP_MS = 2500;
 const DEFAULT_MERGE_NEARBY_GAP_MS = 1500;
+
+interface ClickClusterCandidate {
+	start: number;
+	end: number;
+	focus: ZoomFocus;
+}
 
 function normalizeTelemetrySample(
 	sample: CursorTelemetryPoint,
@@ -259,7 +267,6 @@ export function buildInteractionZoomSuggestions(params: {
 	totalMs: number;
 	defaultDurationMs: number;
 	reservedSpans?: Array<{ start: number; end: number }>;
-	spacingMs?: number;
 	mergeGapMs?: number;
 }): InteractionZoomSuggestionResult {
 	const {
@@ -267,7 +274,6 @@ export function buildInteractionZoomSuggestions(params: {
 		totalMs,
 		defaultDurationMs,
 		reservedSpans = [],
-		spacingMs = DEFAULT_SUGGESTION_SPACING_MS,
 		mergeGapMs = DEFAULT_MERGE_NEARBY_GAP_MS,
 	} = params;
 
@@ -277,32 +283,21 @@ export function buildInteractionZoomSuggestions(params: {
 	}
 
 	const normalizedSamples = normalizeCursorTelemetry(cursorTelemetry, totalMs);
-	if (normalizedSamples.length < 2) {
+	if (normalizedSamples.length === 0) {
 		return { status: "no-telemetry", suggestions: [] };
 	}
 
-	const interactionCandidates = detectInteractionCandidates(normalizedSamples);
-	if (interactionCandidates.length === 0) {
+	const clickClusters = buildClickClusterCandidates(normalizedSamples, totalMs);
+	if (clickClusters.length === 0) {
 		return { status: "no-interactions", suggestions: [] };
 	}
 
-	const sortedCandidates = [...interactionCandidates].sort((a, b) => b.strength - a.strength);
-	const acceptedCenters: number[] = [];
 	const accepted: SuggestedZoomRegion[] = [];
 	const reserved = [...reservedSpans].sort((a, b) => a.start - b.start);
 
-	sortedCandidates.forEach((candidate) => {
-		const tooCloseToAccepted = acceptedCenters.some(
-			(center) => Math.abs(center - candidate.centerTimeMs) < spacingMs,
-		);
-
-		if (tooCloseToAccepted) {
-			return;
-		}
-
-		const centeredStart = Math.round(candidate.centerTimeMs - defaultDuration / 2);
-		const candidateStart = Math.max(0, Math.min(centeredStart, totalMs - defaultDuration));
-		const candidateEnd = candidateStart + defaultDuration;
+	clickClusters.forEach((candidate) => {
+		const candidateStart = candidate.start;
+		const candidateEnd = candidate.end;
 		const hasOverlap = reserved.some(
 			(span) => candidateEnd > span.start && candidateStart < span.end,
 		);
@@ -312,7 +307,6 @@ export function buildInteractionZoomSuggestions(params: {
 		}
 
 		reserved.push({ start: candidateStart, end: candidateEnd });
-		acceptedCenters.push(candidate.centerTimeMs);
 		accepted.push({
 			start: candidateStart,
 			end: candidateEnd,
@@ -337,6 +331,64 @@ export function buildInteractionZoomSuggestions(params: {
 	}
 
 	return { status: "ok", suggestions: merged };
+}
+
+function buildClickClusterCandidates(
+	samples: CursorTelemetryPoint[],
+	totalMs: number,
+): ClickClusterCandidate[] {
+	const clickSamples = samples.filter((sample) => isZoomTriggerClick(sample.interactionType));
+	if (clickSamples.length === 0) {
+		return [];
+	}
+
+	const clusters: CursorTelemetryPoint[][] = [];
+	let currentCluster: CursorTelemetryPoint[] = [];
+
+	for (const sample of clickSamples) {
+		const previous = currentCluster[currentCluster.length - 1];
+		if (!previous || sample.timeMs - previous.timeMs <= ZOOM_CLICK_GROUP_GAP_MS) {
+			currentCluster.push(sample);
+			continue;
+		}
+
+		clusters.push(currentCluster);
+		currentCluster = [sample];
+	}
+
+	if (currentCluster.length > 0) {
+		clusters.push(currentCluster);
+	}
+
+	return clusters.map((cluster) => {
+		const firstClick = cluster[0];
+		const lastClick = cluster[cluster.length - 1];
+		const focus = cluster.reduce(
+			(accumulator, sample) => ({
+				cx: accumulator.cx + sample.cx,
+				cy: accumulator.cy + sample.cy,
+			}),
+			{ cx: 0, cy: 0 },
+		);
+
+		return {
+			start: Math.max(0, Math.round(firstClick.timeMs - ZOOM_CLICK_LEAD_IN_MS)),
+			end: Math.min(totalMs, Math.round(lastClick.timeMs + ZOOM_CLICK_TAIL_OUT_MS)),
+			focus: {
+				cx: focus.cx / cluster.length,
+				cy: focus.cy / cluster.length,
+			},
+		};
+	});
+}
+
+function isZoomTriggerClick(interactionType: CursorTelemetryPoint["interactionType"]): boolean {
+	return (
+		interactionType === "click" ||
+		interactionType === "double-click" ||
+		interactionType === "right-click" ||
+		interactionType === "middle-click"
+	);
 }
 
 /**

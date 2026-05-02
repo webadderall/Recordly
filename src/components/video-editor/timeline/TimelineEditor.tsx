@@ -1580,7 +1580,7 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 				return;
 			}
 
-			if (cursorTelemetry.length < 2) {
+			if (cursorTelemetry.length === 0) {
 				toast.info("No cursor telemetry available", {
 					description: "Record a screencast first to generate cursor-based suggestions.",
 				});
@@ -1610,14 +1610,14 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 
 			if (result.status === "no-interactions") {
 				toast.info("No clear interaction moments found", {
-					description: "Try a recording with pauses or clicks around important actions.",
+					description: "Try a recording with clicks around important actions.",
 				});
 				return;
 			}
 
 			if (result.status === "no-slots" || result.suggestions.length === 0) {
 				toast.info("No auto-zoom slots available", {
-					description: "Detected dwell points overlap existing zoom regions.",
+					description: "Detected click groups overlap existing zoom regions.",
 				});
 				return;
 			}
@@ -1627,7 +1627,7 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 			}
 
 			toast.success(
-				`Added ${result.suggestions.length} interaction-based zoom suggestion${result.suggestions.length === 1 ? "" : "s"}`,
+				`Added ${result.suggestions.length} click-based zoom suggestion${result.suggestions.length === 1 ? "" : "s"}`,
 			);
 		}, [
 			videoDuration,
