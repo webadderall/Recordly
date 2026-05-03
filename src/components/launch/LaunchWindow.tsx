@@ -61,11 +61,14 @@ interface DesktopSource {
 }
 
 const LOCALE_LABELS: Record<string, string> = {
-	en: "EN",
-	es: "ES",
-	nl: "NL",
-	"zh-CN": "中文",
+	en: "English",
+	es: "Español",
+	fr: "Français",
+	nl: "Nederlands",
 	ko: "한국어",
+	"pt-BR": "Português",
+	"zh-CN": "簡體中文",
+	"zh-TW": "繁體中文",
 };
 
 const COUNTDOWN_OPTIONS = [0, 3, 5, 10];

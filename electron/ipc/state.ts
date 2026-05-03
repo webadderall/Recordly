@@ -76,6 +76,8 @@ export let currentCursorVisualType: CursorVisualType | undefined = undefined;
 // ── Cursor telemetry ──────────────────────────────────────────────────────────
 export let cursorCaptureInterval: NodeJS.Timeout | null = null;
 export let cursorCaptureStartTimeMs = 0;
+export let cursorCaptureAccumulatedPausedMs = 0;
+export let cursorCapturePauseStartedAtMs: number | null = null;
 export let activeCursorSamples: CursorTelemetryPoint[] = [];
 export let pendingCursorSamples: CursorTelemetryPoint[] = [];
 export let isCursorCaptureActive = false;
@@ -236,6 +238,12 @@ export function setCursorCaptureInterval(v: NodeJS.Timeout | null) {
 }
 export function setCursorCaptureStartTimeMs(v: number) {
 	cursorCaptureStartTimeMs = v;
+}
+export function setCursorCaptureAccumulatedPausedMs(v: number) {
+	cursorCaptureAccumulatedPausedMs = v;
+}
+export function setCursorCapturePauseStartedAtMs(v: number | null) {
+	cursorCapturePauseStartedAtMs = v;
 }
 export function setActiveCursorSamples(v: CursorTelemetryPoint[]) {
 	activeCursorSamples = v;

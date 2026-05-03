@@ -1892,7 +1892,7 @@ export function SettingsPanel({
 					value={borderRadius}
 					defaultValue={initialEditorPreferences.borderRadius}
 					min={0}
-					max={50}
+					max={200}
 					step={0.5}
 					onChange={(v) => onBorderRadiusChange?.(v)}
 					formatValue={(v) => `${v}px`}

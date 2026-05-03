@@ -19,6 +19,9 @@ import { startInteractionCapture, stopInteractionCapture } from "../cursor/inter
 import { startNativeCursorMonitor, stopNativeCursorMonitor } from "../cursor/monitor";
 import {
 	clamp,
+	pauseCursorCapture,
+	resumeCursorCapture,
+	resetCursorCaptureClock,
 	sampleCursorPoint,
 	snapshotCursorTelemetryForPersistence,
 	startCursorSampling,
@@ -1275,6 +1278,7 @@ export function registerRecordingHandlers(
 			setActiveCursorSamples([]);
 			setPendingCursorSamples([]);
 			setCursorCaptureStartTimeMs(Date.now());
+			resetCursorCaptureClock();
 			setLinuxCursorScreenPoint(null);
 			setLastLeftClick(null);
 			sampleCursorPoint();
@@ -1288,6 +1292,7 @@ export function registerRecordingHandlers(
 			stopNativeCursorMonitor();
 			showCursor();
 			setLinuxCursorScreenPoint(null);
+			resetCursorCaptureClock();
 			snapshotCursorTelemetryForPersistence();
 			setActiveCursorSamples([]);
 		}
@@ -1305,6 +1310,26 @@ export function registerRecordingHandlers(
 		if (onRecordingStateChange) {
 			onRecordingStateChange(recording, source.name);
 		}
+	});
+
+	ipcMain.handle("pause-cursor-capture", (_event, boundaryMs?: number) => {
+		const timestamp =
+			typeof boundaryMs === "number" && Number.isFinite(boundaryMs)
+				? boundaryMs
+				: Date.now();
+		sampleCursorPoint(timestamp);
+		pauseCursorCapture(timestamp);
+		return { success: true };
+	});
+
+	ipcMain.handle("resume-cursor-capture", (_event, boundaryMs?: number) => {
+		const timestamp =
+			typeof boundaryMs === "number" && Number.isFinite(boundaryMs)
+				? boundaryMs
+				: Date.now();
+		resumeCursorCapture(timestamp);
+		sampleCursorPoint(timestamp);
+		return { success: true };
 	});
 
 	ipcMain.handle("get-cursor-telemetry", async (_, videoPath?: string) => {

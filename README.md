@@ -1,5 +1,3 @@
-# Recordly
-
 Language: EN | [简中](README.zh-CN.md)
 
 <p align="center">
@@ -11,12 +9,11 @@ Language: EN | [简中](README.zh-CN.md)
   <img src="https://img.shields.io/badge/open%20source-AGPL3.0-2563eb?style=for-the-badge" alt="AGPL 3.0 license" />
 </p>
 
-### Create polished, pro-grade screen recordings.
+### Create polished screen recordings without editing.
 [Recordly](https://www.recordly.dev) is an **open-source screen recorder** and editor for **walkthroughs, demos, product videos**, and more. 
+**Accepting PRs.** [Donate](https://ko-fi.com/webadderall/goal?g=0)
 
-**Contribution encouraged.** [Donate](https://ko-fi.com/webadderall/goal?g=0)
-
-https://github.com/user-attachments/assets/1446cd12-c053-4b9c-b49f-d9c93db77fc4
+https://github.com/user-attachments/assets/9b66c71d-ac97-49ff-a0c9-63ac26edf2e4
 
 ---
 
@@ -151,11 +148,11 @@ Browse and install community extensions from the [Recordly Marketplace](https://
 # Screenshots
 
 <p align="center">
-  <img src="https://i.postimg.cc/CKxm8DRs/Screenshot-2026-03-20-at-7-07-22-pm.png" width="700" alt="Recordly editor screenshot">
+  <img src="https://i.postimg.cc/8CrQtGJf/Screenshot-2026-04-30-at-5-11-52-pm.png" width="700" alt="Recordly recording interface screenshot">
 </p>
 
 <p align="center">
-  <img src="https://i.postimg.cc/hjwdYRyV/Screenshot-2026-03-20-at-1-53-57-pm.png" width="700" alt="Recordly recording interface screenshot">
+  <img src="https://i.postimg.cc/pLSMfrTM/Screenshot-2026-04-30-at-5-11-45-pm.png" width="700" alt="Recordly editor screenshot">
 </p>
 
 <p align="center">
@@ -170,7 +167,7 @@ Browse and install community extensions from the [Recordly Marketplace](https://
 
 Prebuilt releases are available at:
 
-https://github.com/webadderall/Recordly/releases
+https://github.com/webadderallorg/Recordly/releases
 
 ---
 
@@ -203,7 +200,7 @@ sudo apt install build-essential cmake libx11-dev libxtst-dev libxrandr-dev libx
 ### Steps
 
 ```bash
-git clone https://github.com/webadderall/Recordly.git recordly
+git clone https://github.com/webadderallorg/Recordly.git recordly
 cd recordly
 npm install
 npm run dev
@@ -360,7 +357,7 @@ See `CONTRIBUTING.md` for guidelines.
 
 Bug reports and feature requests:
 
-https://github.com/webadderall/Recordly/issues
+https://github.com/webadderallorg/Recordly/issues
 
 Pull requests are welcome.
 
@@ -374,6 +371,8 @@ Pull requests are welcome.
 - buildwithfur
 - Tobias
 - Anonymous Supporter
+- Tandava Appadoo
+- Digitalfastmind
 - Roberto Marcelino
 - Rajan RK
 - Francesco

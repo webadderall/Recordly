@@ -7,9 +7,24 @@ interface RowProps extends RowDefinition {
 	hint?: string;
 	isEmpty?: boolean;
 	labelColor?: string;
+	onMouseEnter?: React.MouseEventHandler<HTMLDivElement>;
+	onMouseMove?: React.MouseEventHandler<HTMLDivElement>;
+	onMouseLeave?: React.MouseEventHandler<HTMLDivElement>;
+	onClick?: React.MouseEventHandler<HTMLDivElement>;
 }
 
-export default function Row({ id, children, label, hint, isEmpty, labelColor = "#666" }: RowProps) {
+export default function Row({
+	id,
+	children,
+	label,
+	hint,
+	isEmpty,
+	labelColor = "#666",
+	onMouseEnter,
+	onMouseMove,
+	onMouseLeave,
+	onClick,
+}: RowProps) {
 	const { setNodeRef, rowWrapperStyle, rowStyle } = useRow({ id });
 
 	return (
@@ -34,6 +49,10 @@ export default function Row({ id, children, label, hint, isEmpty, labelColor = "
 				ref={setNodeRef}
 				className="relative h-full min-h-[26px] overflow-hidden"
 				style={rowStyle}
+				onMouseEnter={onMouseEnter}
+				onMouseMove={onMouseMove}
+				onMouseLeave={onMouseLeave}
+				onClick={onClick}
 			>
 				{children}
 			</div>

@@ -49,7 +49,7 @@ Areas where help is especially valuable:
 
 ## Reporting Issues
 
-If you encounter a bug or have a feature request, please open an issue in the [Issues](https://github.com/webadderall/Recordly/issues) section of this repository. Provide as much detail as possible to help us address the issue effectively.
+If you encounter a bug or have a feature request, please open an issue in the [Issues](https://github.com/webadderallorg/Recordly/issues) section of this repository. Provide as much detail as possible to help us address the issue effectively.
 
 ## Style Guide
 

@@ -122,6 +122,8 @@
 		"generateFull": "產生字幕",
 		"regenerateFull": "重新產生字幕",
 		"clearFull": "清除字幕",
+		"editCurrent": "編輯目前字幕",
+		"editSaved": "字幕已更新",
 		"fontSettings": "字型設定",
 		"defaultFont": "預設",
 		"fontFamily": "字型",

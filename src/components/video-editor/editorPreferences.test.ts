@@ -3,10 +3,14 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
 	DEFAULT_EDITOR_PREFERENCES,
 	EDITOR_PREFERENCES_STORAGE_KEY,
+	EDITOR_PRESETS_STORAGE_KEY,
+	loadEditorPresets,
 	loadEditorPreferences,
 	normalizeEditorPreferences,
+	saveEditorPresets,
 	saveEditorPreferences,
 } from "./editorPreferences";
+import { DEFAULT_AUTO_CAPTION_SETTINGS } from "./types";
 
 function createStorageMock(initialValues: Record<string, string> = {}): Storage {
 	const store = new Map(Object.entries(initialValues));
@@ -317,5 +321,43 @@ describe("editorPreferences", () => {
 			whisperExecutablePath: "/opt/homebrew/bin/whisper-cli",
 			whisperModelPath: "/Users/test/models/ggml-small.bin",
 		});
+	});
+
+	it("saves editor presets and reports success", () => {
+		const localStorage = createStorageMock();
+		vi.stubGlobal("localStorage", localStorage);
+
+		expect(
+			saveEditorPresets([
+				{
+					id: "preset-1",
+					name: " Demo Preset ",
+					createdAt: "2026-05-01T00:00:00.000Z",
+					updatedAt: "2026-05-01T00:00:00.000Z",
+					snapshot: {
+						...DEFAULT_EDITOR_PREFERENCES,
+						autoCaptionSettings: DEFAULT_AUTO_CAPTION_SETTINGS,
+					},
+				},
+			]),
+		).toBe(true);
+
+		expect(localStorage.getItem(EDITOR_PRESETS_STORAGE_KEY)).not.toBeNull();
+		expect(loadEditorPresets()).toMatchObject([
+			{
+				id: "preset-1",
+				name: "Demo Preset",
+			},
+		]);
+	});
+
+	it("returns false when preset persistence fails", () => {
+		const localStorage = createStorageMock();
+		localStorage.setItem = () => {
+			throw new Error("quota exceeded");
+		};
+		vi.stubGlobal("localStorage", localStorage);
+
+		expect(saveEditorPresets([])).toBe(false);
 	});
 });

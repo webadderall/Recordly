@@ -9,6 +9,8 @@ import type { CursorVisualType, CursorInteractionType, CursorTelemetryPoint } fr
 import {
 	cursorCaptureInterval,
 	setCursorCaptureInterval,
+	cursorCaptureAccumulatedPausedMs,
+	cursorCapturePauseStartedAtMs,
 	cursorCaptureStartTimeMs,
 	activeCursorSamples,
 	pendingCursorSamples,
@@ -18,6 +20,8 @@ import {
 	linuxCursorScreenPoint,
 	selectedSource,
 	selectedWindowBounds,
+	setCursorCaptureAccumulatedPausedMs,
+	setCursorCapturePauseStartedAtMs,
 } from "../state";
 
 export function clamp(value: number, min: number, max: number) {
@@ -29,6 +33,55 @@ export function stopCursorCapture() {
 		clearTimeout(cursorCaptureInterval);
 		setCursorCaptureInterval(null);
 	}
+}
+
+export function resetCursorCaptureClock() {
+	setCursorCaptureAccumulatedPausedMs(0);
+	setCursorCapturePauseStartedAtMs(null);
+}
+
+export function isCursorCapturePaused() {
+	return cursorCapturePauseStartedAtMs !== null;
+}
+
+export function pauseCursorCapture(pausedAtMs: number) {
+	if (cursorCapturePauseStartedAtMs !== null) {
+		return;
+	}
+
+	setCursorCapturePauseStartedAtMs(pausedAtMs);
+}
+
+export function resumeCursorCapture(resumedAtMs: number) {
+	if (cursorCapturePauseStartedAtMs === null) {
+		return;
+	}
+
+	const pauseDurationMs = Math.max(0, resumedAtMs - cursorCapturePauseStartedAtMs);
+	setCursorCaptureAccumulatedPausedMs(
+		cursorCaptureAccumulatedPausedMs + pauseDurationMs,
+	);
+	setCursorCapturePauseStartedAtMs(null);
+}
+
+export function getCursorCaptureElapsedMs(nowMs = Date.now()) {
+	if (!Number.isFinite(cursorCaptureStartTimeMs) || cursorCaptureStartTimeMs <= 0) {
+		return 0;
+	}
+
+	const safeNowMs = Math.max(cursorCaptureStartTimeMs, nowMs);
+	const activePauseDurationMs =
+		cursorCapturePauseStartedAtMs === null
+			? 0
+			: Math.max(0, safeNowMs - cursorCapturePauseStartedAtMs);
+
+	return Math.max(
+		0,
+		safeNowMs -
+			cursorCaptureStartTimeMs -
+			Math.max(0, cursorCaptureAccumulatedPausedMs) -
+			activePauseDurationMs,
+	);
 }
 
 export function getNormalizedCursorPoint() {
@@ -115,9 +168,9 @@ export function pushCursorSample(
 	}
 }
 
-export function sampleCursorPoint() {
+export function sampleCursorPoint(sampledAtMs = Date.now()) {
 	const point = getNormalizedCursorPoint();
-	pushCursorSample(point.cx, point.cy, Date.now() - cursorCaptureStartTimeMs, "move");
+	pushCursorSample(point.cx, point.cy, getCursorCaptureElapsedMs(sampledAtMs), "move");
 }
 
 export async function persistPendingCursorTelemetry(videoPath: string) {
@@ -163,7 +216,7 @@ export function startCursorSampling() {
 	let nextExpectedMs = Date.now() + CURSOR_SAMPLE_INTERVAL_MS;
 
 	const tick = () => {
-		if (isCursorCaptureActive) {
+		if (isCursorCaptureActive && !isCursorCapturePaused()) {
 			sampleCursorPoint();
 		}
 

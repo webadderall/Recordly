@@ -57,6 +57,7 @@ import type {
 } from "../types";
 import AudioWaveform from "./AudioWaveform";
 import Item from "./Item";
+import glassStyles from "./ItemGlass.module.css";
 import KeyframeMarkers from "./KeyframeMarkers";
 import Row from "./Row";
 import TimelineWrapper from "./TimelineWrapper";
@@ -410,11 +411,14 @@ function PlaybackCursor({
 				>
 					<div className="w-3 h-3 mx-auto mt-[2px] bg-[#2563EB] rotate-45 rounded-sm shadow-lg border border-foreground/20" />
 				</div>
-				{isDragging && (
-					<div className="absolute -top-6 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded bg-black/80 text-[10px] text-white/90 font-medium tabular-nums whitespace-nowrap border border-foreground/10 shadow-lg pointer-events-none">
-						{formatPlayheadTime(clampedTime)}
-					</div>
-				)}
+				<div
+					className={cn(
+						"absolute -top-6 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded bg-black/80 text-[10px] text-white/90 font-medium tabular-nums whitespace-nowrap border border-foreground/10 shadow-lg pointer-events-none",
+						isDragging ? "opacity-100" : "opacity-0",
+					)}
+				>
+					<span className="leading-5">{formatPlayheadTime(clampedTime)}</span>
+				</div>
 			</div>
 		</div>
 	);
@@ -594,6 +598,8 @@ function Timeline({
 	videoDurationMs,
 	currentTimeMs,
 	onSeek,
+	onAddZoomAtMs,
+	canPlaceZoomAtMs,
 	onSelectZoom,
 	onSelectTrim,
 	onSelectClip,
@@ -615,12 +621,14 @@ function Timeline({
 	videoDurationMs: number;
 	currentTimeMs: number;
 	onSeek?: (time: number) => void;
+	canPlaceZoomAtMs?: (startMs: number) => boolean;
 	onSelectZoom?: (id: string | null) => void;
 	onSelectTrim?: (id: string | null) => void;
 	onSelectClip?: (id: string | null) => void;
 	onSelectAnnotation?: (id: string | null) => void;
 	onSelectSpeed?: (id: string | null) => void;
 	onSelectAudio?: (id: string | null) => void;
+	onAddZoomAtMs?: (startMs: number) => void;
 	selectedZoomId: string | null;
 	selectedTrimId?: string | null;
 	selectedClipId?: string | null;
@@ -632,8 +640,13 @@ function Timeline({
 	keyframes?: { id: string; time: number }[];
 	audioPeaks?: AudioPeaksData | null;
 }) {
-	const { setTimelineRef, style, sidebarWidth, range, pixelsToValue } = useTimelineContext();
+	const { setTimelineRef, style, sidebarWidth, direction, range, valueToPixels, pixelsToValue } =
+		useTimelineContext();
 	const localTimelineRef = useRef<HTMLDivElement | null>(null);
+	const [isTimelineHovered, setIsTimelineHovered] = useState(false);
+	const [timelineHoverMs, setTimelineHoverMs] = useState<number | null>(null);
+	const [isZoomRowHovered, setIsZoomRowHovered] = useState(false);
+	const [zoomRowHoverMs, setZoomRowHoverMs] = useState<number | null>(null);
 
 	const setRefs = useCallback(
 		(node: HTMLDivElement | null) => {
@@ -712,6 +725,125 @@ function Timeline({
 	const timelineRowsMinHeightPx = getTimelineRowsMinHeightPx(timelineRowCount);
 	const timelineContentMinHeightPx = getTimelineContentMinHeightPx(timelineRowCount);
 	const timelineViewportStretchFactor = getTimelineViewportStretchFactor(timelineRowCount);
+	const sideProperty = direction === "rtl" ? "right" : "left";
+	const visibleDurationMs = Math.max(1, range.end - range.start);
+	const ghostStartMs =
+		zoomRowHoverMs === null ? null : Math.max(0, Math.min(zoomRowHoverMs, videoDurationMs));
+	const ghostDurationMs = Math.min(1000, videoDurationMs);
+	const ghostEndMs =
+		ghostStartMs === null
+			? null
+			: Math.max(ghostStartMs, Math.min(videoDurationMs, ghostStartMs + ghostDurationMs));
+	const ghostStartOffsetPx =
+		ghostStartMs === null ? 0 : valueToPixels(Math.max(0, ghostStartMs - range.start));
+	const ghostEndOffsetPx =
+		ghostEndMs === null ? 0 : valueToPixels(Math.max(0, ghostEndMs - range.start));
+	const ghostWidthPx = Math.max(18, ghostEndOffsetPx - ghostStartOffsetPx);
+	const timelineGhostOffsetPx =
+		timelineHoverMs === null ? 0 : valueToPixels(Math.max(0, timelineHoverMs - range.start));
+	const canShowGhostPlayhead = isTimelineHovered && timelineHoverMs !== null;
+	const canShowGhostZoom =
+		isZoomRowHovered &&
+		ghostStartMs !== null &&
+		(onAddZoomAtMs ? (canPlaceZoomAtMs?.(ghostStartMs) ?? true) : false);
+
+	const updateTimelineHoverTime = useCallback(
+		(clientX: number, rect: DOMRect) => {
+			const contentWidth = Math.max(1, rect.width - sidebarWidth);
+
+			const contentX =
+				direction === "rtl"
+					? rect.right - sidebarWidth - clientX
+					: clientX - rect.left - sidebarWidth;
+			const clampedX = Math.max(0, Math.min(contentX, contentWidth));
+			const ratio = clampedX / contentWidth;
+			const nextMs = range.start + ratio * visibleDurationMs;
+			setTimelineHoverMs(Math.max(0, Math.min(nextMs, videoDurationMs)));
+		},
+		[direction, range.start, sidebarWidth, videoDurationMs, visibleDurationMs],
+	);
+
+	const handleTimelineMouseEnter = useCallback(
+		(event: React.MouseEvent<HTMLDivElement>) => {
+			setIsTimelineHovered(true);
+			updateTimelineHoverTime(event.clientX, event.currentTarget.getBoundingClientRect());
+		},
+		[updateTimelineHoverTime],
+	);
+
+	const handleTimelineMouseMove = useCallback(
+		(event: React.MouseEvent<HTMLDivElement>) => {
+			if (!isTimelineHovered) {
+				setIsTimelineHovered(true);
+			}
+			updateTimelineHoverTime(event.clientX, event.currentTarget.getBoundingClientRect());
+		},
+		[isTimelineHovered, updateTimelineHoverTime],
+	);
+
+	const handleTimelineMouseLeave = useCallback(() => {
+		setIsTimelineHovered(false);
+		setTimelineHoverMs(null);
+		setIsZoomRowHovered(false);
+		setZoomRowHoverMs(null);
+	}, []);
+
+	const updateZoomRowHoverTime = useCallback(
+		(clientX: number, rect: DOMRect) => {
+			if (rect.width <= 0) {
+				return;
+			}
+
+			const position =
+				direction === "rtl"
+					? Math.max(0, Math.min(rect.right - clientX, rect.width))
+					: Math.max(0, Math.min(clientX - rect.left, rect.width));
+			const ratio = position / rect.width;
+			const nextMs = range.start + ratio * visibleDurationMs;
+			setZoomRowHoverMs(Math.max(0, Math.min(nextMs, videoDurationMs)));
+		},
+		[direction, range.start, videoDurationMs, visibleDurationMs],
+	);
+
+	const handleZoomRowMouseEnter = useCallback(
+		(event: React.MouseEvent<HTMLDivElement>) => {
+			setIsZoomRowHovered(true);
+			updateZoomRowHoverTime(event.clientX, event.currentTarget.getBoundingClientRect());
+		},
+		[updateZoomRowHoverTime],
+	);
+
+	const handleZoomRowMouseMove = useCallback(
+		(event: React.MouseEvent<HTMLDivElement>) => {
+			if (!isZoomRowHovered) {
+				setIsZoomRowHovered(true);
+			}
+			updateZoomRowHoverTime(event.clientX, event.currentTarget.getBoundingClientRect());
+		},
+		[isZoomRowHovered, updateZoomRowHoverTime],
+	);
+
+	const handleZoomRowMouseLeave = useCallback(() => {
+		setIsZoomRowHovered(false);
+		setZoomRowHoverMs(null);
+	}, []);
+
+	const handleZoomRowClick = useCallback(
+		(event: React.MouseEvent<HTMLDivElement>) => {
+			event.stopPropagation();
+			if (!onAddZoomAtMs || zoomRowHoverMs === null) {
+				return;
+			}
+
+			const startMs = Math.max(0, Math.min(zoomRowHoverMs, videoDurationMs));
+			if (canPlaceZoomAtMs && !canPlaceZoomAtMs(startMs)) {
+				return;
+			}
+
+			onAddZoomAtMs(startMs);
+		},
+		[canPlaceZoomAtMs, onAddZoomAtMs, videoDurationMs, zoomRowHoverMs],
+	);
 
 	return (
 		<div
@@ -722,6 +854,9 @@ function Timeline({
 			}}
 			className="select-none bg-editor-bg relative cursor-pointer group flex flex-col"
 			onClick={handleTimelineClick}
+			onMouseEnter={handleTimelineMouseEnter}
+			onMouseMove={handleTimelineMouseMove}
+			onMouseLeave={handleTimelineMouseLeave}
 		>
 			<div className="absolute inset-0 bg-[linear-gradient(to_right,hsl(var(--foreground)/0.03)_1px,transparent_1px)] bg-[length:20px_100%] pointer-events-none" />
 			<TimelineAxis videoDurationMs={videoDurationMs} currentTimeMs={currentTimeMs} />
@@ -732,6 +867,20 @@ function Timeline({
 				timelineRef={localTimelineRef}
 				keyframes={keyframes}
 			/>
+			{canShowGhostPlayhead && (
+				<div
+					className="absolute top-0 bottom-0 z-[45] pointer-events-none"
+					style={{
+						[sideProperty === "right" ? "marginRight" : "marginLeft"]:
+							`${sidebarWidth - 1}px`,
+					}}
+				>
+					<div
+						className="absolute top-0 bottom-0 w-px bg-foreground/35"
+						style={{ [sideProperty]: `${timelineGhostOffsetPx}px` }}
+					/>
+				</div>
+			)}
 
 			<div
 				className="relative z-10 flex flex-1 min-h-0 flex-col"
@@ -755,7 +904,47 @@ function Timeline({
 					))}
 				</Row>
 
-				<Row id={ZOOM_ROW_ID} isEmpty={zoomItems.length === 0} hint="Press Z to add zoom">
+				<Row
+					id={ZOOM_ROW_ID}
+					isEmpty={zoomItems.length === 0}
+					onMouseEnter={handleZoomRowMouseEnter}
+					onMouseMove={handleZoomRowMouseMove}
+					onMouseLeave={handleZoomRowMouseLeave}
+					onClick={handleZoomRowClick}
+				>
+					{canShowGhostZoom && ghostStartMs !== null && (
+						<div className="absolute inset-0 z-[3] pointer-events-none">
+							<div
+								className="absolute top-1/2 -translate-y-1/2 h-[85%] min-h-[22px]"
+								style={
+									direction === "rtl"
+										? {
+												right: `${ghostStartOffsetPx}px`,
+												width: `${ghostWidthPx}px`,
+											}
+										: {
+												left: `${ghostStartOffsetPx}px`,
+												width: `${ghostWidthPx}px`,
+											}
+								}
+							>
+								<div
+									className={cn(
+										glassStyles.glassPurple,
+										"w-full h-full overflow-hidden flex items-center justify-center cursor-default relative opacity-80",
+									)}
+								>
+									<div className={cn(glassStyles.zoomEndCap, glassStyles.left)} />
+									<div
+										className={cn(glassStyles.zoomEndCap, glassStyles.right)}
+									/>
+									<div className="relative z-10 inline-flex h-4 w-4 items-center justify-center rounded-full border border-white/45 bg-white/15 text-white">
+										<Plus className="h-2.5 w-2.5" />
+									</div>
+								</div>
+							</div>
+						</div>
+					)}
 					{zoomItems.map((item) => (
 						<Item
 							id={item.id}
@@ -1318,45 +1507,63 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 		// scaling them with the full recording length.
 		const defaultRegionDurationMs = useMemo(() => Math.min(1000, totalMs), [totalMs]);
 
+		const canPlaceZoomAtMs = useCallback(
+			(startMs: number) => {
+				if (!videoDuration || videoDuration === 0 || totalMs === 0) {
+					return false;
+				}
+
+				const defaultDuration = Math.min(defaultRegionDurationMs, totalMs);
+				if (defaultDuration <= 0) {
+					return false;
+				}
+
+				const startPos = Math.max(0, Math.min(startMs, totalMs));
+				const sorted = [...zoomRegions].sort((a, b) => a.startMs - b.startMs);
+				const nextRegion = sorted.find((region) => region.startMs > startPos);
+				const gapToNext = nextRegion ? nextRegion.startMs - startPos : totalMs - startPos;
+
+				const isOverlapping = sorted.some(
+					(region) => startPos >= region.startMs && startPos < region.endMs,
+				);
+
+				return !isOverlapping && gapToNext >= defaultDuration;
+			},
+			[videoDuration, totalMs, zoomRegions, defaultRegionDurationMs],
+		);
+
+		const addZoomAtMs = useCallback(
+			(startMs: number) => {
+				if (!videoDuration || videoDuration === 0 || totalMs === 0) {
+					return;
+				}
+
+				const defaultDuration = Math.min(defaultRegionDurationMs, totalMs);
+				if (defaultDuration <= 0) {
+					return;
+				}
+
+				const startPos = Math.max(0, Math.min(startMs, totalMs));
+				if (!canPlaceZoomAtMs(startPos)) {
+					toast.error("Cannot place zoom here", {
+						description:
+							"Zoom already exists at this location or not enough space available.",
+					});
+					return;
+				}
+
+				onZoomAdded({ start: startPos, end: startPos + defaultDuration });
+			},
+			[videoDuration, totalMs, onZoomAdded, defaultRegionDurationMs, canPlaceZoomAtMs],
+		);
+
 		const handleAddZoom = useCallback(() => {
 			if (!videoDuration || videoDuration === 0 || totalMs === 0) {
 				return;
 			}
 
-			const defaultDuration = Math.min(defaultRegionDurationMs, totalMs);
-			if (defaultDuration <= 0) {
-				return;
-			}
-
-			// Always place zoom at playhead
-			const startPos = Math.max(0, Math.min(currentTimeMs, totalMs));
-			// Find the next zoom region after the playhead
-			const sorted = [...zoomRegions].sort((a, b) => a.startMs - b.startMs);
-			const nextRegion = sorted.find((region) => region.startMs > startPos);
-			const gapToNext = nextRegion ? nextRegion.startMs - startPos : totalMs - startPos;
-
-			// Check if playhead is inside any zoom region
-			const isOverlapping = sorted.some(
-				(region) => startPos >= region.startMs && startPos < region.endMs,
-			);
-			if (isOverlapping || gapToNext <= 0) {
-				toast.error("Cannot place zoom here", {
-					description:
-						"Zoom already exists at this location or not enough space available.",
-				});
-				return;
-			}
-
-			const actualDuration = Math.min(defaultRegionDurationMs, gapToNext);
-			onZoomAdded({ start: startPos, end: startPos + actualDuration });
-		}, [
-			videoDuration,
-			totalMs,
-			currentTimeMs,
-			zoomRegions,
-			onZoomAdded,
-			defaultRegionDurationMs,
-		]);
+			addZoomAtMs(currentTimeMs);
+		}, [addZoomAtMs, currentTimeMs, totalMs, videoDuration]);
 
 		const handleSuggestZooms = useCallback(() => {
 			if (!videoDuration || videoDuration === 0 || totalMs === 0) {
@@ -2269,6 +2476,8 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 							videoDurationMs={totalMs}
 							currentTimeMs={currentTimeMs}
 							onSeek={onSeek}
+							onAddZoomAtMs={addZoomAtMs}
+							canPlaceZoomAtMs={canPlaceZoomAtMs}
 							onSelectZoom={handleSelectZoom}
 							onSelectTrim={handleSelectTrim}
 							onSelectClip={handleSelectClip}
