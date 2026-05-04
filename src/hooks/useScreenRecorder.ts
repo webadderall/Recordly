@@ -675,16 +675,17 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 
 			void (async () => {
 				const fallbackStartDelayMs = micFallbackStartDelayMs.current;
-				const micFallbackBlobPromise = stopMicFallbackRecorder();
-				const webcamPath = await stopWebcamRecorder();
-				const isNativeWindows = nativeWindowsRecording.current;
 				const stoppedAtMs = Date.now();
 				markRecordingResumed(stoppedAtMs);
 				const expectedDurationMs = getRecordingDurationMs(stoppedAtMs);
+				const micFallbackBlobPromise = stopMicFallbackRecorder();
+				const webcamPathPromise = stopWebcamRecorder();
+				const isNativeWindows = nativeWindowsRecording.current;
 				nativeWindowsRecording.current = false;
 
 				const result = await window.electronAPI.stopNativeScreenRecording();
 				await window.electronAPI?.setRecordingState(false);
+				const webcamPath = await webcamPathPromise;
 
 				if (!result.success || !result.path) {
 					console.error(
