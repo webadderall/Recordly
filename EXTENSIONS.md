@@ -289,3 +289,4 @@ Use `parentSection` to nest your panel inside an existing area such as `cursor` 
 ## Examples
 
 - `extension-examples/webadderall.more-wallpapers` shows a user-installable wallpaper bundle that registers 180 packaged wallpapers through `registerWallpaper()`.
+- `extension-examples/willytop8.click-ripple` shows a cursor-effect extension that renders animated ripple, pulse, and burst effects at every click using `registerCursorEffect()`.

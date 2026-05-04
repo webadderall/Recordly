@@ -1,0 +1,127 @@
+// src/index.ts
+function activate(api) {
+  api.registerSettingsPanel({
+    id: "click-ripple-settings",
+    label: "Click Effects",
+    icon: "sparkles",
+    parentSection: "cursor",
+    fields: [
+      { id: "enabled", label: "Enable click effects", type: "toggle", defaultValue: true },
+      {
+        id: "style",
+        label: "Style",
+        type: "select",
+        defaultValue: "ripple",
+        options: [
+          { label: "Ripple (concentric rings)", value: "ripple" },
+          { label: "Pulse (filled fade)", value: "pulse" },
+          { label: "Burst (radial spokes)", value: "burst" }
+        ]
+      },
+      { id: "color", label: "Color", type: "color", defaultValue: "#FFFFFF" },
+      { id: "size", label: "Size", type: "slider", defaultValue: 1, min: 0.5, max: 2.5, step: 0.1 },
+      { id: "durationMs", label: "Duration (ms)", type: "slider", defaultValue: 600, min: 200, max: 1500, step: 50 },
+      { id: "thickness", label: "Line thickness", type: "slider", defaultValue: 2, min: 1, max: 8, step: 1 },
+      { id: "differentiateRightClick", label: "Distinct right-click style", type: "toggle", defaultValue: true }
+    ]
+  });
+  api.registerCursorEffect((ctx) => {
+    const enabled = api.getSetting("enabled") ?? true;
+    if (!enabled) return false;
+    const style = api.getSetting("style") ?? "ripple";
+    const color = api.getSetting("color") ?? "#FFFFFF";
+    const size = api.getSetting("size") ?? 1;
+    const durationMs = api.getSetting("durationMs") ?? 600;
+    const thickness = api.getSetting("thickness") ?? 2;
+    const differentiateRC = api.getSetting("differentiateRightClick") ?? true;
+    if (ctx.elapsedMs >= durationMs) return false;
+    const progress = ctx.elapsedMs / durationMs;
+    const isRightClick = ctx.interactionType === "right-click";
+    const distinct = isRightClick && differentiateRC;
+    const t = ctx.sceneTransform;
+    let x = ctx.cx * ctx.width;
+    let y = ctx.cy * ctx.height;
+    if (t != null && Number.isFinite(t.scale) && t.scale !== 0) {
+      x = (x - t.x) / t.scale;
+      y = (y - t.y) / t.scale;
+    }
+    const sceneWidth = ctx.videoLayout?.maskRect.width ?? ctx.width;
+    const baseRadius = sceneWidth * 0.04 * size;
+    switch (style) {
+      case "ripple":
+        drawRipple(ctx.ctx, x, y, progress, baseRadius, color, thickness, distinct);
+        break;
+      case "pulse":
+        drawPulse(ctx.ctx, x, y, progress, baseRadius, color, distinct);
+        break;
+      case "burst":
+        drawBurst(ctx.ctx, x, y, progress, baseRadius, color, thickness, distinct);
+        break;
+    }
+    return true;
+  });
+  api.log("Click Ripple activated");
+}
+function deactivate() {
+}
+function drawRipple(ctx, x, y, p, base, color, thick, distinct) {
+  const easeOut = (t) => 1 - Math.pow(1 - t, 3);
+  if (p > 0.15) {
+    const op = (p - 0.15) / 0.85;
+    drawRing(ctx, x, y, base * 1.4 * easeOut(op), color, thick, 1 - op, distinct);
+  }
+  drawRing(ctx, x, y, base * easeOut(p), color, thick, 1 - p, distinct);
+}
+function drawRing(ctx, x, y, r, color, thick, alpha, dashed) {
+  ctx.save();
+  ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+  ctx.strokeStyle = color;
+  ctx.lineWidth = thick;
+  if (dashed) ctx.setLineDash([thick * 2, thick * 2]);
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+}
+function drawPulse(ctx, x, y, p, base, color, distinct) {
+  const easeOut = (t) => 1 - Math.pow(1 - t, 2);
+  const r = base * 0.9 * easeOut(p);
+  const alpha = (1 - p) * 0.5;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  if (distinct) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+  } else {
+    ctx.fillStyle = color;
+    ctx.fill();
+  }
+  ctx.restore();
+}
+function drawBurst(ctx, x, y, p, base, color, thick, distinct) {
+  const easeOut = (t) => 1 - Math.pow(1 - t, 2);
+  const SPOKES = 8;
+  const innerR = base * 0.3 * easeOut(p);
+  const outerR = base * 1.1 * easeOut(p);
+  ctx.save();
+  ctx.globalAlpha = 1 - p;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = thick;
+  ctx.lineCap = "round";
+  if (distinct) ctx.setLineDash([thick * 1.5, thick * 1.5]);
+  for (let i = 0; i < SPOKES; i++) {
+    const angle = i / SPOKES * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(x + Math.cos(angle) * innerR, y + Math.sin(angle) * innerR);
+    ctx.lineTo(x + Math.cos(angle) * outerR, y + Math.sin(angle) * outerR);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+export {
+  activate,
+  deactivate
+};
