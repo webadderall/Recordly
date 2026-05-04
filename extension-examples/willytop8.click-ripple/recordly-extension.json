@@ -1,0 +1,19 @@
+{
+	"id": "dev.williamjvest.click-ripple",
+	"name": "Click Ripple",
+	"version": "1.0.0",
+	"description": "Animated ripple, pulse, and burst effects rendered at every cursor click.",
+	"author": "William Vest",
+	"homepage": "https://github.com/willytop8/recordly-click-ripple",
+	"license": "MIT",
+	"engine": "1.2.0",
+	"icon": "icon.png",
+	"screenshots": [
+		"screenshots/ripple-style.png",
+		"screenshots/pulse-style.png",
+		"screenshots/burst-style.png",
+		"screenshots/settings-panel.png"
+	],
+	"main": "dist/index.js",
+	"permissions": ["cursor", "ui"]
+}
