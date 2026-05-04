@@ -54,8 +54,12 @@ export function isAllowedLocalReadPath(candidatePath: string) {
 	const allowedPrefixes = [RECORDINGS_DIR, USER_DATA_PATH, getAssetRootPath(), app.getPath("temp")];
 	const normalizedCandidatePath = normalizePath(candidatePath);
 
+	// Security: only allow paths under app-managed directories or paths the user
+	// has explicitly opted into (recording session sources, files chosen via
+	// dialog, app-produced exports). Previously this returned true for any
+	// existing file, which made the allowlist a no-op for read-local-file and
+	// the local media URL handler.
 	return (
-		existsSync(normalizedCandidatePath) ||
 		allowedPrefixes.some((prefix) => isPathInsideDirectory(normalizedCandidatePath, prefix)) ||
 		approvedLocalReadPaths.has(normalizedCandidatePath)
 	);

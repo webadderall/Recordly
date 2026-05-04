@@ -361,15 +361,35 @@ async function stageRuntimeArtifacts(target, candidateDir, runtimeEntries) {
 }
 
 async function main() {
+	const targets = getTargetConfigs();
 	const cmake = findCmake();
+
 	if (!cmake) {
-		throw new Error(
-			"[build-whisper-runtime] CMake is required to build the bundled Whisper runtime.",
+		// Mirror build-windows-capture: if every target already has a staged
+		// runtime, postinstall is a no-op. This keeps `npm ci` working for
+		// contributors who do not have CMake installed and only need to run the
+		// app or tests against the bundled binaries.
+		const skipChecks = await Promise.all(targets.map((target) => shouldSkipBuild(target)));
+		if (skipChecks.every(Boolean)) {
+			console.log(
+				"[build-whisper-runtime] CMake not found; using bundled whisper runtime artifacts.",
+			);
+			return;
+		}
+
+		const missing = targets
+			.filter((_target, index) => !skipChecks[index])
+			.map((target) => target.archTag)
+			.join(", ");
+		console.warn(
+			`[build-whisper-runtime] CMake not found and no bundled runtime is staged for: ${missing}. ` +
+				"Auto-caption features that rely on whisper.cpp will be unavailable until you install CMake " +
+				"and rerun `npm run build:whisper-runtime`.",
 		);
+		return;
 	}
 
 	const sourceDir = await ensureSourceTree();
-	const targets = getTargetConfigs();
 
 	console.log(
 		`[build-whisper-runtime] Target architectures for ${process.platform}: ${targets.map((target) => target.archTag).join(", ")}`,

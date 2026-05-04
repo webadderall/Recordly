@@ -47,13 +47,17 @@ describe("local media path policy", () => {
 		}
 	});
 
-	it("allows existing exported media files outside the session directories", async () => {
+	it("rejects existing media files outside allowed directories until they are approved", async () => {
 		const downloadsPath = path.join(tempRoot, "Downloads");
 		const exportPath = path.join(downloadsPath, "export-test.mp4");
 		await fs.mkdir(downloadsPath, { recursive: true });
 		await fs.writeFile(exportPath, "test-video");
 
-		const { isAllowedLocalMediaPath } = await import("./manager");
+		const { isAllowedLocalMediaPath, rememberApprovedLocalReadPath } = await import("./manager");
+
+		await expect(isAllowedLocalMediaPath(exportPath)).resolves.toBe(false);
+
+		await rememberApprovedLocalReadPath(exportPath);
 
 		await expect(isAllowedLocalMediaPath(exportPath)).resolves.toBe(true);
 	});
@@ -74,17 +78,25 @@ describe("local media path policy", () => {
 		await expect(isAllowedLocalMediaPath(pendingExportPath)).resolves.toBe(true);
 	});
 
-	it("approves media-server access for existing external files resolved through the URL policy", async () => {
+	it("approves media-server access for approved external files resolved through the URL policy", async () => {
 		const downloadsPath = path.join(tempRoot, "Downloads");
 		const videoPath = path.join(downloadsPath, "external-video.mp4");
 		await fs.mkdir(downloadsPath, { recursive: true });
 		await fs.writeFile(videoPath, "test-video");
 		const resolvedVideoPath = await fs.realpath(videoPath);
 
-		const { resolveApprovedLocalMediaPath } = await import("./manager");
+		const { resolveApprovedLocalMediaPath, rememberApprovedLocalReadPath } = await import(
+			"./manager"
+		);
 		const { isAllowedMediaPath } = await import("../../mediaServer");
 
+		// Unapproved external paths are rejected before they ever reach the media server.
 		expect(isAllowedMediaPath(videoPath)).toBe(false);
+		await expect(resolveApprovedLocalMediaPath(videoPath)).resolves.toBeNull();
+
+		// Once the user opts in (via dialog/export/etc.) the path is approved.
+		await rememberApprovedLocalReadPath(videoPath);
+
 		await expect(resolveApprovedLocalMediaPath(videoPath)).resolves.toBe(resolvedVideoPath);
 		expect(isAllowedMediaPath(videoPath)).toBe(true);
 	});
