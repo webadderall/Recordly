@@ -136,6 +136,7 @@ import {
 	normalizeVideoSourcePath,
 	parseWindowId,
 } from "../utils";
+import type { WindowsCaptureDisplayBounds } from "../windowsCaptureSelection";
 import { resolveWindowsCaptureDisplay } from "../windowsCaptureSelection";
 
 const execFileAsync = promisify(execFile);
@@ -236,23 +237,31 @@ export function registerRecordingHandlers(
 					let systemAudioPath: string | null = null;
 					let microphonePath: string | null = null;
 					let orphanedMicAudioPath: string | null = null;
-					const resolvedDisplay = resolveWindowsCaptureDisplay(
-						source,
-						getScreen().getAllDisplays(),
-						getScreen().getPrimaryDisplay(),
-					);
-					const displayBounds = resolvedDisplay.bounds;
+					const isWindowSource = source?.id?.startsWith("window:") === true;
+					const windowHandle = isWindowSource ? parseWindowId(source?.id) : null;
 					setWindowsOrphanedMicAudioPath(null);
 
 					const config: Record<string, unknown> = {
 						outputPath,
 						fps: 60,
-						displayId: resolvedDisplay.displayId,
-						displayX: Math.round(resolvedDisplay.bounds.x),
-						displayY: Math.round(resolvedDisplay.bounds.y),
-						displayW: Math.round(resolvedDisplay.bounds.width),
-						displayH: Math.round(resolvedDisplay.bounds.height),
 					};
+
+					let displayBounds: WindowsCaptureDisplayBounds | undefined;
+					if (Number.isFinite(windowHandle) && windowHandle && windowHandle > 0) {
+						config.windowHandle = windowHandle;
+					} else {
+						const resolvedDisplay = resolveWindowsCaptureDisplay(
+							source,
+							getScreen().getAllDisplays(),
+							getScreen().getPrimaryDisplay(),
+						);
+						displayBounds = resolvedDisplay.bounds;
+						config.displayId = resolvedDisplay.displayId;
+						config.displayX = Math.round(resolvedDisplay.bounds.x);
+						config.displayY = Math.round(resolvedDisplay.bounds.y);
+						config.displayW = Math.round(resolvedDisplay.bounds.width);
+						config.displayH = Math.round(resolvedDisplay.bounds.height);
+					}
 
 					if (options?.capturesSystemAudio) {
 						systemAudioPath = path.join(
