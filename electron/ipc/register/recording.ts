@@ -20,8 +20,8 @@ import { startNativeCursorMonitor, stopNativeCursorMonitor } from "../cursor/mon
 import {
 	clamp,
 	pauseCursorCapture,
-	resumeCursorCapture,
 	resetCursorCaptureClock,
+	resumeCursorCapture,
 	sampleCursorPoint,
 	snapshotCursorTelemetryForPersistence,
 	startCursorSampling,
@@ -134,6 +134,7 @@ import {
 	getTelemetryPathForVideo,
 	moveFileWithOverwrite,
 	normalizeVideoSourcePath,
+	parseJsonWithByteOrderMark,
 	parseWindowId,
 } from "../utils";
 import { resolveWindowsCaptureDisplay } from "../windowsCaptureSelection";
@@ -1081,6 +1082,18 @@ export function registerRecordingHandlers(
 				try {
 					return await finalizeStoredVideo(videoPath);
 				} catch {
+					try {
+						await validateRecordedVideo(videoPath);
+						return {
+							success: false,
+							path: videoPath,
+							message: "Failed to mux native Windows recording",
+							error: String(error),
+						};
+					} catch {
+						// The fallback path is not safely playable; surface the original mux error.
+					}
+
 					return {
 						success: false,
 						message: "Failed to mux native Windows recording",
@@ -1341,11 +1354,15 @@ export function registerRecordingHandlers(
 		const telemetryPath = getTelemetryPathForVideo(targetVideoPath);
 		try {
 			const content = await fs.readFile(telemetryPath, "utf-8");
-			const parsed = JSON.parse(content);
+			const parsed = parseJsonWithByteOrderMark<unknown>(content);
+			const parsedObject =
+				parsed && typeof parsed === "object" && !Array.isArray(parsed)
+					? (parsed as { samples?: unknown })
+					: null;
 			const rawSamples = Array.isArray(parsed)
 				? parsed
-				: Array.isArray(parsed?.samples)
-					? parsed.samples
+				: Array.isArray(parsedObject?.samples)
+					? parsedObject.samples
 					: [];
 
 			const samples: CursorTelemetryPoint[] = rawSamples
