@@ -2725,7 +2725,8 @@ export function SettingsPanel({
 						<SliderControl
 							label={tSettings("effects.zoomMotionBlurSampleCount", "Sample count")}
 							value={
-								zoomMotionBlurSampleCount ?? TEMPORAL_MOTION_BLUR_DEFAULT_SAMPLE_COUNT
+								zoomMotionBlurSampleCount ??
+								TEMPORAL_MOTION_BLUR_DEFAULT_SAMPLE_COUNT
 							}
 							defaultValue={
 								initialEditorPreferences.zoomMotionBlurSampleCount ??
@@ -3018,7 +3019,10 @@ export function SettingsPanel({
 								<div className="space-y-1.5 rounded-lg border border-[#2563EB]/15 bg-[#2563EB]/5 px-3 py-3">
 									<div>
 										<div className="text-[11px] font-medium text-foreground">
-											{tSettings("effects.cursorDebugTuning", "Cursor Debug Tuning")}
+											{tSettings(
+												"effects.cursorDebugTuning",
+												"Cursor Debug Tuning",
+											)}
 										</div>
 										<div className="mt-0.5 text-[10px] text-muted-foreground">
 											{tSettings(
@@ -3033,7 +3037,9 @@ export function SettingsPanel({
 											"Spring stiffness",
 										)}
 										value={cursorSpringStiffnessMultiplier}
-										defaultValue={initialEditorPreferences.cursorSpringStiffnessMultiplier}
+										defaultValue={
+											initialEditorPreferences.cursorSpringStiffnessMultiplier
+										}
 										min={0.25}
 										max={3}
 										step={0.01}
@@ -3049,7 +3055,9 @@ export function SettingsPanel({
 											"Spring damping",
 										)}
 										value={cursorSpringDampingMultiplier}
-										defaultValue={initialEditorPreferences.cursorSpringDampingMultiplier}
+										defaultValue={
+											initialEditorPreferences.cursorSpringDampingMultiplier
+										}
 										min={0.25}
 										max={3}
 										step={0.01}
@@ -3065,11 +3073,15 @@ export function SettingsPanel({
 											"Spring mass",
 										)}
 										value={cursorSpringMassMultiplier}
-										defaultValue={initialEditorPreferences.cursorSpringMassMultiplier}
+										defaultValue={
+											initialEditorPreferences.cursorSpringMassMultiplier
+										}
 										min={0.25}
 										max={3}
 										step={0.01}
-										onChange={(value) => onCursorSpringMassMultiplierChange?.(value)}
+										onChange={(value) =>
+											onCursorSpringMassMultiplierChange?.(value)
+										}
 										formatValue={(value) => `${value.toFixed(2)}×`}
 										parseInput={(text) => parseFloat(text.replace(/×$/, ""))}
 									/>

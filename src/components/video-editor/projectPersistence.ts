@@ -57,8 +57,8 @@ import {
 	DEFAULT_ZOOM_IN_EASING,
 	DEFAULT_ZOOM_IN_OVERLAP_MS,
 	DEFAULT_ZOOM_MOTION_BLUR,
-	DEFAULT_ZOOM_SMOOTHNESS,
 	DEFAULT_ZOOM_OUT_EASING,
+	DEFAULT_ZOOM_SMOOTHNESS,
 	getDefaultCaptionFontFamily,
 	type Padding,
 	type SpeedRegion,
@@ -365,7 +365,7 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 		: DEFAULT_MOTION_PRESET.zoomInDurationMs;
 	const normalizedZoomInOverlapMs = isFiniteNumber(editor.zoomInOverlapMs)
 		? clamp(editor.zoomInOverlapMs, 0, normalizedZoomInDurationMs)
-		: DEFAULT_ZOOM_IN_OVERLAP_MS;
+		: clamp(DEFAULT_ZOOM_IN_OVERLAP_MS, 0, normalizedZoomInDurationMs);
 	const normalizedZoomOutDurationMs = isFiniteNumber(editor.zoomOutDurationMs)
 		? clamp(editor.zoomOutDurationMs, 60, 4000)
 		: DEFAULT_MOTION_PRESET.zoomOutDurationMs;
