@@ -3076,7 +3076,12 @@ export default function VideoEditor() {
 				autoFullTrackClipIdRef.current = id;
 				autoFullTrackClipEndMsRef.current = totalMs;
 				if (trimRegions.length > 0) {
-					setClipRegions(trimsToClips(trimRegions, totalMs));
+					const derivedClipRegions = trimsToClips(trimRegions, totalMs);
+					nextClipIdRef.current = deriveNextId(
+						"clip",
+						derivedClipRegions.map((region) => region.id),
+					);
+					setClipRegions(derivedClipRegions);
 					clipInitializedRef.current = true;
 					return;
 				}
