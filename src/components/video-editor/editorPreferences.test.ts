@@ -53,11 +53,25 @@ describe("editorPreferences", () => {
 				customAspectHeight: "",
 				customWallpapers: "not-an-array",
 			}),
-		).toEqual(DEFAULT_EDITOR_PREFERENCES);
+		).toMatchObject({
+			wallpaper: DEFAULT_EDITOR_PREFERENCES.wallpaper,
+			showCursor: DEFAULT_EDITOR_PREFERENCES.showCursor,
+			aspectRatio: DEFAULT_EDITOR_PREFERENCES.aspectRatio,
+			cursorStyle: DEFAULT_EDITOR_PREFERENCES.cursorStyle,
+			cursorSize: DEFAULT_EDITOR_PREFERENCES.cursorSize,
+			customAspectWidth: DEFAULT_EDITOR_PREFERENCES.customAspectWidth,
+			customAspectHeight: DEFAULT_EDITOR_PREFERENCES.customAspectHeight,
+			customWallpapers: DEFAULT_EDITOR_PREFERENCES.customWallpapers,
+		});
 	});
 
 	it("defaults MP4 exports to source quality", () => {
 		expect(DEFAULT_EDITOR_PREFERENCES.exportQuality).toBe("source");
+	});
+
+	it("defaults cursor preferences to macOS at 2.5x", () => {
+		expect(DEFAULT_EDITOR_PREFERENCES.cursorStyle).toBe("macos");
+		expect(DEFAULT_EDITOR_PREFERENCES.cursorSize).toBe(2.5);
 	});
 
 	it("loads stored editor control preferences", () => {

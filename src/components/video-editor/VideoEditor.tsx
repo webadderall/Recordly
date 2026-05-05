@@ -329,7 +329,7 @@ function getEncodingModeBitrateMultiplier(encodingMode: ExportEncodingMode): num
 			return 0.9;
 		case "balanced":
 		default:
-			return 0.5;
+			return 0.7;
 	}
 }
 
@@ -597,6 +597,15 @@ export default function VideoEditor() {
 	);
 	const [backgroundBlur, setBackgroundBlur] = useState(initialEditorPreferences.backgroundBlur);
 	const [zoomMotionBlur, setZoomMotionBlur] = useState(initialEditorPreferences.zoomMotionBlur);
+	const [zoomTemporalMotionBlur, setZoomTemporalMotionBlur] = useState(
+		initialEditorPreferences.zoomTemporalMotionBlur,
+	);
+	const [zoomMotionBlurSampleCount, setZoomMotionBlurSampleCount] = useState<number | null>(
+		initialEditorPreferences.zoomMotionBlurSampleCount,
+	);
+	const [zoomMotionBlurShutterFraction, setZoomMotionBlurShutterFraction] = useState<
+		number | null
+	>(initialEditorPreferences.zoomMotionBlurShutterFraction);
 	const [autoApplyFreshRecordingAutoZooms, setAutoApplyFreshRecordingAutoZooms] = useState(
 		initialEditorPreferences.autoApplyFreshRecordingAutoZooms,
 	);
@@ -829,10 +838,9 @@ export default function VideoEditor() {
 			shadowIntensity,
 			backgroundBlur,
 			zoomMotionBlur,
-			zoomTemporalMotionBlur: zoomMotionBlur,
-			zoomMotionBlurSampleCount: initialEditorPreferences.zoomMotionBlurSampleCount,
-			zoomMotionBlurShutterFraction:
-				initialEditorPreferences.zoomMotionBlurShutterFraction,
+			zoomTemporalMotionBlur,
+			zoomMotionBlurSampleCount,
+			zoomMotionBlurShutterFraction,
 			connectZooms,
 			zoomInDurationMs,
 			zoomInOverlapMs,
@@ -877,8 +885,9 @@ export default function VideoEditor() {
 			shadowIntensity,
 			backgroundBlur,
 			zoomMotionBlur,
-			initialEditorPreferences.zoomMotionBlurSampleCount,
-			initialEditorPreferences.zoomMotionBlurShutterFraction,
+			zoomTemporalMotionBlur,
+			zoomMotionBlurSampleCount,
+			zoomMotionBlurShutterFraction,
 			connectZooms,
 			zoomInDurationMs,
 			zoomInOverlapMs,
@@ -964,6 +973,9 @@ export default function VideoEditor() {
 		setShadowIntensity(snapshot.shadowIntensity);
 		setBackgroundBlur(snapshot.backgroundBlur);
 		setZoomMotionBlur(snapshot.zoomMotionBlur);
+		setZoomTemporalMotionBlur(snapshot.zoomTemporalMotionBlur);
+		setZoomMotionBlurSampleCount(snapshot.zoomMotionBlurSampleCount);
+		setZoomMotionBlurShutterFraction(snapshot.zoomMotionBlurShutterFraction);
 		setConnectZooms(snapshot.connectZooms);
 		setZoomInDurationMs(snapshot.zoomInDurationMs);
 		setZoomInOverlapMs(snapshot.zoomInOverlapMs);
@@ -1192,6 +1204,9 @@ export default function VideoEditor() {
 					shadowIntensity,
 					backgroundBlur,
 					zoomMotionBlur,
+					zoomTemporalMotionBlur,
+					zoomMotionBlurSampleCount,
+					zoomMotionBlurShutterFraction,
 					connectZooms,
 					zoomInDurationMs,
 					zoomInOverlapMs,
@@ -1338,6 +1353,9 @@ export default function VideoEditor() {
 		zoomInEasing,
 		zoomInOverlapMs,
 		zoomMotionBlur,
+		zoomTemporalMotionBlur,
+		zoomMotionBlurSampleCount,
+		zoomMotionBlurShutterFraction,
 		zoomOutDurationMs,
 		zoomOutEasing,
 		zoomRegions,
@@ -1640,6 +1658,9 @@ export default function VideoEditor() {
 				shadowIntensity: number;
 				backgroundBlur: number;
 				zoomMotionBlur: number;
+					zoomTemporalMotionBlur: number;
+					zoomMotionBlurSampleCount: number | null;
+					zoomMotionBlurShutterFraction: number | null;
 				connectZooms: boolean;
 				zoomInDurationMs: number;
 				zoomInOverlapMs: number;
@@ -1791,6 +1812,9 @@ export default function VideoEditor() {
 				shadowIntensity,
 				backgroundBlur,
 				zoomMotionBlur,
+				zoomTemporalMotionBlur,
+				zoomMotionBlurSampleCount,
+				zoomMotionBlurShutterFraction,
 				connectZooms,
 				zoomInDurationMs,
 				zoomInOverlapMs,
@@ -1844,6 +1868,9 @@ export default function VideoEditor() {
 			shadowIntensity,
 			backgroundBlur,
 			zoomMotionBlur,
+			zoomTemporalMotionBlur,
+			zoomMotionBlurSampleCount,
+			zoomMotionBlurShutterFraction,
 			connectZooms,
 			zoomInDurationMs,
 			zoomInOverlapMs,
@@ -2025,6 +2052,9 @@ export default function VideoEditor() {
 			setShadowIntensity(normalizedEditor.shadowIntensity);
 			setBackgroundBlur(normalizedEditor.backgroundBlur);
 			setZoomMotionBlur(normalizedEditor.zoomMotionBlur);
+			setZoomTemporalMotionBlur(normalizedEditor.zoomTemporalMotionBlur);
+			setZoomMotionBlurSampleCount(normalizedEditor.zoomMotionBlurSampleCount);
+			setZoomMotionBlurShutterFraction(normalizedEditor.zoomMotionBlurShutterFraction);
 			setConnectZooms(normalizedEditor.connectZooms);
 			setZoomInDurationMs(normalizedEditor.zoomInDurationMs);
 			setZoomInOverlapMs(normalizedEditor.zoomInOverlapMs);
@@ -2431,6 +2461,9 @@ export default function VideoEditor() {
 			shadowIntensity,
 			backgroundBlur,
 			zoomMotionBlur,
+			zoomTemporalMotionBlur,
+			zoomMotionBlurSampleCount,
+			zoomMotionBlurShutterFraction,
 			autoApplyFreshRecordingAutoZooms,
 			connectZooms,
 			zoomInDurationMs,
@@ -2475,6 +2508,9 @@ export default function VideoEditor() {
 		shadowIntensity,
 		backgroundBlur,
 		zoomMotionBlur,
+		zoomTemporalMotionBlur,
+		zoomMotionBlurSampleCount,
+		zoomMotionBlurShutterFraction,
 		autoApplyFreshRecordingAutoZooms,
 		connectZooms,
 		zoomInDurationMs,
@@ -4313,6 +4349,9 @@ export default function VideoEditor() {
 						shadowIntensity: effectiveShadowIntensity,
 						backgroundBlur,
 						zoomMotionBlur,
+						zoomTemporalMotionBlur,
+						zoomMotionBlurSampleCount,
+						zoomMotionBlurShutterFraction,
 						connectZooms,
 						zoomInDurationMs,
 						zoomInOverlapMs,
@@ -4489,6 +4528,9 @@ export default function VideoEditor() {
 						shadowIntensity: effectiveShadowIntensity,
 						backgroundBlur,
 						zoomMotionBlur,
+						zoomTemporalMotionBlur,
+						zoomMotionBlurSampleCount,
+						zoomMotionBlurShutterFraction,
 						connectZooms,
 						zoomInDurationMs,
 						zoomInOverlapMs,
@@ -4740,6 +4782,9 @@ export default function VideoEditor() {
 			shadowIntensity,
 			backgroundBlur,
 			zoomMotionBlur,
+			zoomTemporalMotionBlur,
+			zoomMotionBlurSampleCount,
+			zoomMotionBlurShutterFraction,
 			connectZooms,
 			zoomInDurationMs,
 			zoomInOverlapMs,
@@ -5721,6 +5766,14 @@ export default function VideoEditor() {
 								onShadowChange={setShadowIntensity}
 								backgroundBlur={backgroundBlur}
 								onBackgroundBlurChange={setBackgroundBlur}
+								zoomTemporalMotionBlur={zoomTemporalMotionBlur}
+								onZoomTemporalMotionBlurChange={setZoomTemporalMotionBlur}
+								zoomMotionBlurSampleCount={zoomMotionBlurSampleCount}
+								onZoomMotionBlurSampleCountChange={setZoomMotionBlurSampleCount}
+								zoomMotionBlurShutterFraction={zoomMotionBlurShutterFraction}
+								onZoomMotionBlurShutterFractionChange={
+									setZoomMotionBlurShutterFraction
+								}
 								autoApplyFreshRecordingAutoZooms={autoApplyFreshRecordingAutoZooms}
 								onAutoApplyFreshRecordingAutoZoomsChange={
 									setAutoApplyFreshRecordingAutoZooms

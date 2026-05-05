@@ -12,6 +12,10 @@ import { isValidMp4FrameRate } from "@/lib/exporter";
 import {
 	TEMPORAL_MOTION_BLUR_DEFAULT_SAMPLE_COUNT,
 	TEMPORAL_MOTION_BLUR_DEFAULT_SHUTTER_FRACTION,
+	TEMPORAL_MOTION_BLUR_MAX_SAMPLE_COUNT,
+	TEMPORAL_MOTION_BLUR_MAX_SHUTTER_FRACTION,
+	TEMPORAL_MOTION_BLUR_MIN_SAMPLE_COUNT,
+	TEMPORAL_MOTION_BLUR_MIN_SHUTTER_FRACTION,
 } from "@/lib/exporter/temporalMotionBlur";
 import { DEFAULT_WALLPAPER_PATH } from "@/lib/wallpapers";
 import { ASPECT_RATIOS, type AspectRatio, isCustomAspectRatio } from "@/utils/aspectRatioUtils";
@@ -300,6 +304,27 @@ export function validateProjectData(candidate: unknown): candidate is EditorProj
 }
 
 export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): ProjectEditorState {
+	const normalizeTemporalBlurSampleCount = (value: unknown): number => {
+		if (!isFiniteNumber(value)) {
+			return TEMPORAL_MOTION_BLUR_DEFAULT_SAMPLE_COUNT;
+		}
+
+		const roundedValue = Math.round(value);
+		const clampedValue = clamp(
+			roundedValue,
+			TEMPORAL_MOTION_BLUR_MIN_SAMPLE_COUNT,
+			TEMPORAL_MOTION_BLUR_MAX_SAMPLE_COUNT,
+		);
+
+		if (clampedValue % 2 === 1) {
+			return clampedValue;
+		}
+
+		return clampedValue >= TEMPORAL_MOTION_BLUR_MAX_SAMPLE_COUNT
+			? clampedValue - 1
+			: clampedValue + 1;
+	};
+
 	const validAspectRatios = new Set<AspectRatio>(ASPECT_RATIOS);
 	const legacyMotionBlurEnabled = (editor as Partial<{ motionBlurEnabled: boolean }>)
 		.motionBlurEnabled;
@@ -323,8 +348,18 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 		: legacyShowBlur
 			? 2
 			: 0;
-	const normalizedZoomMotionBlurSampleCount = TEMPORAL_MOTION_BLUR_DEFAULT_SAMPLE_COUNT;
-	const normalizedZoomMotionBlurShutterFraction = TEMPORAL_MOTION_BLUR_DEFAULT_SHUTTER_FRACTION;
+	const normalizedZoomMotionBlurSampleCount = normalizeTemporalBlurSampleCount(
+		(editor as Partial<ProjectEditorState>).zoomMotionBlurSampleCount,
+	);
+	const normalizedZoomMotionBlurShutterFraction = isFiniteNumber(
+		(editor as Partial<ProjectEditorState>).zoomMotionBlurShutterFraction,
+	)
+		? clamp(
+				(editor as Partial<ProjectEditorState>).zoomMotionBlurShutterFraction as number,
+				TEMPORAL_MOTION_BLUR_MIN_SHUTTER_FRACTION,
+				TEMPORAL_MOTION_BLUR_MAX_SHUTTER_FRACTION,
+			)
+		: TEMPORAL_MOTION_BLUR_DEFAULT_SHUTTER_FRACTION;
 	const normalizedZoomInDurationMs = isFiniteNumber(editor.zoomInDurationMs)
 		? clamp(editor.zoomInDurationMs, 60, 4000)
 		: DEFAULT_MOTION_PRESET.zoomInDurationMs;

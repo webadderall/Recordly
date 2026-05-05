@@ -2638,16 +2638,6 @@ export class FrameRenderer {
 			return null;
 		}
 
-		if (resolvedSnapshot !== lastSnapshot) {
-			await this.renderSceneSample(
-				Math.round(resolvedSnapshot.timeMs * 1000),
-				Math.round(resolvedSnapshot.cursorTimeMs * 1000),
-				Math.round(resolvedSnapshot.backgroundTimelineTimeMs * 1000),
-				layoutCache,
-				true,
-				false,
-			);
-		}
 		this.updateCaptionLayer(resolvedSnapshot.timeMs);
 
 		const hasOverlayCanvasWork =

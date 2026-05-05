@@ -29,6 +29,10 @@ import {
 import {
 	TEMPORAL_MOTION_BLUR_DEFAULT_SAMPLE_COUNT,
 	TEMPORAL_MOTION_BLUR_DEFAULT_SHUTTER_FRACTION,
+	TEMPORAL_MOTION_BLUR_MAX_SAMPLE_COUNT,
+	TEMPORAL_MOTION_BLUR_MAX_SHUTTER_FRACTION,
+	TEMPORAL_MOTION_BLUR_MIN_SAMPLE_COUNT,
+	TEMPORAL_MOTION_BLUR_MIN_SHUTTER_FRACTION,
 } from "@/lib/exporter/temporalMotionBlur";
 import type { ExtensionSettingField } from "@/lib/extensions";
 import { extensionHost, type FrameInstance } from "@/lib/extensions";
@@ -469,6 +473,7 @@ interface SettingsPanelProps {
 	onShadowChange?: (intensity: number) => void;
 	backgroundBlur?: number;
 	onBackgroundBlurChange?: (amount: number) => void;
+	zoomTemporalMotionBlur?: number;
 	onZoomTemporalMotionBlurChange?: (amount: number) => void;
 	zoomMotionBlurSampleCount?: number | null;
 	onZoomMotionBlurSampleCountChange?: (count: number | null) => void;
@@ -848,8 +853,11 @@ export function SettingsPanel({
 	onShadowChange,
 	backgroundBlur = 0,
 	onBackgroundBlurChange,
+	zoomTemporalMotionBlur = 0,
 	onZoomTemporalMotionBlurChange,
+	zoomMotionBlurSampleCount = TEMPORAL_MOTION_BLUR_DEFAULT_SAMPLE_COUNT,
 	onZoomMotionBlurSampleCountChange,
+	zoomMotionBlurShutterFraction = TEMPORAL_MOTION_BLUR_DEFAULT_SHUTTER_FRACTION,
 	onZoomMotionBlurShutterFractionChange,
 	connectZooms = true,
 	onConnectZoomsChange,
@@ -1123,6 +1131,7 @@ export function SettingsPanel({
 		() => ({ ...builtInCursorPreviewUrls, ...extensionCursorPreviewUrls }),
 		[builtInCursorPreviewUrls, extensionCursorPreviewUrls],
 	);
+	const showDevMotionControls = import.meta.env.DEV;
 	const cursorStyleOptions = useMemo<CursorStyleOption[]>(
 		() => [
 			...BUILTIN_CURSOR_STYLE_OPTIONS,
@@ -1447,8 +1456,10 @@ export function SettingsPanel({
 
 	const resetZoomSection = () => {
 		onZoomTemporalMotionBlurChange?.(initialEditorPreferences.zoomTemporalMotionBlur);
-		onZoomMotionBlurSampleCountChange?.(TEMPORAL_MOTION_BLUR_DEFAULT_SAMPLE_COUNT);
-		onZoomMotionBlurShutterFractionChange?.(TEMPORAL_MOTION_BLUR_DEFAULT_SHUTTER_FRACTION);
+		onZoomMotionBlurSampleCountChange?.(initialEditorPreferences.zoomMotionBlurSampleCount);
+		onZoomMotionBlurShutterFractionChange?.(
+			initialEditorPreferences.zoomMotionBlurShutterFraction,
+		);
 		onZoomInDurationMsChange?.(initialEditorPreferences.zoomInDurationMs);
 		onZoomOutDurationMsChange?.(initialEditorPreferences.zoomOutDurationMs);
 		onZoomClassicModeChange?.(false);
@@ -2687,17 +2698,80 @@ export function SettingsPanel({
 						)}
 					</div>
 				)}
-				<div className="rounded-lg border border-foreground/10 bg-foreground/[0.03] px-3 py-2">
-					<div className="text-[10px] text-muted-foreground">
-						{tSettings(
-							"effects.exportBlurLocked",
-							"Export blur is fixed for this build.",
-						)}
+				{showDevMotionControls ? (
+					<div className="space-y-1.5 rounded-lg border border-[#2563EB]/15 bg-[#2563EB]/5 px-3 py-3">
+						<div>
+							<div className="text-[11px] font-medium text-foreground">
+								{tSettings("effects.exportBlurDebug", "Export Blur Debug")}
+							</div>
+							<div className="mt-0.5 text-[10px] text-muted-foreground">
+								{tSettings(
+									"effects.exportBlurDebugHint",
+									"Development-only temporal blur tuning for export and preview parity checks.",
+								)}
+							</div>
+						</div>
+						<SliderControl
+							label={tSettings("effects.zoomTemporalMotionBlur", "Temporal blur")}
+							value={zoomTemporalMotionBlur}
+							defaultValue={initialEditorPreferences.zoomTemporalMotionBlur}
+							min={0}
+							max={2}
+							step={0.05}
+							onChange={(value) => onZoomTemporalMotionBlurChange?.(value)}
+							formatValue={(value) => `${value.toFixed(2)}×`}
+							parseInput={(text) => parseFloat(text.replace(/×$/, ""))}
+						/>
+						<SliderControl
+							label={tSettings("effects.zoomMotionBlurSampleCount", "Sample count")}
+							value={
+								zoomMotionBlurSampleCount ??
+								TEMPORAL_MOTION_BLUR_DEFAULT_SAMPLE_COUNT
+							}
+							defaultValue={
+								initialEditorPreferences.zoomMotionBlurSampleCount ??
+								TEMPORAL_MOTION_BLUR_DEFAULT_SAMPLE_COUNT
+							}
+							min={TEMPORAL_MOTION_BLUR_MIN_SAMPLE_COUNT}
+							max={TEMPORAL_MOTION_BLUR_MAX_SAMPLE_COUNT}
+							step={2}
+							onChange={(value) =>
+								onZoomMotionBlurSampleCountChange?.(Math.round(value))
+							}
+							formatValue={(value) => `${Math.round(value)} samples`}
+							parseInput={(text) => parseFloat(text.replace(/samples?$/i, "").trim())}
+						/>
+						<SliderControl
+							label={tSettings("effects.zoomMotionBlurShutterFraction", "Shutter")}
+							value={
+								zoomMotionBlurShutterFraction ??
+								TEMPORAL_MOTION_BLUR_DEFAULT_SHUTTER_FRACTION
+							}
+							defaultValue={
+								initialEditorPreferences.zoomMotionBlurShutterFraction ??
+								TEMPORAL_MOTION_BLUR_DEFAULT_SHUTTER_FRACTION
+							}
+							min={TEMPORAL_MOTION_BLUR_MIN_SHUTTER_FRACTION}
+							max={TEMPORAL_MOTION_BLUR_MAX_SHUTTER_FRACTION}
+							step={0.01}
+							onChange={(value) => onZoomMotionBlurShutterFractionChange?.(value)}
+							formatValue={(value) => `${Math.round(value * 100)}%`}
+							parseInput={(text) => parseFloat(text.replace(/%$/, "")) / 100}
+						/>
 					</div>
-					<div className="mt-1 text-[12px] font-medium text-foreground">
-						{`${TEMPORAL_MOTION_BLUR_DEFAULT_SAMPLE_COUNT} samples · ${Math.round(TEMPORAL_MOTION_BLUR_DEFAULT_SHUTTER_FRACTION * 100)}% shutter`}
+				) : (
+					<div className="rounded-lg border border-foreground/10 bg-foreground/[0.03] px-3 py-2">
+						<div className="text-[10px] text-muted-foreground">
+							{tSettings(
+								"effects.exportBlurLocked",
+								"Export blur is fixed for this build.",
+							)}
+						</div>
+						<div className="mt-1 text-[12px] font-medium text-foreground">
+							{`${TEMPORAL_MOTION_BLUR_DEFAULT_SAMPLE_COUNT} samples · ${Math.round(TEMPORAL_MOTION_BLUR_DEFAULT_SHUTTER_FRACTION * 100)}% shutter`}
+						</div>
 					</div>
-				</div>
+				)}
 				{selectedZoomId && (
 					<Button
 						onClick={() => {
@@ -2941,6 +3015,78 @@ export function SettingsPanel({
 									return parseFloat(text.replace(/×$/, ""));
 								}}
 							/>
+							{showDevMotionControls ? (
+								<div className="space-y-1.5 rounded-lg border border-[#2563EB]/15 bg-[#2563EB]/5 px-3 py-3">
+									<div>
+										<div className="text-[11px] font-medium text-foreground">
+											{tSettings(
+												"effects.cursorDebugTuning",
+												"Cursor Debug Tuning",
+											)}
+										</div>
+										<div className="mt-0.5 text-[10px] text-muted-foreground">
+											{tSettings(
+												"effects.cursorDebugTuningHint",
+												"Development-only spring tuning controls.",
+											)}
+										</div>
+									</div>
+									<SliderControl
+										label={tSettings(
+											"effects.cursorSpringStiffnessMultiplier",
+											"Spring stiffness",
+										)}
+										value={cursorSpringStiffnessMultiplier}
+										defaultValue={
+											initialEditorPreferences.cursorSpringStiffnessMultiplier
+										}
+										min={0.25}
+										max={3}
+										step={0.01}
+										onChange={(value) =>
+											onCursorSpringStiffnessMultiplierChange?.(value)
+										}
+										formatValue={(value) => `${value.toFixed(2)}×`}
+										parseInput={(text) => parseFloat(text.replace(/×$/, ""))}
+									/>
+									<SliderControl
+										label={tSettings(
+											"effects.cursorSpringDampingMultiplier",
+											"Spring damping",
+										)}
+										value={cursorSpringDampingMultiplier}
+										defaultValue={
+											initialEditorPreferences.cursorSpringDampingMultiplier
+										}
+										min={0.25}
+										max={3}
+										step={0.01}
+										onChange={(value) =>
+											onCursorSpringDampingMultiplierChange?.(value)
+										}
+										formatValue={(value) => `${value.toFixed(2)}×`}
+										parseInput={(text) => parseFloat(text.replace(/×$/, ""))}
+									/>
+									<SliderControl
+										label={tSettings(
+											"effects.cursorSpringMassMultiplier",
+											"Spring mass",
+										)}
+										value={cursorSpringMassMultiplier}
+										defaultValue={
+											initialEditorPreferences.cursorSpringMassMultiplier
+										}
+										min={0.25}
+										max={3}
+										step={0.01}
+										onChange={(value) =>
+											onCursorSpringMassMultiplierChange?.(value)
+										}
+										formatValue={(value) => `${value.toFixed(2)}×`}
+										parseInput={(text) => parseFloat(text.replace(/×$/, ""))}
+									/>
+								</div>
+							) : null}
 						</div>
 						{renderExtensionPanelsForSections("cursor")}
 					</section>

@@ -19,7 +19,7 @@ export interface CursorMotionPreset {
 }
 
 const SHARED_CURSOR_PRESET_VALUES = {
-	cursorSize: 2.2,
+	cursorSize: 2.5,
 	cursorSmoothing: 0.67,
 	cursorSpringMassMultiplier: 1.29,
 	cursorMotionBlur: 0.4,
@@ -32,8 +32,8 @@ export const CURSOR_MOTION_PRESETS: Record<CursorMotionPresetId, CursorMotionPre
 		id: "focused",
 		label: "Focused",
 		zoomSmoothness: 0.5,
-		zoomInDurationMs: 100,
-		zoomOutDurationMs: 100,
+		zoomInDurationMs: 200,
+		zoomOutDurationMs: 200,
 		...SHARED_CURSOR_PRESET_VALUES,
 		cursorSpringStiffnessMultiplier: 1.35,
 		cursorSpringDampingMultiplier: 0.79,
