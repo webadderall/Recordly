@@ -1435,13 +1435,14 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 				if (webcamRecorder.current?.state === "recording") {
 					webcamRecorder.current.pause();
 				}
+				const boundaryMs = Date.now();
+				markRecordingPaused(boundaryMs);
+				setPaused(true);
 				try {
 					await window.electronAPI.pauseCursorCapture();
 				} catch (error) {
 					console.warn("Failed to pause cursor capture:", error);
 				}
-				markRecordingPaused(Date.now());
-				setPaused(true);
 			})();
 			return;
 		}
@@ -1451,13 +1452,14 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 				webcamRecorder.current.pause();
 			}
 			void (async () => {
+				const boundaryMs = Date.now();
+				markRecordingPaused(boundaryMs);
+				setPaused(true);
 				try {
 					await window.electronAPI.pauseCursorCapture();
 				} catch (error) {
 					console.warn("Failed to pause cursor capture:", error);
 				}
-				markRecordingPaused(Date.now());
-				setPaused(true);
 			})();
 		}
 	}, [markRecordingPaused, paused, recording]);
@@ -1478,13 +1480,14 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 				if (webcamRecorder.current?.state === "paused") {
 					webcamRecorder.current.resume();
 				}
+				const boundaryMs = Date.now();
+				markRecordingResumed(boundaryMs);
+				setPaused(false);
 				try {
 					await window.electronAPI.resumeCursorCapture();
 				} catch (error) {
 					console.warn("Failed to resume cursor capture:", error);
 				}
-				markRecordingResumed(Date.now());
-				setPaused(false);
 			})();
 			return;
 		}
@@ -1494,13 +1497,14 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 				webcamRecorder.current.resume();
 			}
 			void (async () => {
+				const boundaryMs = Date.now();
+				markRecordingResumed(boundaryMs);
+				setPaused(false);
 				try {
 					await window.electronAPI.resumeCursorCapture();
 				} catch (error) {
 					console.warn("Failed to resume cursor capture:", error);
 				}
-				markRecordingResumed(Date.now());
-				setPaused(false);
 			})();
 		}
 	}, [markRecordingResumed, paused, recording]);

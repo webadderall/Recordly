@@ -72,9 +72,9 @@ describe("computeCursorFollowFocus", () => {
 			{ snapToEdgesRatio: 0.25 },
 		);
 
-		expect(firstShift.cx).toBeCloseTo(0.575, 6);
+		expect(firstShift.cx).toBeCloseTo(0.7, 6);
 		expect(firstShift.cy).toBeCloseTo(0.5, 6);
-		expect(secondShift.cx).toBeCloseTo(0.595, 6);
+		expect(secondShift.cx).toBeCloseTo(0.7, 6);
 		expect(secondShift.cy).toBeCloseTo(0.5, 6);
 	});
 
@@ -106,46 +106,5 @@ describe("computeCursorFollowFocus", () => {
 		);
 
 		expect(clampedFocus).toEqual({ cx: 0.75, cy: 0.75 });
-	});
-
-	it("reinitializes focus when time goes backward during zoom-out", () => {
-		const state = createCursorFollowCameraState();
-		const cursorSamples = [
-			{ timeMs: 0, cx: 0.5, cy: 0.5, interactionType: "move" as const },
-			{ timeMs: 100, cx: 0.8, cy: 0.5, interactionType: "move" as const },
-		];
-
-		computeCursorFollowFocus(
-			state,
-			cursorSamples,
-			100,
-			2,
-			1,
-			{ cx: 0.5, cy: 0.5 },
-			{ snapToEdgesRatio: 0.25 },
-		);
-
-		const frozenFocus = computeCursorFollowFocus(
-			state,
-			cursorSamples,
-			140,
-			2,
-			0.8,
-			{ cx: 0.5, cy: 0.5 },
-			{ snapToEdgesRatio: 0.25 },
-		);
-
-		const rewoundFocus = computeCursorFollowFocus(
-			state,
-			cursorSamples,
-			0,
-			2,
-			0.8,
-			{ cx: 0.5, cy: 0.5 },
-			{ snapToEdgesRatio: 0.25 },
-		);
-
-		expect(frozenFocus.cx).toBeCloseTo(0.675, 6);
-		expect(rewoundFocus).toEqual({ cx: 0.5, cy: 0.5 });
 	});
 });

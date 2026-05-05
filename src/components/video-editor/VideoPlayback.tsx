@@ -1102,7 +1102,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 				return;
 			}
 
-			videoEffectsContainer.filters = [zoomBlurFilter, motionBlurFilter];
+			videoEffectsContainer.filters = null;
 			motionBlurFilter.velocity = { x: 0, y: 0 };
 			motionBlurFilter.kernelSize = 5;
 			motionBlurFilter.offset = 0;
@@ -1443,10 +1443,6 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 				videoEffectsContainerRef.current = videoEffectsContainer;
 				zoomBlurFilterRef.current = new ZoomBlurFilter({ strength: 0 });
 				motionBlurFilterRef.current = new MotionBlurFilter([0, 0], 5, 0);
-				videoEffectsContainer.filters = [
-					zoomBlurFilterRef.current,
-					motionBlurFilterRef.current,
-				];
 				cameraContainer.addChild(videoEffectsContainer);
 				syncPreviewMotionBlurQuality();
 

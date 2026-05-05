@@ -1642,6 +1642,7 @@ export class FrameRenderer {
 			) {
 				this.backgroundForwardFrameDurationSec = resolvedDecodedDuration ?? null;
 				this.closeBackgroundDecodedFrame();
+				decodedFrame?.close();
 				try {
 					await this.restartBackgroundForwardFrameSource();
 					normalizedTargetTime =
@@ -2647,6 +2648,7 @@ export class FrameRenderer {
 				false,
 			);
 		}
+		this.updateCaptionLayer(resolvedSnapshot.timeMs);
 
 		const hasOverlayCanvasWork =
 			(this.config.annotationRegions?.length ?? 0) > 0 ||

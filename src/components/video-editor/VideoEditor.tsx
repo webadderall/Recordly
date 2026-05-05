@@ -2823,25 +2823,30 @@ export default function VideoEditor() {
 		if (totalMs <= 0) return;
 		if (!clipInitializedRef.current) {
 			if (clipRegions.length === 0) {
+				const nextClipRegions =
+					trimRegions.length > 0
+						? trimsToClips(trimRegions, totalMs)
+						: (() => {
+							const id = `clip-${nextClipIdRef.current++}`;
+							autoFullTrackClipIdRef.current = id;
+							autoFullTrackClipEndMsRef.current = totalMs;
+							return [{ id, startMs: 0, endMs: totalMs, speed: 1 }];
+						})();
+
 				if (trimRegions.length > 0) {
-					setClipRegions(trimsToClips(trimRegions, totalMs));
-					clipInitializedRef.current = true;
-					return;
-				}
-				const id = `clip-${nextClipIdRef.current++}`;
-				autoFullTrackClipIdRef.current = id;
-				autoFullTrackClipEndMsRef.current = totalMs;
-				if (trimRegions.length > 0) {
-					const derivedClipRegions = trimsToClips(trimRegions, totalMs);
 					nextClipIdRef.current = deriveNextId(
 						"clip",
-						derivedClipRegions.map((region) => region.id),
+						nextClipRegions.map((region) => region.id),
 					);
-					setClipRegions(derivedClipRegions);
-					clipInitializedRef.current = true;
-					return;
 				}
-				setClipRegions([{ id, startMs: 0, endMs: totalMs, speed: 1 }]);
+
+				setClipRegions(nextClipRegions);
+				if (speedRegions.length > 0) {
+					// Legacy speed regions no longer have dedicated editing surfaces.
+					// Clear them during clip bootstrap so old projects do not keep
+					// hidden playback changes that users cannot inspect or edit.
+					setSpeedRegions([]);
+				}
 			}
 			clipInitializedRef.current = true;
 			return;
@@ -2857,7 +2862,7 @@ export default function VideoEditor() {
 
 		autoFullTrackClipEndMsRef.current = totalMs;
 		setClipRegions(extendedClipRegions);
-	}, [duration, clipRegions, trimRegions]);
+	}, [duration, clipRegions, trimRegions, speedRegions]);
 
 	// Derive trimRegions from clipRegions so export/playback pipelines stay unchanged
 	useEffect(() => {
