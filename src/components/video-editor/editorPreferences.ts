@@ -240,6 +240,17 @@ function normalizeEditorPreset(candidate: unknown): EditorPreset | null {
 	};
 }
 
+function normalizeEditorPresets(candidates: unknown): EditorPreset[] {
+	if (!Array.isArray(candidates)) {
+		return [];
+	}
+
+	return candidates
+		.map((item) => normalizeEditorPreset(item))
+		.filter((preset): preset is EditorPreset => preset !== null)
+		.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+}
+
 export function serializeEditorPresetSnapshot(snapshot: EditorPresetSnapshot): string {
 	return JSON.stringify(normalizeEditorPresetSnapshot(snapshot));
 }
@@ -429,15 +440,7 @@ export function loadEditorPresets(): EditorPreset[] {
 			return [];
 		}
 
-		const parsed = JSON.parse(stored);
-		if (!Array.isArray(parsed)) {
-			return [];
-		}
-
-		return parsed
-			.map((item) => normalizeEditorPreset(item))
-			.filter((preset): preset is EditorPreset => preset !== null)
-			.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+		return normalizeEditorPresets(JSON.parse(stored));
 	} catch {
 		return [];
 	}
@@ -449,7 +452,8 @@ export function saveEditorPresets(presets: EditorPreset[]): boolean {
 	}
 
 	try {
-		globalThis.localStorage.setItem(EDITOR_PRESETS_STORAGE_KEY, JSON.stringify(presets));
+		const normalized = normalizeEditorPresets(presets);
+		globalThis.localStorage.setItem(EDITOR_PRESETS_STORAGE_KEY, JSON.stringify(normalized));
 		return true;
 	} catch {
 		// Ignore storage failures so editor controls still work.
