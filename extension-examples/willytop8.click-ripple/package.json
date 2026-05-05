@@ -1,0 +1,14 @@
+{
+	"name": "recordly-click-ripple",
+	"version": "1.0.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"build": "node build.mjs",
+		"watch": "node build.mjs --watch"
+	},
+	"devDependencies": {
+		"esbuild": "^0.27.0",
+		"typescript": "^5.9.0"
+	}
+}
